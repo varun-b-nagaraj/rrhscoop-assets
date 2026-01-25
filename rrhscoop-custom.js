@@ -429,7 +429,7 @@
   /* =========================
      CHECKOUT BUTTON TIME RESTRICTION
   ========================== */
-  const CHECKOUT_ALWAYS_ALLOW = true;
+  const CHECKOUT_ALWAYS_ALLOW = false;
 
   // A-DAY / B-DAY CONFIGURATION
   // Set this to a known A-day date (format: 'YYYY-MM-DD')
@@ -506,17 +506,80 @@
       button.style.cursor = 'not-allowed';
       button.title = 'We\'re sorry, we do not accept orders at this time.';
       
-      // Add click handler only once
+      // Add click handler only once - exactly like room validation
       if (!button.dataset.rrhsClickHandler) {
         button.dataset.rrhsClickHandler = "true";
         button._rrhsClickHandler = (e) => {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           shakeElement(button);
           createModal('We\'re sorry, we do not accept orders at this time.');
+          return false;
         };
-        button.addEventListener('click', button._rrhsClickHandler);
+        // Add listener with capture to intercept before disabled state blocks it
+        button.addEventListener('click', button._rrhsClickHandler, true);
       }
+    }
+  }
+
+  /* =========================
+     CHECKOUT BUTTON WRAPPER (to capture clicks on disabled button)
+  ========================== */
+  function wrapCheckoutButton() {
+    const button = document.querySelector('.ec-cart__button--checkout button');
+    if (!button || button.dataset.rrhsWrapped) return;
+
+    const parent = button.parentElement;
+    if (!parent) return;
+
+    // Create wrapper div
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position: relative; display: inline-block; width: 100%;';
+    wrapper.dataset.rrhsWrapper = 'true';
+
+    // Insert wrapper
+    parent.insertBefore(wrapper, button);
+    wrapper.appendChild(button);
+
+    // Create invisible overlay for capturing clicks when disabled
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      cursor: not-allowed;
+      display: none;
+    `;
+    overlay.dataset.rrhsOverlayBtn = 'true';
+    wrapper.appendChild(overlay);
+
+    // Handle clicks on overlay
+    overlay.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      shakeElement(button);
+      createModal('We\'re sorry, we do not accept orders at this time.');
+    });
+
+    button.dataset.rrhsWrapped = 'true';
+  }
+
+  function updateCheckoutOverlay() {
+    const button = document.querySelector('.ec-cart__button--checkout button');
+    const overlay = document.querySelector('[data-rrhs-overlay-btn="true"]');
+    
+    if (!button || !overlay) return;
+
+    const isAllowed = checkOrderingWindow();
+    
+    if (isAllowed) {
+      overlay.style.display = 'none';
+    } else {
+      overlay.style.display = 'block';
     }
   }
 
@@ -527,7 +590,9 @@
     initRoomAutocomplete();
     initRoomContinueButton();
     initCategoryImageSwap();
+    wrapCheckoutButton();
     manageCheckoutButton();
+    updateCheckoutOverlay();
   }
 
   boot();
@@ -539,5 +604,8 @@
     document.addEventListener("DOMContentLoaded", boot);
   }
 
-  setInterval(manageCheckoutButton, 60000);
+  setInterval(() => {
+    manageCheckoutButton();
+    updateCheckoutOverlay();
+  }, 60000);
 })();
