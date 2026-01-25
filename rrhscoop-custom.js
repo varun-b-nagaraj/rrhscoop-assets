@@ -145,73 +145,201 @@
   }
 
   /* =========================
-     CATEGORY IMAGE SWAP
-     - Updates BOTH "full" and "thumb" pictures under .ins-tile__category-image
-  ========================== */
+     CATEGORY IMAGE SWAP - STABLE OVERLAY APPROACH
+     - Creates a single overlay image that crossfades
+     - No DOM manipulation of original pictures
+     - Preloads all images to prevent flicker
+     ========================== */
+
   const BASE = "https://jocular-daifuku-5201aa.netlify.app";
   const IMAGE_MAP = {
-    "ins-tile__category-item-169641499": `${BASE}/snack.png?v=1`,
-    "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=1`,
-    "ins-tile__category-item-189782257": `${BASE}/merch.png?v=1`,
-    "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=1`
+    "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
+    "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=2`,
+    "ins-tile__category-item-189782257": `${BASE}/merch.png?v=2`,
+    "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
-
-
-  function setPicture(pictureEl, url) {
-    if (!pictureEl || !url) return;
-    pictureEl.querySelectorAll("source").forEach(s => {
-      const srcset = s.getAttribute("srcset") || "";
-      s.setAttribute("srcset", srcset.includes("2x") ? `${url}, ${url} 2x` : url);
-    });
-    const img = pictureEl.querySelector("img");
-    if (img) img.src = url;
-  }
-
-  function setAllTilePictures(tileRoot, url) {
-    if (!tileRoot || !url) return;
-    const container = tileRoot.querySelector(".ins-tile__category-image");
-    if (!container) return;
-    container.querySelectorAll("picture").forEach(p => setPicture(p, url));
-  }
+  // Preload all images immediately
+  const preloadedImages = {};
+  Object.values(IMAGE_MAP).forEach(url => {
+    if (!preloadedImages[url]) {
+      const img = new Image();
+      img.src = url;
+      preloadedImages[url] = img;
+      console.log("RRHS: Preloading", url);
+    }
+  });
 
   function findTileRoot() {
     for (const id in IMAGE_MAP) {
       const el = document.getElementById(id);
-      if (el) return el.closest(".ins-tile__category-collection");
+      if (el) {
+        console.log("RRHS: Found tile element", id);
+        return el.closest(".ins-tile__category-collection");
+      }
     }
+    console.warn("RRHS: No tile elements found");
     return null;
+  }
+
+  function createOverlayImage(container) {
+    const overlay = document.createElement("img");
+    overlay.style.cssText = `
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      pointer-events: none !important;
+      transition: opacity 50ms ease !important;
+      opacity: 0 !important;
+      z-index: 999 !important;
+      display: block !important;
+    `;
+    overlay.dataset.rrhsOverlay = "1";
+    overlay.alt = "Category image";
+    return overlay;
   }
 
   function initCategoryImageSwap() {
     const root = findTileRoot();
-    if (!root || root.dataset.imgSwapInit === "1") return;
+    if (!root) {
+      console.warn("RRHS: Tile root not found");
+      return; 
+    }
+
+    // Don't skip if already initialized - we need to check if our overlay still exists
+    const existingOverlay = root.querySelector('img[data-rrhs-overlay="1"]');
+    if (existingOverlay && existingOverlay.parentNode) {
+      console.log("RRHS: Overlay still exists, skipping re-init");
+      return;
+    }
+    
+    console.log("RRHS: Overlay missing or removed, re-initializing");
     root.dataset.imgSwapInit = "1";
 
+    // Try multiple possible selectors for the image container
+    // IMPORTANT: We want .ins-tile__category-image NOT .ins-tile__category-image-wrapper
+    let container = root.querySelector(".ins-tile__category-image");
+    if (!container) {
+      container = root.querySelector(".ins-tile__image");
+    }
+    if (!container) {
+      // Last resort: find any element with a picture tag
+      const picture = root.querySelector("picture");
+      if (picture) container = picture.parentElement;
+    }
+    
     const wrap = root.querySelector(".ins-tile__category-items-wrapper");
-    if (!wrap) return;
+    
+    if (!container || !wrap) {
+      console.warn("RRHS: Container or wrapper not found", { 
+        container, 
+        wrap,
+        allClasses: root.innerHTML.match(/class="[^"]+"/g)
+      });
+      return;
+    }
 
-    const apply = (item) => {
-      const url = IMAGE_MAP[item?.id];
-      if (url) setAllTilePictures(root, url);
+    console.log("RRHS: Initializing image swap", { container, wrap });
+
+    // Make container position relative for overlay and ensure it's a positioning context
+    const position = getComputedStyle(container).position;
+    if (position === "static") {
+      container.style.position = "relative";
+    }
+    container.style.overflow = "hidden";
+    
+    // Log container dimensions to debug
+    const rect = container.getBoundingClientRect();
+    console.log("RRHS: Container dimensions", { 
+      width: rect.width, 
+      height: rect.height,
+      position: getComputedStyle(container).position 
+    });
+
+    // Create single overlay image
+    const overlay = createOverlayImage(container);
+    container.appendChild(overlay);
+    console.log("RRHS: Overlay created and appended", overlay);
+
+    // Hide all original picture elements so only overlay shows - use !important to prevent override
+    container.querySelectorAll("picture").forEach(pic => {
+      pic.style.cssText = "opacity: 0 !important; pointer-events: none !important; position: absolute !important;";
+    });
+    
+    // Also hide any img elements that aren't our overlay
+    container.querySelectorAll("img").forEach(img => {
+      if (img !== overlay) {
+        img.style.cssText = "opacity: 0 !important; pointer-events: none !important;";
+      }
+    });
+
+    let currentUrl = null;
+
+    const setImage = (url) => {
+      if (!url || currentUrl === url) return;
+      console.log("RRHS: Setting image to", url);
+      currentUrl = url;
+      
+      // Quick fade out
+      overlay.style.opacity = "0";
+      
+      // Wait for fade out, then swap
+      setTimeout(() => {
+        overlay.src = url;
+        // Fade in immediately (image is preloaded)
+        requestAnimationFrame(() => {
+          overlay.style.opacity = "1";
+        });
+      }, 50);
     };
 
+    // Set initial image - try active item first, then fall back to first item
     const active = root.querySelector(".ins-tile__category-item--active");
-    if (active) apply(active);
+    let initialItem = active;
+    
+    if (!initialItem || !IMAGE_MAP[initialItem.id]) {
+      // No active item, use first mapped item
+      for (const id in IMAGE_MAP) {
+        const el = document.getElementById(id);
+        if (el) {
+          initialItem = el;
+          break;
+        }
+      }
+    }
+    
+    if (initialItem && IMAGE_MAP[initialItem.id]) {
+      console.log("RRHS: Setting initial image", initialItem.id, IMAGE_MAP[initialItem.id]);
+      overlay.src = IMAGE_MAP[initialItem.id];
+      overlay.style.opacity = "1";
+      currentUrl = IMAGE_MAP[initialItem.id];
+    } else {
+      console.log("RRHS: No initial item found or no mapped image");
+    }
 
+    // Handle hover/focus
     const handler = (e) => {
       const item = e.target.closest(".ins-tile__category-item");
       if (!item || !wrap.contains(item)) return;
-      if (IMAGE_MAP[item.id]) apply(item);
+      const url = IMAGE_MAP[item.id];
+      if (url) {
+        console.log("RRHS: Hover detected", item.id);
+        setImage(url);
+      }
     };
 
     wrap.addEventListener("mouseover", handler);
     wrap.addEventListener("focusin", handler);
+    console.log("RRHS: Event listeners attached");
   }
 
   /* =========================
      BOOTSTRAP (rerender-safe)
-  ========================== */
+     ========================== */
+
   function boot() {
     initRoomAutocomplete();
     initCategoryImageSwap();
