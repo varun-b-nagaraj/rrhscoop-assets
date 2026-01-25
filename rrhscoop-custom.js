@@ -1,6 +1,104 @@
 /* rrhscoop-custom.js */
 (() => {
   /* =========================
+     MODAL UTILITIES
+  ========================== */
+  function createModal(message) {
+    // Remove existing modal if any
+    const existing = document.getElementById('rrhs-error-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'rrhs-error-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120%);
+      width: 90%;
+      max-width: 600px;
+      background: #670000;
+      color: #EBEBE2;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      animation: slideDown 0.4s ease forwards;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        font-size: 0.95em;
+        font-weight: 500;
+        flex: 1;
+      ">${message}</div>
+      <button id="rrhs-modal-close" style="
+        background: transparent;
+        color: #EBEBE2;
+        border: 1px solid #EBEBE2;
+        padding: 6px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.875em;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+      " onmouseover="this.style.background='#EBEBE2'; this.style.color='#670000';" 
+         onmouseout="this.style.background='transparent'; this.style.color='#EBEBE2';">
+        Dismiss
+      </button>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add CSS animations
+    if (!document.getElementById('rrhs-modal-styles')) {
+      const style = document.createElement('style');
+      style.id = 'rrhs-modal-styles';
+      style.textContent = `
+        @keyframes slideDown {
+          from { transform: translateX(-50%) translateY(-120%); }
+          to { transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes slideUp {
+          from { transform: translateX(-50%) translateY(0); }
+          to { transform: translateX(-50%) translateY(-120%); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Close handlers
+    const closeModal = () => {
+      modal.style.animation = 'slideUp 0.3s ease forwards';
+      setTimeout(() => modal.remove(), 300);
+    };
+    
+    document.getElementById('rrhs-modal-close').addEventListener('click', closeModal);
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(closeModal, 5000);
+
+    return modal;
+  }
+
+  function shakeElement(element) {
+    element.style.animation = 'shake 0.5s ease';
+    setTimeout(() => {
+      element.style.animation = '';
+    }, 500);
+  }
+
+  /* =========================
      ROOM AUTOCOMPLETE
   ========================== */
   const ROOM_DATA = [
@@ -45,7 +143,7 @@
       color:#d32f2f;font-size:.875em;margin-top:4px;display:none;
       outline:none!important;border:none!important;box-shadow:none!important;pointer-events:none;
     `;
-    errorMsg.textContent = "Please select a valid room number from the list";
+    errorMsg.textContent = "We couldn't find that room. Please select a valid room from the list.";
     errorMsg.tabIndex = -1;
     wrapper.appendChild(errorMsg);
 
@@ -145,12 +243,33 @@
   }
 
   /* =========================
-     CATEGORY IMAGE SWAP - STABLE OVERLAY APPROACH
-     - Creates a single overlay image that crossfades
-     - No DOM manipulation of original pictures
-     - Preloads all images to prevent flicker
-     ========================== */
+     ROOM CONTINUE BUTTON VALIDATION
+  ========================== */
+  function initRoomContinueButton() {
+    const continueBtn = document.querySelector('.form-control--button button.form-control__button');
+    if (!continueBtn || continueBtn.dataset.rrhsValidation) return;
 
+    continueBtn.dataset.rrhsValidation = "true";
+
+    continueBtn.addEventListener('click', (e) => {
+      const input = document.querySelector('input[name="z7rty2b"]');
+      if (!input) return;
+
+      const value = (input.value || "").trim();
+      const isValid = ROOM_DATA.some(r => r.room === value);
+
+      if (value && !isValid) {
+        e.preventDefault();
+        e.stopPropagation();
+        shakeElement(continueBtn);
+        createModal('We couldn\'t find that room. Please select a valid room from the list.');
+      }
+    });
+  }
+
+  /* =========================
+     CATEGORY IMAGE SWAP - STABLE OVERLAY APPROACH
+  ========================== */
   const BASE = "https://jocular-daifuku-5201aa.netlify.app";
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
@@ -159,14 +278,12 @@
     "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
-  // Preload all images immediately
   const preloadedImages = {};
   Object.values(IMAGE_MAP).forEach(url => {
     if (!preloadedImages[url]) {
       const img = new Image();
       img.src = url;
       preloadedImages[url] = img;
-      console.log("RRHS: Preloading", url);
     }
   });
 
@@ -174,11 +291,9 @@
     for (const id in IMAGE_MAP) {
       const el = document.getElementById(id);
       if (el) {
-        console.log("RRHS: Found tile element", id);
         return el.closest(".ins-tile__category-collection");
       }
     }
-    console.warn("RRHS: No tile elements found");
     return null;
   }
 
@@ -204,72 +319,39 @@
 
   function initCategoryImageSwap() {
     const root = findTileRoot();
-    if (!root) {
-      console.warn("RRHS: Tile root not found");
-      return; 
-    }
+    if (!root) return;
 
-    // Don't skip if already initialized - we need to check if our overlay still exists
     const existingOverlay = root.querySelector('img[data-rrhs-overlay="1"]');
-    if (existingOverlay && existingOverlay.parentNode) {
-      console.log("RRHS: Overlay still exists, skipping re-init");
-      return;
-    }
+    if (existingOverlay && existingOverlay.parentNode) return;
     
-    console.log("RRHS: Overlay missing or removed, re-initializing");
     root.dataset.imgSwapInit = "1";
 
-    // Try multiple possible selectors for the image container
-    // IMPORTANT: We want .ins-tile__category-image NOT .ins-tile__category-image-wrapper
     let container = root.querySelector(".ins-tile__category-image");
     if (!container) {
       container = root.querySelector(".ins-tile__image");
     }
     if (!container) {
-      // Last resort: find any element with a picture tag
       const picture = root.querySelector("picture");
       if (picture) container = picture.parentElement;
     }
     
     const wrap = root.querySelector(".ins-tile__category-items-wrapper");
     
-    if (!container || !wrap) {
-      console.warn("RRHS: Container or wrapper not found", { 
-        container, 
-        wrap,
-        allClasses: root.innerHTML.match(/class="[^"]+"/g)
-      });
-      return;
-    }
+    if (!container || !wrap) return;
 
-    console.log("RRHS: Initializing image swap", { container, wrap });
-
-    // Make container position relative for overlay and ensure it's a positioning context
     const position = getComputedStyle(container).position;
     if (position === "static") {
       container.style.position = "relative";
     }
     container.style.overflow = "hidden";
-    
-    // Log container dimensions to debug
-    const rect = container.getBoundingClientRect();
-    console.log("RRHS: Container dimensions", { 
-      width: rect.width, 
-      height: rect.height,
-      position: getComputedStyle(container).position 
-    });
 
-    // Create single overlay image
     const overlay = createOverlayImage(container);
     container.appendChild(overlay);
-    console.log("RRHS: Overlay created and appended", overlay);
 
-    // Hide all original picture elements so only overlay shows - use !important to prevent override
     container.querySelectorAll("picture").forEach(pic => {
       pic.style.cssText = "opacity: 0 !important; pointer-events: none !important; position: absolute !important;";
     });
     
-    // Also hide any img elements that aren't our overlay
     container.querySelectorAll("img").forEach(img => {
       if (img !== overlay) {
         img.style.cssText = "opacity: 0 !important; pointer-events: none !important;";
@@ -280,28 +362,22 @@
 
     const setImage = (url) => {
       if (!url || currentUrl === url) return;
-      console.log("RRHS: Setting image to", url);
       currentUrl = url;
       
-      // Quick fade out
       overlay.style.opacity = "0";
       
-      // Wait for fade out, then swap
       setTimeout(() => {
         overlay.src = url;
-        // Fade in immediately (image is preloaded)
         requestAnimationFrame(() => {
           overlay.style.opacity = "1";
         });
       }, 50);
     };
 
-    // Set initial image - try active item first, then fall back to first item
     const active = root.querySelector(".ins-tile__category-item--active");
     let initialItem = active;
     
     if (!initialItem || !IMAGE_MAP[initialItem.id]) {
-      // No active item, use first mapped item
       for (const id in IMAGE_MAP) {
         const el = document.getElementById(id);
         if (el) {
@@ -312,50 +388,77 @@
     }
     
     if (initialItem && IMAGE_MAP[initialItem.id]) {
-      console.log("RRHS: Setting initial image", initialItem.id, IMAGE_MAP[initialItem.id]);
       overlay.src = IMAGE_MAP[initialItem.id];
       overlay.style.opacity = "1";
       currentUrl = IMAGE_MAP[initialItem.id];
-    } else {
-      console.log("RRHS: No initial item found or no mapped image");
     }
 
-    // Handle hover/focus
     const handler = (e) => {
       const item = e.target.closest(".ins-tile__category-item");
       if (!item || !wrap.contains(item)) return;
       const url = IMAGE_MAP[item.id];
       if (url) {
-        console.log("RRHS: Hover detected", item.id);
         setImage(url);
       }
     };
 
     wrap.addEventListener("mouseover", handler);
     wrap.addEventListener("focusin", handler);
-    console.log("RRHS: Event listeners attached");
   }
 
   /* =========================
      CHECKOUT BUTTON TIME RESTRICTION
-     ========================== */
+  ========================== */
+  const CHECKOUT_ALWAYS_ALLOW = true;
+
+  // A-DAY / B-DAY CONFIGURATION
+  // Set this to a known A-day date (format: 'YYYY-MM-DD')
+  const REFERENCE_A_DAY = '2026-01-27'; // Monday, Jan 27, 2026 is an A-day
+  
+  function isADay() {
+    const now = new Date();
+    const referenceDate = new Date(REFERENCE_A_DAY + 'T00:00:00');
+    
+    // Reset both dates to midnight for accurate day counting
+    now.setHours(0, 0, 0, 0);
+    referenceDate.setHours(0, 0, 0, 0);
+    
+    // Calculate days since reference, skipping weekends
+    let dayCount = 0;
+    const current = new Date(referenceDate);
+    
+    while (current < now) {
+      current.setDate(current.getDate() + 1);
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dayCount++;
+      }
+    }
+    
+    // If reference was A-day, even count = A-day, odd = B-day
+    return dayCount % 2 === 0;
+  }
 
   function checkOrderingWindow() {
+    if (CHECKOUT_ALWAYS_ALLOW) return true;
     const now = new Date();
-    const day = now.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+    const day = now.getDay();
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const timeInMinutes = hours * 60 + minutes;
 
-    // Only allow weekdays (Mon-Fri)
+    // No ordering on weekends
     if (day === 0 || day === 6) return false;
 
-    // Check if current time falls within allowed windows
-    // Window 1: 9:00 to 10:20 (540 to 620 minutes)
-    // Window 2: 10:50 to 11:55 (650 to 715 minutes)
+    // Only accept orders on A-days during both time windows
+    if (!isADay()) return false;
+    
+    // A-day time windows:
+    // Window 1: 9:00 AM - 10:20 AM (540-620 minutes)
+    // Window 2: 10:50 AM - 11:55 AM (650-715 minutes)
     const inWindow1 = timeInMinutes >= 540 && timeInMinutes <= 620;
     const inWindow2 = timeInMinutes >= 650 && timeInMinutes <= 715;
-
+    
     return inWindow1 || inWindow2;
   }
 
@@ -370,20 +473,39 @@
       button.style.opacity = '1';
       button.style.cursor = 'pointer';
       button.title = '';
+      
+      // Remove click handler if exists
+      if (button.dataset.rrhsClickHandler) {
+        button.removeEventListener('click', button._rrhsClickHandler);
+        delete button.dataset.rrhsClickHandler;
+        delete button._rrhsClickHandler;
+      }
     } else {
       button.disabled = true;
       button.style.opacity = '0.5';
       button.style.cursor = 'not-allowed';
-      button.title = 'Ordering is only available Monday-Friday from 9:00-10:20 AM and 10:50-11:55 AM';
+      button.title = 'We\'re sorry, we do not accept orders at this time.';
+      
+      // Add click handler only once
+      if (!button.dataset.rrhsClickHandler) {
+        button.dataset.rrhsClickHandler = "true";
+        button._rrhsClickHandler = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          shakeElement(button);
+          createModal('We\'re sorry, we do not accept orders at this time.');
+        };
+        button.addEventListener('click', button._rrhsClickHandler);
+      }
     }
   }
 
   /* =========================
      BOOTSTRAP (rerender-safe)
-     ========================== */
-
+  ========================== */
   function boot() {
     initRoomAutocomplete();
+    initRoomContinueButton();
     initCategoryImageSwap();
     manageCheckoutButton();
   }
@@ -397,6 +519,5 @@
     document.addEventListener("DOMContentLoaded", boot);
   }
 
-  // Check button status every minute in case time window changes
   setInterval(manageCheckoutButton, 60000);
 })();
