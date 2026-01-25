@@ -337,12 +337,55 @@
   }
 
   /* =========================
+     CHECKOUT BUTTON TIME RESTRICTION
+     ========================== */
+
+  function checkOrderingWindow() {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const timeInMinutes = hours * 60 + minutes;
+
+    // Only allow weekdays (Mon-Fri)
+    if (day === 0 || day === 6) return false;
+
+    // Check if current time falls within allowed windows
+    // Window 1: 9:00 to 10:20 (540 to 620 minutes)
+    // Window 2: 10:50 to 11:55 (650 to 715 minutes)
+    const inWindow1 = timeInMinutes >= 540 && timeInMinutes <= 620;
+    const inWindow2 = timeInMinutes >= 650 && timeInMinutes <= 715;
+
+    return inWindow1 || inWindow2;
+  }
+
+  function manageCheckoutButton() {
+    const button = document.querySelector('.ec-cart__button--checkout button');
+    if (!button) return;
+
+    const isAllowed = checkOrderingWindow();
+    
+    if (isAllowed) {
+      button.disabled = false;
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      button.title = '';
+    } else {
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.style.cursor = 'not-allowed';
+      button.title = 'Ordering is only available Monday-Friday from 9:00-10:20 AM and 10:50-11:55 AM';
+    }
+  }
+
+  /* =========================
      BOOTSTRAP (rerender-safe)
      ========================== */
 
   function boot() {
     initRoomAutocomplete();
     initCategoryImageSwap();
+    manageCheckoutButton();
   }
 
   boot();
@@ -353,4 +396,7 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   }
+
+  // Check button status every minute in case time window changes
+  setInterval(manageCheckoutButton, 60000);
 })();
