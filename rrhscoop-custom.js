@@ -11,46 +11,52 @@
     const modal = document.createElement('div');
     modal.id = 'rrhs-error-modal';
     modal.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-120%);
+      position: fixed !important;
+      top: 130px !important;
+      left: 50% !important;
+      transform: translateX(-50%) translateY(-200%) !important;
       width: 90%;
       max-width: 600px;
       background: #670000;
       color: #EBEBE2;
-      padding: 16px 24px;
+      padding: 16px 20px 16px 48px;
       border-radius: 8px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-      z-index: 999999;
+      z-index: 999999 !important;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
       animation: slideDown 0.4s ease forwards;
     `;
 
     modal.innerHTML = `
+      <button id="rrhs-modal-close" style="
+        position: absolute;
+        top: 50%;
+        left: 16px;
+        transform: translateY(-50%);
+        background: transparent;
+        color: #EBEBE2;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        opacity: 0.8;
+      " onmouseover="this.style.transform='translateY(-50%) rotate(90deg)'; this.style.opacity='1';" 
+         onmouseout="this.style.transform='translateY(-50%) rotate(0deg)'; this.style.opacity='0.8';">
+        ×
+      </button>
       <div style="
         font-size: 0.95em;
         font-weight: 500;
         flex: 1;
       ">${message}</div>
-      <button id="rrhs-modal-close" style="
-        background: transparent;
-        color: #EBEBE2;
-        border: 1px solid #EBEBE2;
-        padding: 6px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.875em;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-      " onmouseover="this.style.background='#EBEBE2'; this.style.color='#670000';" 
-         onmouseout="this.style.background='transparent'; this.style.color='#EBEBE2';">
-        Dismiss
-      </button>
     `;
 
     document.body.appendChild(modal);
@@ -60,13 +66,17 @@
       const style = document.createElement('style');
       style.id = 'rrhs-modal-styles';
       style.textContent = `
+        #rrhs-error-modal {
+          position: fixed !important;
+          top: 130px !important;
+        }
         @keyframes slideDown {
-          from { transform: translateX(-50%) translateY(-120%); }
+          from { transform: translateX(-50%) translateY(-200%); }
           to { transform: translateX(-50%) translateY(0); }
         }
         @keyframes slideUp {
           from { transform: translateX(-50%) translateY(0); }
-          to { transform: translateX(-50%) translateY(-120%); }
+          to { transform: translateX(-50%) translateY(-200%); }
         }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -165,16 +175,18 @@
       );
     }
 
-    function validateRoom(value) {
+    function validateRoom(value, showError = false) {
       const v = (value || "").trim();
       const isValid = ROOM_DATA.some(r => r.room === v);
+      const isPartialMatch = v && ROOM_DATA.some(r => r.room.startsWith(v));
 
       input.style.outline = "none";
       input.style.boxShadow = "none";
       wrapper.style.outline = "none";
       wrapper.style.boxShadow = "none";
 
-      if (v && !isValid) {
+      // Only show error if explicitly requested (on blur/submit) AND not valid AND not a partial match
+      if (showError && v && !isValid && !isPartialMatch) {
         input.style.border = "2px solid #d32f2f";
         input.style.backgroundColor = "#ffebee";
         errorMsg.style.display = "block";
@@ -221,16 +233,16 @@
 
     input.addEventListener("input", (e) => {
       const val = e.target.value || "";
-      validateRoom(val);
+      validateRoom(val, false); // Don't show error while typing
       renderDropdown(val.length === 0 ? ROOM_DATA : filterRooms(val));
     });
 
     input.addEventListener("focus", () => {
-      validateRoom(input.value);
+      validateRoom(input.value, false); // Don't show error on focus
       renderDropdown((input.value || "").length === 0 ? ROOM_DATA : filterRooms(input.value));
     });
 
-    input.addEventListener("blur", () => validateRoom(input.value));
+    input.addEventListener("blur", () => validateRoom(input.value, true)); // Show error on blur if invalid
 
     document.addEventListener("click", (e) => {
       if (!wrapper.contains(e.target)) {
@@ -258,11 +270,19 @@
       const value = (input.value || "").trim();
       const isValid = ROOM_DATA.some(r => r.room === value);
 
-      if (value && !isValid) {
+      if (!isValid) {
         e.preventDefault();
         e.stopPropagation();
         shakeElement(continueBtn);
-        createModal('We couldn\'t find that room. Please select a valid room from the list.');
+        
+        // Show validation error on the input
+        const wrapper = input.parentElement;
+        const errorMsg = wrapper ? wrapper.querySelector('div[style*="color: rgb(211, 47, 47)"]') : null;
+        if (errorMsg) errorMsg.style.display = "block";
+        input.style.border = "2px solid #d32f2f";
+        input.style.backgroundColor = "#ffebee";
+        
+        createModal('Please enter a valid room number from the list.');
       }
     });
   }
