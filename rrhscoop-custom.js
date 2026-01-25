@@ -12,9 +12,9 @@
     modal.id = 'rrhs-error-modal';
     modal.style.cssText = `
       position: fixed !important;
-      top: 130px !important;
+      top: 20px !important;
       left: 50% !important;
-      transform: translateX(-50%) translateY(-200%) !important;
+      transform: translateX(-50%) translateY(-100vh) !important;
       width: 90%;
       max-width: 600px;
       background: #670000;
@@ -25,7 +25,6 @@
       z-index: 999999 !important;
       display: flex;
       align-items: center;
-      animation: slideDown 0.4s ease forwards;
     `;
 
     modal.innerHTML = `
@@ -61,6 +60,14 @@
 
     document.body.appendChild(modal);
 
+    // Trigger slide down animation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        modal.style.transition = 'transform 0.4s ease';
+        modal.style.transform = 'translateX(-50%) translateY(0)';
+      });
+    });
+
     // Add CSS animations
     if (!document.getElementById('rrhs-modal-styles')) {
       const style = document.createElement('style');
@@ -69,14 +76,6 @@
         #rrhs-error-modal {
           position: fixed !important;
           top: 130px !important;
-        }
-        @keyframes slideDown {
-          from { transform: translateX(-50%) translateY(-200%); }
-          to { transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes slideUp {
-          from { transform: translateX(-50%) translateY(0); }
-          to { transform: translateX(-50%) translateY(-200%); }
         }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -89,7 +88,8 @@
 
     // Close handlers
     const closeModal = () => {
-      modal.style.animation = 'slideUp 0.3s ease forwards';
+      modal.style.transition = 'transform 0.3s ease';
+      modal.style.transform = 'translateX(-50%) translateY(-100vh)';
       setTimeout(() => modal.remove(), 300);
     };
     
