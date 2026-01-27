@@ -1,4 +1,4 @@
-// rrhscoop-assistant.js - USING !important IN cssText
+// rrhscoop-assistant.js - IMPROVED with animations and text wrapping
 (() => {
   if (window.__RRHS_ASSISTANT__) return;
   window.__RRHS_ASSISTANT__ = true;
@@ -32,27 +32,45 @@
         box-shadow: 0 8px 24px rgba(0,0,0,.25) !important;
         cursor: pointer !important;
         user-select: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
       }
       #rrhs-assistant-pill:hover {
         background: #7a0000 !important;
         transform: translateY(-2px) !important;
       }
 
-      #rrhs-assistant-panel {
-        position: fixed !important;
-        right: 18px !important;
-        bottom: 85px !important;
-        width: 380px !important;
-        height: 520px !important;
-        z-index: ${Z} !important;
-        flex-direction: column !important;
-        background: #F9F9F9 !important;
-        border: 2px solid #670000 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 16px 48px rgba(0,0,0,.35) !important;
-        overflow: hidden !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
-        box-sizing: border-box !important;
+#rrhs-assistant-panel {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 85px !important;
+  width: 380px !important;
+  height: 520px !important;
+  max-height: calc(100vh - 120px) !important;
+  z-index: ${Z} !important;
+  flex-direction: column !important;
+  background: #F9F9F9 !important;
+  border: 2px solid #670000 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.35) !important;
+  overflow: hidden !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  box-sizing: border-box !important;
+  transform-origin: bottom right !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+      
+      #rrhs-assistant-panel.rrhs-hidden {
+        display: none !important;
+        opacity: 0 !important;
+        transform: scale(0.8) translateY(20px) !important;
+        pointer-events: none !important;
+      }
+      
+      #rrhs-assistant-panel.rrhs-visible {
+        display: flex !important;
+        opacity: 1 !important;
+        transform: scale(1) translateY(0) !important;
+        pointer-events: all !important;
       }
 
       #rrhs-assistant-header {
@@ -76,29 +94,46 @@
         background: transparent !important;
         border: none !important;
         color: #F9F9F9 !important;
+        transition: background 0.2s ease !important;
       }
       #rrhs-close:hover {
         background: rgba(255,255,255,.2) !important;
       }
 
-      #rrhs-messages {
-        flex: 1 !important;
-        overflow-y: auto !important;
-        padding: 16px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 12px !important;
-        min-height: 0 !important;
-      }
+#rrhs-messages {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  contain: none !important;
+}
+
       
-      .rrhs-msg {
-        max-width: 75% !important;
-        padding: 12px 15px !important;
-        border-radius: 14px !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
-        word-break: break-word !important;
-      }
+.rrhs-msg {
+  max-width: 78% !important;
+  display: inline-flex !important;      /* ✅ bubble always grows with content */
+  flex-direction: column !important;
+
+  padding: 12px 15px !important;
+  border-radius: 14px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+
+  height: auto !important;
+  min-height: fit-content !important;
+  overflow: visible !important;         /* ✅ prevent clipping */
+
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+}
+
+
       
       .rrhs-user {
         align-self: flex-end !important;
@@ -129,6 +164,7 @@
         font-size: 14px !important;
         outline: none !important;
         font-family: system-ui, -apple-system, sans-serif !important;
+        transition: all 0.2s ease !important;
       }
       #rrhs-input:focus {
         border-color: #670000 !important;
@@ -145,12 +181,14 @@
         font-weight: 700 !important;
         cursor: pointer !important;
         font-family: system-ui, -apple-system, sans-serif !important;
+        transition: background 0.2s ease !important;
       }
       #rrhs-send:hover {
         background: #7a0000 !important;
       }
       #rrhs-send:disabled {
         opacity: .6 !important;
+        cursor: not-allowed !important;
       }
     `;
     document.head.appendChild(style);
@@ -162,8 +200,7 @@
 
     const panel = document.createElement("div");
     panel.id = "rrhs-assistant-panel";
-    // Start hidden with !important
-    panel.style.cssText = "display: none !important;";
+    panel.className = "rrhs-hidden";
     
     panel.innerHTML = `
       <div id="rrhs-assistant-header">
@@ -188,20 +225,19 @@
     // ---------- PANEL FUNCTIONS ----------
     function openPanel() {
       console.log("[RRHS Assistant] 🟢 OPENING");
-      // Set display: flex with !important
-      panel.style.cssText = panel.style.cssText.replace(/display\s*:\s*[^;!]+\s*!important;?/gi, '') + " display: flex !important;";
+      panel.classList.remove("rrhs-hidden");
+      panel.classList.add("rrhs-visible");
       setTimeout(() => inputEl && inputEl.focus(), 100);
     }
 
     function closePanel() {
       console.log("[RRHS Assistant] 🔴 CLOSING");
-      // Set display: none with !important
-      panel.style.cssText = panel.style.cssText.replace(/display\s*:\s*[^;!]+\s*!important;?/gi, '') + " display: none !important;";
+      panel.classList.remove("rrhs-visible");
+      panel.classList.add("rrhs-hidden");
     }
 
     function togglePanel() {
-      // Check computed style to see if it's actually visible
-      const isVisible = window.getComputedStyle(panel).display === "flex";
+      const isVisible = panel.classList.contains("rrhs-visible");
       if (isVisible) {
         closePanel();
       } else {
@@ -224,7 +260,7 @@
     });
 
     document.addEventListener("click", (e) => {
-      const isVisible = window.getComputedStyle(panel).display === "flex";
+      const isVisible = panel.classList.contains("rrhs-visible");
       if (!isVisible) return;
       if (panel.contains(e.target) || pill.contains(e.target)) return;
       closePanel();
@@ -249,7 +285,7 @@
       const msg = (inputEl.value || "").trim();
       if (!msg) return;
 
-      const isVisible = window.getComputedStyle(panel).display === "flex";
+      const isVisible = panel.classList.contains("rrhs-visible");
       if (!isVisible) openPanel();
 
       addMessage("user", msg);
