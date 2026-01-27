@@ -78,7 +78,7 @@
         width: var(--rrhs-expanded-width) !important;
         height: var(--rrhs-expanded-height) !important;
         background: #FFFFFF !important;
-        border-color: rgba(0,0,0,.08) !important;
+        border: none !important;
         border-radius: 14px !important;
         box-shadow: 0 12px 30px rgba(0,0,0,.18) !important;
         cursor: default !important;
