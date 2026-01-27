@@ -3,8 +3,13 @@
   if (window.__RRHS_ASSISTANT__) return;
   window.__RRHS_ASSISTANT__ = true;
 
-  const API_URL = "https://mcp-client-4sdk.onrender.com/chat";
-  const API_KEY = "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a";
+  const DEFAULT_CONFIG = {
+    apiUrl: "https://mcp-client-4sdk.onrender.com/chat",
+    apiKey: "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a"
+  };
+  const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.RRHS_ASSISTANT_CONFIG || {});
+  const API_URL = CONFIG.apiUrl;
+  const API_KEY = CONFIG.apiKey;
   const Z = 2147483647;
 
   function init() {
@@ -205,7 +210,7 @@
       .rrhs-product-link:hover {
         color: #7a0000 !important;
       }
-      
+
       .rrhs-typing-indicator {
         display: flex !important;
         gap: 4px !important;
@@ -406,6 +411,29 @@
       return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
+    function normalizeProducts(products) {
+      if (!Array.isArray(products)) return [];
+      return products
+        .map((product) => {
+          if (!product) return null;
+          const id = Number(product.id || 0);
+          const combinationId = Number(product.combinationId || 0);
+          const price = Number(product.price);
+          return {
+            id: Number.isFinite(id) ? id : 0,
+            name: product.name || "",
+            combinationId: Number.isFinite(combinationId) ? combinationId : 0,
+            variantKey: product.variantKey || "",
+            variantLabel: product.variantLabel || "",
+            price: Number.isFinite(price) ? price : NaN,
+            sku: product.sku || "",
+            url: product.url || ""
+          };
+        })
+        .filter(Boolean)
+        .filter((product) => product.name);
+    }
+
     function linkifyProducts(escapedText, products = []) {
       if (!products || products.length === 0) return escapedText;
 
@@ -437,7 +465,7 @@
       return output;
     }
 
-    const SKU_TAG_REGEX = /\[[A-Za-z0-9_-]{1,32}\]\s*/g;
+    const SKU_TAG_REGEX = /\[(?:V:\d+:\d+|[A-Za-z0-9_-]{1,32})\]\s*/g;
 
     function stripSkuTags(text) {
       return String(text)
@@ -464,7 +492,7 @@
       const content = document.createElement("div");
       content.className = "rrhs-msg-content";
       const displayText = role === "user" ? text : stripSkuTags(text);
-      const displayProducts = role === "assistant" ? products : [];
+      const displayProducts = role === "assistant" ? normalizeProducts(products) : [];
       content.innerHTML = formatMessage(displayText, displayProducts);
       bubble.appendChild(content);
       
@@ -517,6 +545,19 @@
       }, 150);
     }
 
+    function buildOptionsMap(rawOptions) {
+      if (!Array.isArray(rawOptions)) return null;
+      const map = {};
+      rawOptions.forEach((opt) => {
+        if (!opt || typeof opt !== "object") return;
+        const name = opt.name || opt.optionName || opt.option_name;
+        const value = opt.value || opt.optionValue || opt.option_value || opt.text;
+        if (!name || value == null) return;
+        map[String(name)] = String(value);
+      });
+      return Object.keys(map).length ? map : null;
+    }
+
     function executeCartActions(actions) {
       if (!actions || !actions.length) return;
 
@@ -525,8 +566,28 @@
           if (!a || !a.type) return;
 
           if (a.type === "cart.add" && a.productId) {
-            const product = { id: a.productId, quantity: Math.max(1, Number(a.quantity || 1)) };
-            Ecwid.Cart.addProduct(product, function () {
+            const quantity = Math.max(1, Number(a.quantity || 1));
+            const productId = Number(a.productId || 0);
+            if (!Number.isFinite(productId) || productId <= 0) return;
+            const product = { id: productId, quantity };
+            const options = buildOptionsMap(a.options) ||
+              (a.optionName && a.optionValue ? { [String(a.optionName)]: String(a.optionValue) } : null);
+            if (options) product.options = options;
+            if (a.selectedPrice != null) {
+              product.selectedPrice = String(a.selectedPrice);
+            }
+            if (a.recurringChargeSettings && typeof a.recurringChargeSettings === "object") {
+              product.recurringChargeSettings = a.recurringChargeSettings;
+            }
+            if (!Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.addProduct !== "function") {
+              console.warn("[RRHS Assistant] Ecwid Cart API not ready");
+              return;
+            }
+            Ecwid.Cart.addProduct(product, function (success, productResult, cart, error) {
+              if (!success) {
+                console.warn("[RRHS Assistant] Cart add failed", error || productResult);
+                return;
+              }
               // Optional: open cart after add
               // Ecwid.openPage('cart');
             });
