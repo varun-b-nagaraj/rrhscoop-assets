@@ -100,38 +100,38 @@
         background: rgba(255,255,255,.2) !important;
       }
 
-#rrhs-messages {
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  padding: 16px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  contain: none !important;
-}
+      #rrhs-messages {
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding: 16px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        contain: none !important;
+      }
 
-      
-.rrhs-msg {
-  max-width: 78% !important;
-  display: inline-flex !important;      /* ✅ bubble always grows with content */
-  flex-direction: column !important;
+            
+      .rrhs-msg {
+        max-width: 78% !important;
+        display: inline-flex !important;      /* ✅ bubble always grows with content */
+        flex-direction: column !important;
 
-  padding: 12px 15px !important;
-  border-radius: 14px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
+        padding: 12px 15px !important;
+        border-radius: 14px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
 
-  height: auto !important;
-  min-height: fit-content !important;
-  overflow: visible !important;         /* ✅ prevent clipping */
+        height: auto !important;
+        min-height: fit-content !important;
+        overflow: visible !important;         /* ✅ prevent clipping */
 
-  white-space: pre-wrap !important;
-  overflow-wrap: break-word !important;
-  word-break: break-word !important;
-  box-sizing: border-box !important;
-}
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+      }
 
 
       
