@@ -10,6 +10,7 @@
   const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.RRHS_ASSISTANT_CONFIG || {});
   const API_URL = CONFIG.apiUrl;
   const API_KEY = CONFIG.apiKey;
+  const SEND_SESSION_ID = CONFIG.sendSessionId === true;
   const Z = 2147483647;
   const PING_URLS = [
     "https://mcp-lightspeedbackend.onrender.com/health",
@@ -217,9 +218,12 @@
         text-decoration: underline !important;
         text-decoration-color: #670000 !important;
         text-decoration-thickness: 2px !important;
-        text-underline-offset: 2px !important;
+        text-underline-offset: 3px !important;
         font-weight: 600 !important;
         transition: color 0.2s ease !important;
+        display: inline-block !important;
+        padding-bottom: 1px !important;
+        text-decoration-skip-ink: auto !important;
       }
 
       .rrhs-product-link:hover {
@@ -325,6 +329,55 @@
       #rrhs-messages::-webkit-scrollbar-thumb:hover {
         background: rgba(103, 0, 0, 0.5) !important;
       }
+
+      #rrhs-retry-toast {
+        position: fixed !important;
+        right: 18px !important;
+        bottom: 84px !important;
+        max-width: 320px !important;
+        background: #FFFFFF !important;
+        color: #1F1F1F !important;
+        border: 1px solid rgba(0,0,0,.1) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 26px rgba(0,0,0,.2) !important;
+        padding: 12px 14px !important;
+        display: flex !important;
+        gap: 10px !important;
+        align-items: center !important;
+        z-index: ${Z} !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+      }
+
+      #rrhs-retry-toast p {
+        margin: 0 !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        flex: 1 !important;
+      }
+
+      #rrhs-retry-toast button {
+        border: none !important;
+        background: #670000 !important;
+        color: #F9F9F9 !important;
+        padding: 6px 10px !important;
+        border-radius: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+      }
+
+      #rrhs-retry-toast button:hover {
+        background: #7a0000 !important;
+      }
+
+      #rrhs-retry-close {
+        background: transparent !important;
+        color: #1F1F1F !important;
+        padding: 0 4px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+      }
     `;
     document.head.appendChild(style);
 
@@ -359,10 +412,12 @@
     const STORAGE_KEY = "rrhs_assistant_chat_log_v1";
     const SESSION_ID_KEY = "rrhs_assistant_session_id_v1";
     const PENDING_KEY = "rrhs_assistant_pending_v1";
-    const HISTORY_TURNS = 12;
+    const HISTORY_TURNS = 15;
     let sessionLog = [];
     let pendingChoice = null;
     let storageWarned = false;
+    let lastUserMessage = "";
+    let retryToastEl = null;
 
     function getStorageTarget() {
       const candidates = [];
@@ -399,6 +454,7 @@
       console.warn("[RRHS Assistant] Storage unavailable; chat history won't persist.");
     }
     const sessionId = (() => {
+      if (!SEND_SESSION_ID) return null;
       if (!storageRef) return `rrhs_${Math.random().toString(36).slice(2)}_${Date.now()}`;
       try {
         const existing = storageRef.getItem(SESSION_ID_KEY);
@@ -778,6 +834,45 @@
       return bubble;
     }
 
+    function isAddConfirmation(text) {
+      if (!text) return false;
+      const normalized = String(text).toLowerCase();
+      return normalized.includes("added") && normalized.includes("cart");
+    }
+
+    function dismissRetryToast() {
+      if (retryToastEl) {
+        retryToastEl.remove();
+        retryToastEl = null;
+      }
+    }
+
+    function showRetryToast() {
+      dismissRetryToast();
+      retryToastEl = document.createElement("div");
+      retryToastEl.id = "rrhs-retry-toast";
+      retryToastEl.innerHTML = `
+        <p>Cart add failed — tap to retry.</p>
+        <button type="button" id="rrhs-retry-button">Retry</button>
+        <span id="rrhs-retry-close">×</span>
+      `;
+      document.body.appendChild(retryToastEl);
+
+      const retryBtn = document.getElementById("rrhs-retry-button");
+      const closeBtnEl = document.getElementById("rrhs-retry-close");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          if (!lastUserMessage || sendBtn.disabled) return;
+          dismissRetryToast();
+          inputEl.value = lastUserMessage;
+          sendMessage();
+        });
+      }
+      if (closeBtnEl) {
+        closeBtnEl.addEventListener("click", dismissRetryToast);
+      }
+    }
+
     function addIntroMessage() {
       if (!messagesEl || messagesEl.dataset.rrhsIntroShown === "1") return;
       messagesEl.dataset.rrhsIntroShown = "1";
@@ -971,6 +1066,8 @@
 
       let cartActionsHandled = false;
       let lastActionsHadCartAdd = false;
+      lastUserMessage = msg;
+      dismissRetryToast();
       const history = sessionLog
         .slice(-HISTORY_TURNS)
         .map((entry) => ({ role: entry.role, content: entry.text }));
@@ -1001,19 +1098,23 @@
         const payload = {
           message: msg,
           history,
-          session_id: sessionId,
           stream: true
         };
+        if (sessionId) {
+          payload.session_id = sessionId;
+        }
         if (pendingChoice) {
           payload.pending = pendingChoice;
         }
 
+        const historyPreviewCount = Math.min(history.length, 10);
         console.log("[RRHS Assistant] Sending payload:", {
           url: API_URL,
           message: msg,
           historyCount: history.length,
-          historyPreview: history.slice(-3),
-          sessionId,
+          historyPreview: history.slice(-historyPreviewCount),
+          historyPreviewCount,
+          sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
           pendingType: payload.pending ? payload.pending.type : null,
           pendingCount: payload.pending && payload.pending.options ? payload.pending.options.length : 0
@@ -1053,6 +1154,9 @@
             try {
               const event = JSON.parse(jsonStr);
               const eventActions = event ? (event.cart_actions || event.cartActions || []) : [];
+              if (event && Object.prototype.hasOwnProperty.call(event, "pending") && event.event !== "final") {
+                setPendingChoice(event.pending || null);
+              }
               handleCartActions(eventActions);
               
               if (event.event === "delta") {
@@ -1107,6 +1211,10 @@
                   setPendingChoice(null);
                 } else {
                   setPendingChoice(event.pending || null);
+                }
+
+                if (!hasCartAdd && isAddConfirmation(finalText)) {
+                  showRetryToast();
                 }
                 
                 console.log("[RRHS Assistant] ✅ Stream complete", {
