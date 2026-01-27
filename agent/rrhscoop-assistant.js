@@ -11,6 +11,11 @@
   const API_URL = CONFIG.apiUrl;
   const API_KEY = CONFIG.apiKey;
   const Z = 2147483647;
+  const PING_URLS = [
+    "https://mcp-lightspeedbackend.onrender.com/health",
+    "https://mcp-client-4sdk.onrender.com/health"
+  ];
+  const PING_INTERVAL_MS = 5 * 60 * 1000;
 
   function init() {
     if (!document.body) {
@@ -351,6 +356,85 @@
     const closeBtn = document.getElementById("rrhs-close");
     const pillLabel = document.getElementById("rrhs-pill-label");
     const pillText = document.getElementById("rrhs-pill-text");
+    const STORAGE_KEY = "rrhs_assistant_chat_log_v1";
+    const SESSION_ID_KEY = "rrhs_assistant_session_id_v1";
+    const PENDING_KEY = "rrhs_assistant_pending_v1";
+    const HISTORY_TURNS = 12;
+    let sessionLog = [];
+    let pendingChoice = null;
+    let storageWarned = false;
+
+    function getStorageTarget() {
+      const candidates = [];
+      if (window.top && window.top !== window) {
+        candidates.push({ label: "top-local", get: () => window.top.localStorage });
+      }
+      candidates.push({ label: "self-local", get: () => window.localStorage });
+      if (window.top && window.top !== window) {
+        candidates.push({ label: "top-session", get: () => window.top.sessionStorage });
+      }
+      candidates.push({ label: "self-session", get: () => window.sessionStorage });
+
+      for (const candidate of candidates) {
+        try {
+          const storage = candidate.get();
+          if (!storage) continue;
+          const testKey = "__rrhs_storage_test__";
+          storage.setItem(testKey, "1");
+          storage.removeItem(testKey);
+          return { storage, label: candidate.label };
+        } catch (e) {
+          // Try next candidate
+        }
+      }
+      return { storage: null, label: "unavailable" };
+    }
+
+    const storageTarget = getStorageTarget();
+    const storageRef = storageTarget.storage;
+    if (storageTarget.label !== "unavailable") {
+      window.__RRHS_STORAGE_TARGET__ = storageTarget.label;
+      console.log("[RRHS Assistant] Storage target:", storageTarget.label);
+    } else {
+      console.warn("[RRHS Assistant] Storage unavailable; chat history won't persist.");
+    }
+    const sessionId = (() => {
+      if (!storageRef) return `rrhs_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+      try {
+        const existing = storageRef.getItem(SESSION_ID_KEY);
+        if (existing) return existing;
+        const generated = (typeof crypto !== "undefined" && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `rrhs_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+        storageRef.setItem(SESSION_ID_KEY, generated);
+        return generated;
+      } catch (e) {
+        return `rrhs_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+      }
+    })();
+
+    function pingEndpoints() {
+      PING_URLS.forEach((url) => {
+        try {
+          fetch(url, {
+            method: "GET",
+            mode: "no-cors",
+            cache: "no-store",
+            keepalive: true
+          }).catch(() => {});
+        } catch (e) {
+          // Ignore ping errors
+        }
+      });
+    }
+
+    function schedulePings() {
+      if (window.__RRHS_PING_TIMER__) return;
+      pingEndpoints();
+      window.__RRHS_PING_TIMER__ = setInterval(pingEndpoints, PING_INTERVAL_MS);
+    }
+
+    schedulePings();
 
     // ---------- PANEL STATE ----------
     const PANEL_DURATION = 420;
@@ -400,6 +484,7 @@
       if (panel.classList.contains("rrhs-expanded")) return;
       console.log("[RRHS Assistant] 🟢 OPENING");
       updatePanelSizes();
+      hydrateSessionMessages();
       panel.classList.add("rrhs-expanded");
       setTimeout(() => inputEl && inputEl.focus(), 150);
     }
@@ -523,7 +608,148 @@
       return applyAsteriskBold(escapeHtml(text));
     }
 
-    function addMessage(role, text, products = []) {
+    function normalizeStoredProducts(products) {
+      if (!Array.isArray(products)) return [];
+      return products
+        .map((product) => {
+          if (!product || typeof product !== "object") return null;
+          const name = String(product.name || "").trim();
+          const url = String(product.url || "").trim();
+          if (!name) return null;
+          return { name, url };
+        })
+        .filter(Boolean);
+    }
+
+    function normalizeStoredEntry(entry) {
+      if (!entry || typeof entry !== "object") return null;
+      const role = entry.role === "assistant" || entry.role === "user" ? entry.role : null;
+      const text = typeof entry.text === "string" ? entry.text : "";
+      if (!role || !text) return null;
+      const stored = { role, text };
+      const products = normalizeStoredProducts(entry.products);
+      if (products.length) stored.products = products;
+      return stored;
+    }
+
+    function loadSessionLog() {
+      try {
+        if (!storageRef) return [];
+        const raw = storageRef.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeStoredEntry).filter(Boolean);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveSessionLog() {
+      try {
+        if (!storageRef) {
+          if (!storageWarned) {
+            storageWarned = true;
+            console.warn("[RRHS Assistant] Storage unavailable; skipping save.");
+          }
+          return;
+        }
+        storageRef.setItem(STORAGE_KEY, JSON.stringify(sessionLog));
+      } catch (e) {
+        if (!storageWarned) {
+          storageWarned = true;
+          console.warn("[RRHS Assistant] Storage write failed:", e);
+        }
+      }
+    }
+
+    function pushSessionLog(entry) {
+      if (!entry) return;
+      sessionLog.push(entry);
+      saveSessionLog();
+    }
+
+    function normalizePendingChoice(pending) {
+      if (!pending || typeof pending !== "object") return null;
+      if (pending.type !== "choose_for_cart") return null;
+      const options = Array.isArray(pending.options) ? pending.options : [];
+      const cleanedOptions = options
+        .map((option) => {
+          if (!option || typeof option !== "object") return null;
+          const id = Number(option.id || 0);
+          const combinationId = Number(option.combinationId || 0);
+          const price = Number(option.price);
+          const variantKey = String(option.variantKey || "").trim();
+          const name = String(option.name || "").trim();
+          if (!variantKey || !name) return null;
+          return {
+            id: Number.isFinite(id) ? id : 0,
+            name,
+            combinationId: Number.isFinite(combinationId) ? combinationId : 0,
+            variantKey,
+            variantLabel: String(option.variantLabel || "").trim(),
+            price: Number.isFinite(price) ? price : 0,
+            sku: option.sku || null,
+            url: option.url || null,
+            options: Array.isArray(option.options) ? option.options : [],
+            selectedOptions: Array.isArray(option.selectedOptions) ? option.selectedOptions : []
+          };
+        })
+        .filter(Boolean);
+      if (!cleanedOptions.length) return null;
+      const quantity = Math.max(1, Math.min(20, Number(pending.quantity || 1)));
+      return {
+        type: "choose_for_cart",
+        options: cleanedOptions,
+        quantity: Number.isFinite(quantity) ? quantity : 1
+      };
+    }
+
+    function loadPendingChoice() {
+      try {
+        if (!storageRef) return null;
+        const raw = storageRef.getItem(PENDING_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return normalizePendingChoice(parsed);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function savePendingChoice(pending) {
+      if (!storageRef) return;
+      if (!pending) {
+        try {
+          storageRef.removeItem(PENDING_KEY);
+        } catch (e) {
+          // Ignore storage failures
+        }
+        return;
+      }
+      try {
+        storageRef.setItem(PENDING_KEY, JSON.stringify(pending));
+      } catch (e) {
+        // Ignore storage failures
+      }
+    }
+
+    function setPendingChoice(pending) {
+      pendingChoice = normalizePendingChoice(pending);
+      savePendingChoice(pendingChoice);
+    }
+
+    function hydrateSessionMessages() {
+      if (!messagesEl) return false;
+      if (messagesEl.childElementCount > 0) return true;
+      if (!sessionLog.length) return false;
+      sessionLog.forEach((entry) => {
+        addMessage(entry.role, entry.text, entry.products || [], { persist: false });
+      });
+      return true;
+    }
+
+    function addMessage(role, text, products = [], options = {}) {
       console.log("[RRHS] Adding message:", { role, text, products });
       
       const bubble = document.createElement("div");
@@ -538,13 +764,29 @@
       
       messagesEl.appendChild(bubble);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const shouldPersist = options.persist !== false;
+      if (shouldPersist && (role === "user" || role === "assistant") && text) {
+        const entryText = options.persistText != null ? options.persistText : text;
+        const entry = { role, text: entryText };
+        if (role === "assistant") {
+          const storedProducts = normalizeStoredProducts(products);
+          if (storedProducts.length) entry.products = storedProducts;
+        }
+        pushSessionLog(entry);
+      }
       return bubble;
     }
 
     function addIntroMessage() {
       if (!messagesEl || messagesEl.dataset.rrhsIntroShown === "1") return;
       messagesEl.dataset.rrhsIntroShown = "1";
-      addMessage("assistant", "Hello! I’m the RRHS COOP Bot. Ask me anything about products, sizes, or recommendations.");
+      addMessage(
+        "assistant",
+        "Hello! I’m the RRHS COOP Bot. Ask me anything about products, sizes, or recommendations.",
+        [],
+        { persist: false }
+      );
     }
     
     function addTypingIndicator() {
@@ -592,6 +834,15 @@
     }
 
     function buildOptionsMap(rawOptions) {
+      if (!rawOptions) return null;
+      if (!Array.isArray(rawOptions) && typeof rawOptions === "object") {
+        const map = {};
+        Object.entries(rawOptions).forEach(([key, value]) => {
+          if (!key || value == null) return;
+          map[String(key)] = String(value);
+        });
+        return Object.keys(map).length ? map : null;
+      }
       if (!Array.isArray(rawOptions)) return null;
       const map = {};
       rawOptions.forEach((opt) => {
@@ -605,58 +856,124 @@
     }
 
     function executeCartActions(actions) {
-      if (!actions || !actions.length) return;
+      if (!Array.isArray(actions) || actions.length === 0) return;
 
       whenEcwidReady(() => {
-        actions.forEach((a) => {
-          if (!a || !a.type) return;
+        const queue = actions.slice();
+        let idx = 0;
+
+        const runNext = () => {
+          if (!queue.length) {
+            console.log("[RRHS Assistant] ✅ Cart action queue complete");
+            return;
+          }
+
+          const a = queue.shift();
+          if (!a || !a.type) {
+            runNext();
+            return;
+          }
+
+          idx += 1;
 
           if (a.type === "cart.add" && a.productId) {
             const quantity = Math.max(1, Number(a.quantity || 1));
             const productId = Number(a.productId || 0);
-            if (!Number.isFinite(productId) || productId <= 0) return;
+            if (!Number.isFinite(productId) || productId <= 0) {
+              runNext();
+              return;
+            }
             const product = { id: productId, quantity };
-            const options = buildOptionsMap(a.options) ||
+            const options =
+              buildOptionsMap(a.options) ||
+              buildOptionsMap(a.selectedOptions) ||
               (a.optionName && a.optionValue ? { [String(a.optionName)]: String(a.optionValue) } : null);
-            if (options) product.options = options;
+            if (options && Object.keys(options).length) {
+              product.options = options;
+            }
             if (a.selectedPrice != null) {
               product.selectedPrice = String(a.selectedPrice);
             }
             if (a.recurringChargeSettings && typeof a.recurringChargeSettings === "object") {
               product.recurringChargeSettings = a.recurringChargeSettings;
             }
+
+            console.log(`[RRHS Assistant] ➕ addProduct #${idx}`, {
+              productId,
+              quantity,
+              options: product.options || null,
+              combinationId: a.combinationId || null
+            });
+
             if (!Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.addProduct !== "function") {
               console.warn("[RRHS Assistant] Ecwid Cart API not ready");
+              runNext();
               return;
             }
-            Ecwid.Cart.addProduct(product, function (success, productResult, cart, error) {
-              if (!success) {
-                console.warn("[RRHS Assistant] Cart add failed", error || productResult);
-                return;
+
+            let finished = false;
+            const timeout = setTimeout(() => {
+              if (finished) return;
+              finished = true;
+              console.warn(`[RRHS Assistant] ⚠️ addProduct #${idx} timeout`);
+              runNext();
+            }, 6000);
+
+            const payload = Object.assign({}, product, {
+              callback: function (success, productResult, cart, error) {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timeout);
+                if (!success) {
+                  console.warn(`[RRHS Assistant] ❌ addProduct #${idx} failed`, error || productResult);
+                } else {
+                  console.log(`[RRHS Assistant] ✅ addProduct #${idx} ok`);
+                }
+                runNext();
               }
-              // Optional: open cart after add
-              // Ecwid.openPage('cart');
             });
+
+            Ecwid.Cart.addProduct(payload);
+            return;
           }
 
           if (a.type === "cart.open") {
             Ecwid.openPage("cart");
+            runNext();
+            return;
           }
 
           if (a.type === "cart.checkout") {
             Ecwid.Cart.gotoCheckout();
+            runNext();
+            return;
           }
-        });
+
+          runNext();
+        };
+
+        console.log("[RRHS Assistant] ➕ Cart action queue start", { count: actions.length });
+        runNext();
       });
     }
 
     // ---------- SSE STREAMING CHAT ----------
-    addIntroMessage();
+    sessionLog = loadSessionLog();
+    pendingChoice = loadPendingChoice();
+    const restored = hydrateSessionMessages();
+    if (!restored) {
+      addIntroMessage();
+    }
 
     async function sendMessage() {
       const msg = (inputEl.value || "").trim();
       if (!msg) return;
 
+      let cartActionsHandled = false;
+      let lastActionsHadCartAdd = false;
+      const history = sessionLog
+        .slice(-HISTORY_TURNS)
+        .map((entry) => ({ role: entry.role, content: entry.text }));
       const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) openPanel();
 
@@ -669,17 +986,46 @@
       let streamingContent = null;
       let accumulatedText = "";
 
+      function handleCartActions(actions) {
+        if (cartActionsHandled || !Array.isArray(actions) || actions.length === 0) return;
+        cartActionsHandled = true;
+        lastActionsHadCartAdd = actions.some((action) => action && action.type === "cart.add");
+        console.log("[RRHS Assistant] Cart actions received:", {
+          count: actions.length,
+          actions
+        });
+        executeCartActions(actions);
+      }
+
       try {
+        const payload = {
+          message: msg,
+          history,
+          session_id: sessionId,
+          stream: true
+        };
+        if (pendingChoice) {
+          payload.pending = pendingChoice;
+        }
+
+        console.log("[RRHS Assistant] Sending payload:", {
+          url: API_URL,
+          message: msg,
+          historyCount: history.length,
+          historyPreview: history.slice(-3),
+          sessionId,
+          hasPending: Boolean(payload.pending),
+          pendingType: payload.pending ? payload.pending.type : null,
+          pendingCount: payload.pending && payload.pending.options ? payload.pending.options.length : 0
+        });
+
         const res = await fetch(API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${API_KEY}`,
           },
-          body: JSON.stringify({ 
-            message: msg,
-            stream: true  // Enable streaming
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -706,6 +1052,8 @@
 
             try {
               const event = JSON.parse(jsonStr);
+              const eventActions = event ? (event.cart_actions || event.cartActions || []) : [];
+              handleCartActions(eventActions);
               
               if (event.event === "delta") {
                 // Remove typing indicator on first delta
@@ -740,6 +1088,10 @@
                 
                 // Add final message with product links
                 const products = event.products || [];
+                const finalText = (typeof event.message === "string" && event.message.trim())
+                  ? event.message
+                  : accumulatedText;
+                const persistText = accumulatedText || finalText;
                 console.log("[RRHS Assistant] Final event received:", {
                   message: event.message,
                   products: products,
@@ -747,10 +1099,15 @@
                   inStock: event.in_stock_products
                 });
                 
-                addMessage("assistant", event.message, products);
+                addMessage("assistant", finalText, products, { persistText });
 
-                const actions = event.cart_actions || event.cartActions || [];
-                executeCartActions(actions);
+                const actions = eventActions;
+                const hasCartAdd = actions.some((action) => action && action.type === "cart.add") || lastActionsHadCartAdd;
+                if (hasCartAdd) {
+                  setPendingChoice(null);
+                } else {
+                  setPendingChoice(event.pending || null);
+                }
                 
                 console.log("[RRHS Assistant] ✅ Stream complete", {
                   validated: event.validated,
