@@ -856,6 +856,28 @@
       return normalized.includes("added") && normalized.includes("cart");
     }
 
+    function isVaruBabyTrigger(text) {
+      if (!text) return false;
+      const cleaned = String(text)
+        .replace(/\[\s*\d{1,2}:\d{2}\s*(?:am|pm)\s*\]\s*$/i, "")
+        .trim()
+        .toLowerCase();
+      return cleaned === "varu baby";
+    }
+
+    function userHasAddIntent(text) {
+      if (!text) return false;
+      const t = String(text).toLowerCase().trim();
+      if (!t) return false;
+      if (t.startsWith("add ")) return true;
+      return /\b(add|put|throw)\b/.test(t) && /\b(cart|bag)\b/.test(t);
+    }
+
+    function shouldAllowCartActions(userText) {
+      if (pendingChoice) return true;
+      return userHasAddIntent(userText);
+    }
+
     function dismissRetryToast() {
       if (retryToastEl) {
         retryToastEl.remove();
@@ -1082,13 +1104,22 @@
 
       let cartActionsHandled = false;
       let lastActionsHadCartAdd = false;
-      lastUserMessage = msg;
-      dismissRetryToast();
       const history = sessionLog
         .slice(-HISTORY_TURNS)
         .map((entry) => ({ role: entry.role, content: entry.text }));
       const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) openPanel();
+
+      if (isVaruBabyTrigger(msg)) {
+        addMessage("user", msg, [], { persist: false });
+        inputEl.value = "";
+        const reply = "I wuv you Neniboo sosososoos much ur so cute and amazing and awesome and allat";
+        addMessage("assistant", reply, [], { persist: false });
+        return;
+      }
+
+      lastUserMessage = msg;
+      dismissRetryToast();
 
       addMessage("user", msg);
       inputEl.value = "";
@@ -1102,6 +1133,14 @@
       function handleCartActions(actions) {
         if (cartActionsHandled || !Array.isArray(actions) || actions.length === 0) return;
         cartActionsHandled = true;
+        if (!shouldAllowCartActions(lastUserMessage)) {
+          console.warn("[RRHS Assistant] Cart actions blocked (no user add intent/pending).", {
+            lastUserMessage,
+            hasPending: Boolean(pendingChoice),
+            actionCount: actions.length
+          });
+          return;
+        }
         lastActionsHadCartAdd = actions.some((action) => action && action.type === "cart.add");
         console.log("[RRHS Assistant] Cart actions received:", {
           count: actions.length,
