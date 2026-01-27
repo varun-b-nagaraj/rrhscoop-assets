@@ -1,4 +1,4 @@
-// rrhscoop-assistant.js - Production Ready with SSE Streaming & Product Links
+// rrhscoop-assistant.js - Enhanced with Animated Product Links
 (() => {
   if (window.__RRHS_ASSISTANT__) return;
   window.__RRHS_ASSISTANT__ = true;
@@ -13,34 +13,31 @@
       return;
     }
 
-    // ---------- ENHANCED STYLES WITH SMOOTH ANIMATIONS ----------
+    // ---------- ENHANCED STYLES WITH ANIMATED PRODUCT LINKS ----------
     const style = document.createElement("style");
     style.id = "rrhs-assistant-styles";
     style.textContent = `
-      @keyframes rrhs-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
       @keyframes rrhs-slideInUp {
         from {
           opacity: 0;
-          transform: translateY(20px) scale(0.95);
+          transform: translateY(8px);
         }
         to {
           opacity: 1;
-          transform: translateY(0) scale(1);
+          transform: translateY(0);
         }
       }
       
       @keyframes rrhs-slideOutDown {
         from {
           opacity: 1;
-          transform: translateY(0) scale(1);
+          transform: translateY(0);
         }
         to {
           opacity: 0;
-          transform: translateY(20px) scale(0.95);
+          transform: translateY(8px);
         }
       }
       
@@ -56,41 +53,40 @@
         z-index: ${Z} !important;
         background: #670000 !important;
         color: #F9F9F9 !important;
-        padding: 14px 18px !important;
+        padding: 10px 14px !important;
         border-radius: 999px !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
-        font-size: 15px !important;
-        font-weight: 700 !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,.25) !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.2px !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,.18) !important;
         cursor: pointer !important;
         user-select: none !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        animation: rrhs-pulse 2s ease-in-out infinite !important;
       }
       
       #rrhs-assistant-pill:hover {
         background: #7a0000 !important;
-        transform: translateY(-3px) !important;
-        box-shadow: 0 12px 32px rgba(0,0,0,.35) !important;
-        animation: none !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,.25) !important;
       }
 
       #rrhs-assistant-panel {
         position: fixed !important;
         right: 18px !important;
         bottom: 85px !important;
-        width: 380px !important;
-        height: 520px !important;
+        width: 340px !important;
+        height: 480px !important;
         max-height: calc(100vh - 120px) !important;
         z-index: ${Z} !important;
         display: flex !important;
         flex-direction: column !important;
-        background: #F9F9F9 !important;
-        border: 2px solid #670000 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 16px 48px rgba(0,0,0,.35) !important;
+        background: #FFFFFF !important;
+        border: 1px solid rgba(0,0,0,.08) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,.18) !important;
         overflow: hidden !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
         box-sizing: border-box !important;
         transform-origin: bottom right !important;
         transition: none !important;
@@ -115,9 +111,9 @@
       #rrhs-assistant-header {
         background: #670000 !important;
         color: #F9F9F9 !important;
-        padding: 16px !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
+        padding: 14px 16px !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -126,18 +122,17 @@
       
       #rrhs-close {
         cursor: pointer !important;
-        font-size: 28px !important;
+        font-size: 22px !important;
         line-height: 1 !important;
-        padding: 4px 10px !important;
-        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
         background: transparent !important;
         border: none !important;
         color: #F9F9F9 !important;
         transition: all 0.2s ease !important;
       }
       #rrhs-close:hover {
-        background: rgba(255,255,255,.2) !important;
-        transform: rotate(90deg) !important;
+        background: rgba(255,255,255,.15) !important;
       }
 
       #rrhs-messages {
@@ -145,29 +140,39 @@
         min-height: 0 !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
-        padding: 16px !important;
+        padding: 14px !important;
         display: flex !important;
         flex-direction: column !important;
-        gap: 12px !important;
+        gap: 10px !important;
         scroll-behavior: smooth !important;
       }
       
       .rrhs-msg {
-        max-width: 78% !important;
+        max-width: 80% !important;
         display: inline-flex !important;
         flex-direction: column !important;
-        padding: 12px 15px !important;
-        border-radius: 14px !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
+        padding: 10px 12px !important;
+        border-radius: 12px !important;
+        font-size: 13px !important;
+        line-height: 1.55 !important;
         height: auto !important;
         min-height: fit-content !important;
         overflow: visible !important;
-        white-space: pre-wrap !important;
         overflow-wrap: break-word !important;
         word-break: break-word !important;
         box-sizing: border-box !important;
         animation: rrhs-fadeIn 0.2s ease-out !important;
+      }
+
+      .rrhs-msg-content {
+        position: relative !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+      }
+
+      .rrhs-bot .rrhs-msg-content strong {
+        font-weight: 800 !important;
       }
       
       .rrhs-user {
@@ -178,9 +183,9 @@
       
       .rrhs-bot {
         align-self: flex-start !important;
-        background: #fff !important;
-        color: #222 !important;
-        border: 1px solid rgba(0,0,0,.12) !important;
+        background: #FFFFFF !important;
+        color: #1F1F1F !important;
+        border: 1px solid rgba(0,0,0,.06) !important;
       }
       
       .rrhs-bot.rrhs-streaming {
@@ -190,18 +195,15 @@
       .rrhs-product-link {
         color: #670000 !important;
         text-decoration: underline !important;
+        text-decoration-color: #670000 !important;
+        text-decoration-thickness: 2px !important;
+        text-underline-offset: 2px !important;
         font-weight: 600 !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        transition: color 0.2s ease !important;
       }
-      
+
       .rrhs-product-link:hover {
         color: #7a0000 !important;
-        text-decoration: none !important;
-        background: rgba(103, 0, 0, 0.08) !important;
-        padding: 2px 4px !important;
-        margin: -2px -4px !important;
-        border-radius: 4px !important;
       }
       
       .rrhs-typing-indicator {
@@ -240,42 +242,42 @@
       #rrhs-input-row {
         display: flex !important;
         gap: 10px !important;
-        padding: 14px !important;
-        border-top: 1px solid rgba(0,0,0,.15) !important;
+        padding: 12px !important;
+        border-top: 1px solid rgba(0,0,0,.08) !important;
         flex-shrink: 0 !important;
       }
       
       #rrhs-input {
         flex: 1 !important;
-        padding: 12px 15px !important;
-        border: 1.5px solid rgba(0,0,0,.25) !important;
+        padding: 10px 12px !important;
+        border: 1px solid rgba(0,0,0,.18) !important;
         border-radius: 12px !important;
-        font-size: 14px !important;
+        font-size: 13px !important;
         outline: none !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
         transition: all 0.2s ease !important;
       }
       #rrhs-input:focus {
         border-color: #670000 !important;
-        box-shadow: 0 0 0 3px rgba(103,0,0,.15) !important;
+        box-shadow: 0 0 0 3px rgba(103,0,0,.12) !important;
       }
       
       #rrhs-send {
         background: #670000 !important;
         color: #F9F9F9 !important;
         border: none !important;
-        padding: 12px 22px !important;
+        padding: 10px 18px !important;
         border-radius: 12px !important;
-        font-size: 14px !important;
-        font-weight: 700 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
         cursor: pointer !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
         transition: all 0.2s ease !important;
       }
       #rrhs-send:hover:not(:disabled) {
         background: #7a0000 !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 4px 12px rgba(103,0,0,.3) !important;
+        box-shadow: 0 6px 14px rgba(103,0,0,.22) !important;
       }
       #rrhs-send:active:not(:disabled) {
         transform: translateY(0) !important;
@@ -283,6 +285,25 @@
       #rrhs-send:disabled {
         opacity: .6 !important;
         cursor: not-allowed !important;
+      }
+      
+      /* Smooth scroll behavior for messages */
+      #rrhs-messages::-webkit-scrollbar {
+        width: 6px !important;
+      }
+      
+      #rrhs-messages::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05) !important;
+        border-radius: 3px !important;
+      }
+      
+      #rrhs-messages::-webkit-scrollbar-thumb {
+        background: rgba(103, 0, 0, 0.3) !important;
+        border-radius: 3px !important;
+      }
+      
+      #rrhs-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(103, 0, 0, 0.5) !important;
       }
     `;
     document.head.appendChild(style);
@@ -366,25 +387,87 @@
     });
 
     // ---------- MESSAGE FUNCTIONS ----------
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function applyAsteriskBold(html) {
+      let output = html.replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>");
+      output = output.replace(/\*(?!\s)([^*]+?)\*(?!\*)/gs, "<strong>$1</strong>");
+      return output;
+    }
+
+    function escapeRegex(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function linkifyProducts(escapedText, products = []) {
+      if (!products || products.length === 0) return escapedText;
+
+      const replacements = [];
+      let tokenIndex = 0;
+      const sorted = products
+        .filter(product => product && product.name && product.url)
+        .sort((a, b) => b.name.length - a.name.length);
+
+      let output = escapedText;
+      sorted.forEach(product => {
+        const safeName = escapeHtml(product.name);
+        const safeUrl = escapeHtml(product.url);
+        const regex = new RegExp(escapeRegex(safeName), "gi");
+        output = output.replace(regex, (match) => {
+          const token = `__RRHS_LINK_${tokenIndex++}__`;
+          replacements.push({
+            token,
+            html: `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="rrhs-product-link">${match}</a>`
+          });
+          return token;
+        });
+      });
+
+      replacements.forEach(({ token, html }) => {
+        output = output.split(token).join(html);
+      });
+
+      return output;
+    }
+
+    const SKU_TAG_REGEX = /\[[A-Za-z0-9_-]{1,32}\]\s*/g;
+
+    function stripSkuTags(text) {
+      return String(text)
+        .replace(SKU_TAG_REGEX, "")
+        .replace(/ {2,}/g, " ");
+    }
+
+    function formatMessage(text, products = []) {
+      const escaped = escapeHtml(text);
+      const linked = linkifyProducts(escaped, products);
+      return applyAsteriskBold(linked);
+    }
+
+    function formatStreamingMessage(text) {
+      return applyAsteriskBold(escapeHtml(text));
+    }
+
     function addMessage(role, text, products = []) {
+      console.log("[RRHS] Adding message:", { role, text, products });
+      
       const bubble = document.createElement("div");
       bubble.className = `rrhs-msg ${role === "user" ? "rrhs-user" : "rrhs-bot"}`;
+
+      const content = document.createElement("div");
+      content.className = "rrhs-msg-content";
+      const displayText = role === "user" ? text : stripSkuTags(text);
+      const displayProducts = role === "assistant" ? products : [];
+      content.innerHTML = formatMessage(displayText, displayProducts);
+      bubble.appendChild(content);
       
-      // Convert product names to hyperlinks
-      let processedText = text;
-      if (products && products.length > 0) {
-        products.forEach(product => {
-          if (product.url && product.name) {
-            // Create a link for the product name
-            const linkHtml = `<a href="${product.url}" target="_blank" class="rrhs-product-link">${product.name}</a>`;
-            // Replace product name with link (case-insensitive)
-            const regex = new RegExp(product.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-            processedText = processedText.replace(regex, linkHtml);
-          }
-        });
-      }
-      
-      bubble.innerHTML = processedText;
       messagesEl.appendChild(bubble);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return bubble;
@@ -431,6 +514,7 @@
 
       const typingIndicator = addTypingIndicator();
       let streamingBubble = null;
+      let streamingContent = null;
       let accumulatedText = "";
 
       try {
@@ -481,12 +565,18 @@
                 if (!streamingBubble) {
                   streamingBubble = document.createElement("div");
                   streamingBubble.className = "rrhs-msg rrhs-bot rrhs-streaming";
+                  streamingContent = document.createElement("div");
+                  streamingContent.className = "rrhs-msg-content";
+                  streamingBubble.appendChild(streamingContent);
                   messagesEl.appendChild(streamingBubble);
                 }
                 
                 // Append delta content
                 accumulatedText += event.content;
-                streamingBubble.textContent = accumulatedText;
+                if (streamingContent) {
+                  const displayText = stripSkuTags(accumulatedText);
+                  streamingContent.innerHTML = formatStreamingMessage(displayText);
+                }
                 messagesEl.scrollTop = messagesEl.scrollHeight;
                 
               } else if (event.event === "final") {
@@ -498,6 +588,13 @@
                 
                 // Add final message with product links
                 const products = event.products || [];
+                console.log("[RRHS Assistant] Final event received:", {
+                  message: event.message,
+                  products: products,
+                  validated: event.validated,
+                  inStock: event.in_stock_products
+                });
+                
                 addMessage("assistant", event.message, products);
                 
                 console.log("[RRHS Assistant] ✅ Stream complete", {
@@ -535,7 +632,7 @@
       }
     });
 
-    console.log("[RRHS Assistant] ✅ Ready with SSE streaming & product links!");
+    console.log("[RRHS Assistant] ✅ Ready with enhanced animated product links!");
   }
 
   if (document.readyState === "loading") {
