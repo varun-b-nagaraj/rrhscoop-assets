@@ -540,6 +540,7 @@
       if (panel.classList.contains("rrhs-expanded")) return;
       console.log("[RRHS Assistant] 🟢 OPENING");
       updatePanelSizes();
+      relinkIfMissing();
       hydrateSessionMessages();
       panel.classList.add("rrhs-expanded");
       setTimeout(() => inputEl && inputEl.focus(), 150);
@@ -569,7 +570,7 @@
       const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) return;
       if (panel.contains(e.target)) return;
-      closePanel();
+      // Intentionally do nothing; keep panel open when clicking outside.
     });
 
     // ---------- MESSAGE FUNCTIONS ----------
@@ -803,6 +804,21 @@
         addMessage(entry.role, entry.text, entry.products || [], { persist: false });
       });
       return true;
+    }
+
+    function hasStoredProductLinks() {
+      return sessionLog.some((entry) =>
+        Array.isArray(entry.products) && entry.products.some((p) => p && p.url)
+      );
+    }
+
+    function relinkIfMissing() {
+      if (!messagesEl || !sessionLog.length) return;
+      if (messagesEl.querySelector(".rrhs-product-link")) return;
+      if (!hasStoredProductLinks()) return;
+      messagesEl.innerHTML = "";
+      messagesEl.dataset.rrhsIntroShown = "0";
+      hydrateSessionMessages();
     }
 
     function addMessage(role, text, products = [], options = {}) {
