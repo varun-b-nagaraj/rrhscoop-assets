@@ -500,6 +500,49 @@
       sendBtn.textContent = s ? "..." : "Send";
     }
 
+    function whenEcwidReady(cb) {
+      if (window.Ecwid && Ecwid.OnAPILoaded && typeof Ecwid.OnAPILoaded.add === "function") {
+        Ecwid.OnAPILoaded.add(() => cb());
+        return;
+      }
+      // fallback: try a few times
+      let tries = 0;
+      const t = setInterval(() => {
+        tries++;
+        if (window.Ecwid && Ecwid.Cart) {
+          clearInterval(t);
+          cb();
+        }
+        if (tries > 40) clearInterval(t);
+      }, 150);
+    }
+
+    function executeCartActions(actions) {
+      if (!actions || !actions.length) return;
+
+      whenEcwidReady(() => {
+        actions.forEach((a) => {
+          if (!a || !a.type) return;
+
+          if (a.type === "cart.add" && a.productId) {
+            const product = { id: a.productId, quantity: Math.max(1, Number(a.quantity || 1)) };
+            Ecwid.Cart.addProduct(product, function () {
+              // Optional: open cart after add
+              // Ecwid.openPage('cart');
+            });
+          }
+
+          if (a.type === "cart.open") {
+            Ecwid.openPage("cart");
+          }
+
+          if (a.type === "cart.checkout") {
+            Ecwid.Cart.gotoCheckout();
+          }
+        });
+      });
+    }
+
     // ---------- SSE STREAMING CHAT ----------
     async function sendMessage() {
       const msg = (inputEl.value || "").trim();
@@ -596,6 +639,9 @@
                 });
                 
                 addMessage("assistant", event.message, products);
+
+                const actions = event.cart_actions || event.cartActions || [];
+                executeCartActions(actions);
                 
                 console.log("[RRHS Assistant] ✅ Stream complete", {
                   validated: event.validated,
