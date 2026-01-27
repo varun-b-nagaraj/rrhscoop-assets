@@ -24,93 +24,103 @@
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
-      @keyframes rrhs-slideInUp {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      
-      @keyframes rrhs-slideOutDown {
-        from {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        to {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-      }
-      
       @keyframes rrhs-fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
       }
 
-      #rrhs-assistant-pill {
+      #rrhs-assistant-panel {
+        --rrhs-collapsed-width: 150px;
+        --rrhs-collapsed-height: 38px;
+        --rrhs-expanded-width: 340px;
+        --rrhs-expanded-height: 480px;
+        --rrhs-duration: 420ms;
+        --rrhs-ease: cubic-bezier(0.22, 1, 0.36, 1);
         position: fixed !important;
         right: 18px !important;
         bottom: 18px !important;
+        width: var(--rrhs-collapsed-width) !important;
+        height: var(--rrhs-collapsed-height) !important;
         z-index: ${Z} !important;
         background: #670000 !important;
-        color: #F9F9F9 !important;
-        padding: 10px 14px !important;
+        border: 1px solid transparent !important;
         border-radius: 999px !important;
-        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.2px !important;
         box-shadow: 0 6px 16px rgba(0,0,0,.18) !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      }
-      
-      #rrhs-assistant-pill:hover {
-        background: #7a0000 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 10px 24px rgba(0,0,0,.25) !important;
-      }
-
-      #rrhs-assistant-panel {
-        position: fixed !important;
-        right: 18px !important;
-        bottom: 85px !important;
-        width: 340px !important;
-        height: 480px !important;
-        max-height: calc(100vh - 120px) !important;
-        z-index: ${Z} !important;
-        display: flex !important;
-        flex-direction: column !important;
-        background: #FFFFFF !important;
-        border: 1px solid rgba(0,0,0,.08) !important;
-        border-radius: 14px !important;
-        box-shadow: 0 12px 30px rgba(0,0,0,.18) !important;
         overflow: hidden !important;
         font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
         box-sizing: border-box !important;
-        transform-origin: bottom right !important;
-        transition: none !important;
+        transform: translateY(0) !important;
+        transition:
+          width var(--rrhs-duration) var(--rrhs-ease),
+          height var(--rrhs-duration) var(--rrhs-ease),
+          border-radius var(--rrhs-duration) var(--rrhs-ease),
+          background-color var(--rrhs-duration) var(--rrhs-ease),
+          border-color var(--rrhs-duration) var(--rrhs-ease),
+          box-shadow var(--rrhs-duration) var(--rrhs-ease),
+          transform 0.2s ease !important;
+        will-change: width, height, border-radius, background-color, border-color, box-shadow, transform !important;
+        cursor: pointer !important;
       }
-      
-      #rrhs-assistant-panel.rrhs-hidden {
-        display: none !important;
+
+      #rrhs-assistant-panel:hover:not(.rrhs-expanded) {
+        background: #7a0000 !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,.25) !important;
+        transform: translateY(-2px) !important;
+      }
+
+      #rrhs-assistant-panel.rrhs-expanded {
+        width: var(--rrhs-expanded-width) !important;
+        height: var(--rrhs-expanded-height) !important;
+        background: #FFFFFF !important;
+        border-color: rgba(0,0,0,.08) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,.18) !important;
+        cursor: default !important;
+        transform: translateY(0) !important;
+      }
+
+      #rrhs-pill-label {
+        position: absolute !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #F9F9F9 !important;
+        transition: opacity 0.2s ease, transform 0.2s ease !important;
+      }
+
+      #rrhs-pill-text {
+        padding: 10px 14px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.2px !important;
+        white-space: nowrap !important;
+        user-select: none !important;
+      }
+
+      #rrhs-assistant-panel.rrhs-expanded #rrhs-pill-label {
         opacity: 0 !important;
+        transform: scale(0.98) !important;
         pointer-events: none !important;
       }
-      
-      #rrhs-assistant-panel.rrhs-visible {
+
+      #rrhs-panel-body {
+        position: absolute !important;
+        inset: 0 !important;
         display: flex !important;
-        animation: rrhs-slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
-        pointer-events: all !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.2s ease !important;
       }
-      
-      #rrhs-assistant-panel.rrhs-closing {
-        animation: rrhs-slideOutDown 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+
+      #rrhs-assistant-panel.rrhs-expanded #rrhs-panel-body {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transition-delay: 0.12s !important;
       }
 
       #rrhs-assistant-header {
@@ -314,68 +324,98 @@
     document.head.appendChild(style);
 
     // ---------- CREATE ELEMENTS ----------
-    const pill = document.createElement("div");
-    pill.id = "rrhs-assistant-pill";
-    pill.textContent = "Ask the Store";
-
     const panel = document.createElement("div");
     panel.id = "rrhs-assistant-panel";
-    panel.className = "rrhs-hidden";
+    panel.className = "";
     
     panel.innerHTML = `
-      <div id="rrhs-assistant-header">
-        <div>Store Assistant</div>
-        <button id="rrhs-close" type="button">×</button>
-      </div>
-      <div id="rrhs-messages"></div>
-      <div id="rrhs-input-row">
-        <input id="rrhs-input" type="text" placeholder="What should I buy?" autocomplete="off" />
-        <button id="rrhs-send" type="button">Send</button>
+      <div id="rrhs-pill-label"><span id="rrhs-pill-text">Ask the Store</span></div>
+      <div id="rrhs-panel-body">
+        <div id="rrhs-assistant-header">
+          <div>Store Assistant</div>
+          <button id="rrhs-close" type="button">×</button>
+        </div>
+        <div id="rrhs-messages"></div>
+        <div id="rrhs-input-row">
+          <input id="rrhs-input" type="text" placeholder="What should I buy?" autocomplete="off" />
+          <button id="rrhs-send" type="button">Send</button>
+        </div>
       </div>
     `;
 
     document.body.appendChild(panel);
-    document.body.appendChild(pill);
 
     const messagesEl = document.getElementById("rrhs-messages");
     const inputEl = document.getElementById("rrhs-input");
     const sendBtn = document.getElementById("rrhs-send");
     const closeBtn = document.getElementById("rrhs-close");
+    const pillLabel = document.getElementById("rrhs-pill-label");
+    const pillText = document.getElementById("rrhs-pill-text");
 
-    // ---------- PANEL ANIMATION FUNCTIONS ----------
+    // ---------- PANEL STATE ----------
+    const PANEL_DURATION = 420;
+
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+
+    function applyMotionPreference() {
+      panel.style.setProperty("--rrhs-duration", prefersReducedMotion() ? "0ms" : `${PANEL_DURATION}ms`);
+    }
+
+    function updatePanelSizes() {
+      if (!pillText) return;
+      const collapsedWidth = Math.ceil(pillText.scrollWidth) + 2;
+      const collapsedHeight = Math.ceil(pillText.scrollHeight) + 2;
+      const maxWidth = Math.max(0, window.innerWidth - 36);
+      const maxHeight = Math.max(0, window.innerHeight - 36);
+      const expandedWidth = Math.max(collapsedWidth, Math.min(340, maxWidth));
+      const expandedHeight = Math.max(collapsedHeight, Math.min(480, maxHeight));
+
+      panel.style.setProperty("--rrhs-collapsed-width", `${collapsedWidth}px`);
+      panel.style.setProperty("--rrhs-collapsed-height", `${collapsedHeight}px`);
+      panel.style.setProperty("--rrhs-expanded-width", `${expandedWidth}px`);
+      panel.style.setProperty("--rrhs-expanded-height", `${expandedHeight}px`);
+    }
+
+    applyMotionPreference();
+    updatePanelSizes();
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => updatePanelSizes());
+    }
+
+    window.addEventListener("resize", updatePanelSizes);
+
+    if (window.matchMedia) {
+      const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      if (typeof motionQuery.addEventListener === "function") {
+        motionQuery.addEventListener("change", applyMotionPreference);
+      } else if (typeof motionQuery.addListener === "function") {
+        motionQuery.addListener(applyMotionPreference);
+      }
+    }
+
     function openPanel() {
+      if (panel.classList.contains("rrhs-expanded")) return;
       console.log("[RRHS Assistant] 🟢 OPENING");
-      panel.classList.remove("rrhs-hidden", "rrhs-closing");
-      panel.classList.add("rrhs-visible");
+      updatePanelSizes();
+      panel.classList.add("rrhs-expanded");
       setTimeout(() => inputEl && inputEl.focus(), 150);
     }
 
     function closePanel() {
+      if (!panel.classList.contains("rrhs-expanded")) return;
       console.log("[RRHS Assistant] 🔴 CLOSING");
-      panel.classList.add("rrhs-closing");
-      
-      // Wait for animation to complete before hiding
-      setTimeout(() => {
-        panel.classList.remove("rrhs-visible", "rrhs-closing");
-        panel.classList.add("rrhs-hidden");
-      }, 250);
-    }
-
-    function togglePanel() {
-      const isVisible = panel.classList.contains("rrhs-visible");
-      if (isVisible) {
-        closePanel();
-      } else {
-        openPanel();
-      }
+      panel.classList.remove("rrhs-expanded");
     }
 
     // ---------- EVENTS ----------
-    pill.addEventListener("click", (e) => {
+    pillLabel.addEventListener("click", (e) => {
       console.log("[RRHS Assistant] PILL CLICKED");
       e.preventDefault();
       e.stopPropagation();
-      togglePanel();
+      openPanel();
     });
 
     closeBtn.addEventListener("click", (e) => {
@@ -385,9 +425,9 @@
     });
 
     document.addEventListener("click", (e) => {
-      const isVisible = panel.classList.contains("rrhs-visible");
+      const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) return;
-      if (panel.contains(e.target) || pill.contains(e.target)) return;
+      if (panel.contains(e.target)) return;
       closePanel();
     });
 
@@ -500,6 +540,12 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return bubble;
     }
+
+    function addIntroMessage() {
+      if (!messagesEl || messagesEl.dataset.rrhsIntroShown === "1") return;
+      messagesEl.dataset.rrhsIntroShown = "1";
+      addMessage("assistant", "Hello! I’m the RRHS COOP Bot. Ask me anything about products, sizes, or recommendations.");
+    }
     
     function addTypingIndicator() {
       const bubble = document.createElement("div");
@@ -605,11 +651,13 @@
     }
 
     // ---------- SSE STREAMING CHAT ----------
+    addIntroMessage();
+
     async function sendMessage() {
       const msg = (inputEl.value || "").trim();
       if (!msg) return;
 
-      const isVisible = panel.classList.contains("rrhs-visible");
+      const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) openPanel();
 
       addMessage("user", msg);
