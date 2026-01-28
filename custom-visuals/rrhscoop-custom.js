@@ -1,6 +1,30 @@
 /* rrhscoop-custom.js */
 (() => {
   /* =========================
+     CATEGORY IMAGE SWAP - IMAGE MAP DEFINITION (moved to top)
+  ========================== */
+  const BASE = "https://jocular-daifuku-5201aa.netlify.app";
+  const IMAGE_MAP = {
+    "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
+    "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=2`,
+    "ins-tile__category-item-189782257": `${BASE}/merch.png?v=2`,
+    "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
+  };
+
+  // DEBUG CODE - Add this temporarily
+  console.log('=== RRHS DEBUG START ===');
+  console.log('Has .ins-tile__category-collection?', !!document.querySelector('.ins-tile__category-collection'));
+  console.log('Has .ins-tile__category-image-wrapper?', !!document.querySelector('.ins-tile__category-image-wrapper'));
+  console.log('Has .ins-tile__category-image?', !!document.querySelector('.ins-tile__category-image'));
+  console.log('Has .ins-tile__image?', !!document.querySelector('.ins-tile__image'));
+  console.log('In modal?', !!document.querySelector('.ec-modal__content, .ec-popup'));
+
+  for (const id in IMAGE_MAP) {
+    console.log(`Has ${id}?`, !!document.getElementById(id));
+  }
+  console.log('=== RRHS DEBUG END ===');
+
+  /* =========================
      MODAL UTILITIES
   ========================== */
   function createModal(message) {
@@ -290,14 +314,6 @@
   /* =========================
      CATEGORY IMAGE SWAP - STABLE OVERLAY APPROACH
   ========================== */
-  const BASE = "https://jocular-daifuku-5201aa.netlify.app";
-  const IMAGE_MAP = {
-    "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
-    "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=2`,
-    "ins-tile__category-item-189782257": `${BASE}/merch.png?v=2`,
-    "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
-  };
-
   const preloadedImages = {};
   Object.values(IMAGE_MAP).forEach(url => {
     if (!preloadedImages[url]) {
@@ -329,7 +345,7 @@
       pointer-events: none !important;
       transition: opacity 50ms ease !important;
       opacity: 0 !important;
-      z-index: 999 !important;
+      z-index: 1 !important;
       display: block !important;
     `;
     overlay.dataset.rrhsOverlay = "1";
@@ -337,12 +353,31 @@
     return overlay;
   }
 
+  function shouldRunImageSwap() {
+    const hasCategoryTile = document.querySelector('.ins-tile__category-collection');
+    const hasImageWrapper = document.querySelector('.ins-tile__category-image-wrapper');
+    const inModal = document.querySelector('.ec-modal__content, .ec-popup');
+    
+    return hasCategoryTile && hasImageWrapper && !inModal;
+  }
+
   function initCategoryImageSwap() {
+    if (!shouldRunImageSwap()) {
+      console.log('RRHS: shouldRunImageSwap returned false, skipping');
+      return;
+    }
+
     const root = findTileRoot();
-    if (!root) return;
+    if (!root) {
+      console.log('RRHS: Could not find tile root');
+      return;
+    }
 
     const existingOverlay = root.querySelector('img[data-rrhs-overlay="1"]');
-    if (existingOverlay && existingOverlay.parentNode) return;
+    if (existingOverlay && existingOverlay.parentNode) {
+      console.log('RRHS: Overlay already exists');
+      return;
+    }
     
     root.dataset.imgSwapInit = "1";
 
@@ -357,7 +392,12 @@
     
     const wrap = root.querySelector(".ins-tile__category-items-wrapper");
     
-    if (!container || !wrap) return;
+    if (!container || !wrap) {
+      console.log('RRHS: Could not find container or wrapper', {container, wrap});
+      return;
+    }
+
+    console.log('RRHS: Found container and wrapper, initializing image swap');
 
     const position = getComputedStyle(container).position;
     if (position === "static") {
@@ -384,6 +424,8 @@
       if (!url || currentUrl === url) return;
       currentUrl = url;
       
+      console.log('RRHS: Setting image to', url);
+      
       overlay.style.opacity = "0";
       
       setTimeout(() => {
@@ -408,6 +450,7 @@
     }
     
     if (initialItem && IMAGE_MAP[initialItem.id]) {
+      console.log('RRHS: Setting initial image for', initialItem.id);
       overlay.src = IMAGE_MAP[initialItem.id];
       overlay.style.opacity = "1";
       currentUrl = IMAGE_MAP[initialItem.id];
@@ -430,20 +473,15 @@
      CHECKOUT BUTTON TIME RESTRICTION
   ========================== */
   const CHECKOUT_ALWAYS_ALLOW = false;
-
-  // A-DAY / B-DAY CONFIGURATION
-  // Set this to a known A-day date (format: 'YYYY-MM-DD')
-  const REFERENCE_A_DAY = '2026-01-27'; // Monday, Jan 27, 2026 is an A-day
+  const REFERENCE_A_DAY = '2026-01-27';
   
   function isADay() {
     const now = new Date();
     const referenceDate = new Date(REFERENCE_A_DAY + 'T00:00:00');
     
-    // Reset both dates to midnight for accurate day counting
     now.setHours(0, 0, 0, 0);
     referenceDate.setHours(0, 0, 0, 0);
     
-    // Calculate days since reference, skipping weekends
     let dayCount = 0;
     const current = new Date(referenceDate);
     
@@ -455,7 +493,6 @@
       }
     }
     
-    // If reference was A-day, even count = A-day, odd = B-day
     return dayCount % 2 === 0;
   }
 
@@ -467,15 +504,9 @@
     const minutes = now.getMinutes();
     const timeInMinutes = hours * 60 + minutes;
 
-    // No ordering on weekends
     if (day === 0 || day === 6) return false;
-
-    // Only accept orders on A-days during both time windows
     if (!isADay()) return false;
     
-    // A-day time windows:
-    // Window 1: 9:00 AM - 10:20 AM (540-620 minutes)
-    // Window 2: 10:50 AM - 11:55 AM (650-715 minutes)
     const inWindow1 = timeInMinutes >= 540 && timeInMinutes <= 620;
     const inWindow2 = timeInMinutes >= 650 && timeInMinutes <= 715;
     
@@ -494,7 +525,6 @@
       button.style.cursor = 'pointer';
       button.title = '';
       
-      // Remove click handler if exists
       if (button.dataset.rrhsClickHandler) {
         button.removeEventListener('click', button._rrhsClickHandler);
         delete button.dataset.rrhsClickHandler;
@@ -506,7 +536,6 @@
       button.style.cursor = 'not-allowed';
       button.title = 'We\'re sorry, we do not accept orders at this time.';
       
-      // Add click handler only once - exactly like room validation
       if (!button.dataset.rrhsClickHandler) {
         button.dataset.rrhsClickHandler = "true";
         button._rrhsClickHandler = (e) => {
@@ -517,15 +546,11 @@
           createModal('We\'re sorry, we do not accept orders at this time.');
           return false;
         };
-        // Add listener with capture to intercept before disabled state blocks it
         button.addEventListener('click', button._rrhsClickHandler, true);
       }
     }
   }
 
-  /* =========================
-     CHECKOUT BUTTON WRAPPER (to capture clicks on disabled button)
-  ========================== */
   function wrapCheckoutButton() {
     const button = document.querySelector('.ec-cart__button--checkout button');
     if (!button || button.dataset.rrhsWrapped) return;
@@ -533,16 +558,13 @@
     const parent = button.parentElement;
     if (!parent) return;
 
-    // Create wrapper div
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position: relative; display: inline-block; width: 100%;';
     wrapper.dataset.rrhsWrapper = 'true';
 
-    // Insert wrapper
     parent.insertBefore(wrapper, button);
     wrapper.appendChild(button);
 
-    // Create invisible overlay for capturing clicks when disabled
     const overlay = document.createElement('div');
     overlay.style.cssText = `
       position: absolute;
@@ -557,7 +579,6 @@
     overlay.dataset.rrhsOverlayBtn = 'true';
     wrapper.appendChild(overlay);
 
-    // Handle clicks on overlay
     overlay.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -584,7 +605,7 @@
   }
 
   /* =========================
-     BOOTSTRAP (rerender-safe)
+     BOOTSTRAP
   ========================== */
   function boot() {
     initRoomAutocomplete();
