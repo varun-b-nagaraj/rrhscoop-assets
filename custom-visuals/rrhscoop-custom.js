@@ -3,7 +3,7 @@
   /* =========================
      CATEGORY IMAGE SWAP - IMAGE MAP DEFINITION (moved to top)
   ========================== */
-  const BASE = "https://jocular-daifuku-5201aa.netlify.app";
+  const BASE = "https://rrhscoop-assets.vercel.app/custom-visuals";
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
     "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=2`,
