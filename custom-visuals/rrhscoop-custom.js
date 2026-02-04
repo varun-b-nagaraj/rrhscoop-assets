@@ -572,12 +572,19 @@
     }
   }
 
-  function getRestrictionMessage() {
-    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-      return "We're sorry, only flowers can be ordered at all times. For all other items, orders are only processed 1st and 2nd period.";
-    }
-    return "We're sorry, we do not accept orders at this time.";
+function getRestrictionMessage() {
+  if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+    return `Only <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050"
+               target="_blank"
+               rel="noopener"
+               style="color:#FFD6D6;text-decoration:underline;font-weight:600;">
+               Valentine’s Day Flowers
+            </a>
+            can be ordered at any time. All other items are available during 1st and 2nd period only.`;
   }
+  return "We’re sorry, we do not accept orders at this time.";
+}
+
   
   function isADay() {
     const now = new Date();
