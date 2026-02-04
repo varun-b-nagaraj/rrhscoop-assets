@@ -1,7 +1,7 @@
 /* rrhscoop-custom.js */
 (() => {
   /* =========================
-     CATEGORY IMAGE SWAP - IMAGE MAP DEFINITION (moved to top)
+     CATEGORY IMAGE SWAP - IMAGE MAP DEFINITION 
   ========================== */
   const BASE = "https://rrhscoop-assets.vercel.app/custom-visuals";
   const IMAGE_MAP = {
