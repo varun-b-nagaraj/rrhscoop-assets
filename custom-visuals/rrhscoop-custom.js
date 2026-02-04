@@ -18,6 +18,7 @@
   console.log('Has .ins-tile__category-image?', !!document.querySelector('.ins-tile__category-image'));
   console.log('Has .ins-tile__image?', !!document.querySelector('.ins-tile__image'));
   console.log('In modal?', !!document.querySelector('.ec-modal__content, .ec-popup'));
+  console.log('In checkout?', !!document.querySelector('.ec-cart, .ec-cart-step, .ec-checkout'));
 
   for (const id in IMAGE_MAP) {
     console.log(`Has ${id}?`, !!document.getElementById(id));
@@ -356,9 +357,25 @@
   function shouldRunImageSwap() {
     const hasCategoryTile = document.querySelector('.ins-tile__category-collection');
     const hasImageWrapper = document.querySelector('.ins-tile__category-image-wrapper');
-    const inModal = document.querySelector('.ec-modal__content, .ec-popup');
     
-    return hasCategoryTile && hasImageWrapper && !inModal;
+    // Check if we're in a modal, popup, checkout, or cart page
+    const inModal = document.querySelector('.ec-modal__content, .ec-popup');
+    const inCheckout = document.querySelector('.ec-cart, .ec-cart-step, .ec-checkout');
+    const hasContactForm = document.querySelector('.ec-form, input[name="email"], input[placeholder*="email" i]');
+    
+    // Only run if we have the category tile structure AND we're not in any restricted context
+    const shouldRun = hasCategoryTile && hasImageWrapper && !inModal && !inCheckout && !hasContactForm;
+    
+    console.log('RRHS: shouldRunImageSwap check:', {
+      hasCategoryTile,
+      hasImageWrapper,
+      inModal: !!inModal,
+      inCheckout: !!inCheckout,
+      hasContactForm: !!hasContactForm,
+      shouldRun
+    });
+    
+    return shouldRun;
   }
 
   function initCategoryImageSwap() {
