@@ -474,6 +474,71 @@
   ========================== */
   const CHECKOUT_ALWAYS_ALLOW = false;
   const REFERENCE_A_DAY = '2026-01-27';
+
+  /* =========================
+     ECWID CART STATE (FLOWERS OVERRIDE)
+  ========================== */
+  const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
+  const FLOWERS_SKU = "703_sku";
+
+  const rrhsCartState = {
+    ready: false,
+    hasFlowers: false,
+    hasOther: false,
+    lastUpdated: 0
+  };
+
+  function isFlowersItem(item) {
+    const p = item && item.product;
+    if (!p) return false;
+    return (p.sku === FLOWERS_SKU) && (p.name === FLOWERS_PRODUCT_NAME);
+  }
+
+  function computeCartFlags(cart) {
+    const items = (cart && Array.isArray(cart.items)) ? cart.items : [];
+    const hasFlowers = items.some(isFlowersItem);
+    const hasOther = items.some((it) => {
+      // Anything in cart that is not the flowers item.
+      if (!it || !it.product) return false;
+      return !isFlowersItem(it);
+    });
+
+    rrhsCartState.ready = true;
+    rrhsCartState.hasFlowers = hasFlowers;
+    rrhsCartState.hasOther = hasOther;
+    rrhsCartState.lastUpdated = Date.now();
+  }
+
+  function refreshCartState(cb) {
+    try {
+      if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.get !== "function") {
+        rrhsCartState.ready = false;
+        rrhsCartState.hasFlowers = false;
+        rrhsCartState.hasOther = false;
+        rrhsCartState.lastUpdated = Date.now();
+        if (typeof cb === "function") cb();
+        return;
+      }
+
+      Ecwid.Cart.get(function(cart) {
+        computeCartFlags(cart);
+        if (typeof cb === "function") cb();
+      });
+    } catch (e) {
+      rrhsCartState.ready = false;
+      rrhsCartState.hasFlowers = false;
+      rrhsCartState.hasOther = false;
+      rrhsCartState.lastUpdated = Date.now();
+      if (typeof cb === "function") cb();
+    }
+  }
+
+  function getRestrictionMessage() {
+    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+      return "We're sorry, only flowers can be ordered at all times. For all other items, orders are only processed 1st and 2nd period.";
+    }
+    return "We're sorry, we do not accept orders at this time.";
+  }
   
   function isADay() {
     const now = new Date();
@@ -496,7 +561,7 @@
     return dayCount % 2 === 0;
   }
 
-  function checkOrderingWindow() {
+  function checkOrderingWindowBase() {
     if (CHECKOUT_ALWAYS_ALLOW) return true;
     const now = new Date();
     const day = now.getDay();
@@ -511,6 +576,14 @@
     const inWindow2 = timeInMinutes >= 650 && timeInMinutes <= 715;
     
     return inWindow1 || inWindow2;
+  }
+
+  function checkOrderingWindow() {
+    // Flowers-only cart is always allowed.
+    if (rrhsCartState.hasFlowers && !rrhsCartState.hasOther) return true;
+
+    // Mixed cart and non-flower cart both follow normal window logic.
+    return checkOrderingWindowBase();
   }
 
   function manageCheckoutButton() {
@@ -534,7 +607,7 @@
       button.disabled = true;
       button.style.opacity = '0.5';
       button.style.cursor = 'not-allowed';
-      button.title = 'We\'re sorry, we do not accept orders at this time.';
+      button.title = getRestrictionMessage();
       
       if (!button.dataset.rrhsClickHandler) {
         button.dataset.rrhsClickHandler = "true";
@@ -543,7 +616,7 @@
           e.stopPropagation();
           e.stopImmediatePropagation();
           shakeElement(button);
-          createModal('We\'re sorry, we do not accept orders at this time.');
+          createModal(getRestrictionMessage());
           return false;
         };
         button.addEventListener('click', button._rrhsClickHandler, true);
@@ -583,7 +656,7 @@
       e.preventDefault();
       e.stopPropagation();
       shakeElement(button);
-      createModal('We\'re sorry, we do not accept orders at this time.');
+      createModal(getRestrictionMessage());
     });
 
     button.dataset.rrhsWrapped = 'true';
@@ -612,8 +685,10 @@
     initRoomContinueButton();
     initCategoryImageSwap();
     wrapCheckoutButton();
-    manageCheckoutButton();
-    updateCheckoutOverlay();
+    refreshCartState(() => {
+      manageCheckoutButton();
+      updateCheckoutOverlay();
+    });
   }
 
   boot();
@@ -626,7 +701,9 @@
   }
 
   setInterval(() => {
-    manageCheckoutButton();
-    updateCheckoutOverlay();
+    refreshCartState(() => {
+      manageCheckoutButton();
+      updateCheckoutOverlay();
+    });
   }, 60000);
 })();
