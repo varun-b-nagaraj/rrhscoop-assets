@@ -644,8 +644,8 @@ function getRestrictionMessage() {
       button.style.cursor = 'pointer';
       button.title = '';
       
-      if (button.dataset.rrhsClickHandler) {
-        button.removeEventListener('click', button._rrhsClickHandler);
+      if (button.dataset.rrhsClickHandler && button._rrhsClickHandler) {
+        button.removeEventListener('click', button._rrhsClickHandler, true);
         delete button.dataset.rrhsClickHandler;
         delete button._rrhsClickHandler;
       }
@@ -723,12 +723,29 @@ function getRestrictionMessage() {
     }
   }
 
+  // Keep restriction logic in sync with cart changes (don't wait for the 60s poll).
+  let rrhsCartChangedListenerAdded = false;
+  function initCartChangedListener() {
+    if (rrhsCartChangedListenerAdded) return;
+    const ecwid = window.Ecwid;
+    if (ecwid && ecwid.OnCartChanged && typeof ecwid.OnCartChanged.add === "function") {
+      rrhsCartChangedListenerAdded = true;
+      ecwid.OnCartChanged.add(function(cart) {
+        computeCartFlags(cart);
+        wrapCheckoutButton();
+        manageCheckoutButton();
+        updateCheckoutOverlay();
+      });
+    }
+  }
+
   /* =========================
      BOOTSTRAP
   ========================== */
   function boot() {
     try {
       logContext();
+      initCartChangedListener();
       initRoomAutocomplete();
       initRoomContinueButton();
       initCategoryImageSwap();
