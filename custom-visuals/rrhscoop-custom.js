@@ -530,7 +530,8 @@
   function isFlowersItem(item) {
     const p = item && item.product;
     if (!p) return false;
-    return (p.sku === FLOWERS_SKU) && (p.name === FLOWERS_PRODUCT_NAME);
+    // Be tolerant of catalog edits: treat it as flowers if either SKU or name matches.
+    return (p.sku === FLOWERS_SKU) || (p.name === FLOWERS_PRODUCT_NAME);
   }
 
   function computeCartFlags(cart) {
@@ -574,9 +575,9 @@
 
   function getRestrictionMessage() {
     if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-      return "We're sorry, only flowers can be ordered at all times. For all other items, orders are only processed 1st and 2nd period.";
+      return "This cart includes flowers and other items. Flowers can be checked out any time, but other items are only available to order during 1st and 2nd period on A-days. Please remove non-flower items or try again during the next ordering window.";
     }
-    return "We're sorry, we do not accept orders at this time.";
+    return "RRHS Scoop ordering is currently closed. Ordering is available during 1st and 2nd period on A-days.";
   }
   
   function isADay() {
@@ -625,6 +626,61 @@
     return checkOrderingWindowBase();
   }
 
+  let rrhsCheckoutAttemptInFlight = false;
+
+  function proceedToCheckout(button) {
+    try {
+      if (window.Ecwid && Ecwid.Cart && typeof Ecwid.Cart.gotoCheckout === "function") {
+        Ecwid.Cart.gotoCheckout();
+        return;
+      }
+    } catch (e) {
+      // fall through to button click fallback
+    }
+
+    // Fallback: attempt a native click without re-entering our gate handler.
+    try {
+      const handler = button && button._rrhsGateHandler;
+      if (button && handler) button.removeEventListener("click", handler, true);
+      if (button) button.click();
+      if (button && handler) setTimeout(() => button.addEventListener("click", handler, true), 0);
+    } catch (e) {
+      // no-op
+    }
+  }
+
+  function attemptCheckout(e, sourceEl) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+    }
+
+    if (rrhsCheckoutAttemptInFlight) return false;
+    rrhsCheckoutAttemptInFlight = true;
+
+    const button = document.querySelector(".ec-cart__button--checkout button");
+    refreshCartState(() => {
+      rrhsCheckoutAttemptInFlight = false;
+
+      // Keep the UI in sync with the *latest* cart state.
+      manageCheckoutButton();
+      updateCheckoutOverlay();
+
+      const isAllowed = checkOrderingWindow();
+      if (isAllowed) {
+        proceedToCheckout(button);
+        return;
+      }
+
+      const target = sourceEl || button;
+      if (target) shakeElement(target);
+      createModal(getRestrictionMessage());
+    });
+
+    return false;
+  }
+
   function manageCheckoutButton() {
     const button = document.querySelector('.ec-cart__button--checkout button');
     if (!button) return;
@@ -636,30 +692,14 @@
       button.style.opacity = '1';
       button.style.cursor = 'pointer';
       button.title = '';
-      
-      if (button.dataset.rrhsClickHandler) {
-        button.removeEventListener('click', button._rrhsClickHandler);
-        delete button.dataset.rrhsClickHandler;
-        delete button._rrhsClickHandler;
-      }
+      button.removeAttribute("aria-disabled");
     } else {
-      button.disabled = true;
+      // Keep the button enabled so our click gate can always re-check cart state.
+      button.disabled = false;
       button.style.opacity = '0.5';
       button.style.cursor = 'not-allowed';
       button.title = getRestrictionMessage();
-      
-      if (!button.dataset.rrhsClickHandler) {
-        button.dataset.rrhsClickHandler = "true";
-        button._rrhsClickHandler = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          shakeElement(button);
-          createModal(getRestrictionMessage());
-          return false;
-        };
-        button.addEventListener('click', button._rrhsClickHandler, true);
-      }
+      button.setAttribute("aria-disabled", "true");
     }
   }
 
@@ -692,13 +732,19 @@
     wrapper.appendChild(overlay);
 
     overlay.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      shakeElement(button);
-      createModal(getRestrictionMessage());
+      attemptCheckout(e, overlay);
     });
 
     button.dataset.rrhsWrapped = 'true';
+  }
+
+  function initCheckoutGate() {
+    const button = document.querySelector(".ec-cart__button--checkout button");
+    if (!button || button.dataset.rrhsGateInit) return;
+
+    button.dataset.rrhsGateInit = "true";
+    button._rrhsGateHandler = (e) => attemptCheckout(e, button);
+    button.addEventListener("click", button._rrhsGateHandler, true);
   }
 
   function updateCheckoutOverlay() {
@@ -726,6 +772,7 @@
       initRoomContinueButton();
       initCategoryImageSwap();
       wrapCheckoutButton();
+      initCheckoutGate();
 
       // Avoid hammering the Ecwid API and DOM when the cart/checkout UI isn't present yet.
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
