@@ -1,5 +1,16 @@
 /* rrhscoop-custom.js */
 (() => {
+  const RRHS_DEBUG =
+    (typeof window !== "undefined" &&
+      (window.RRHS_DEBUG === true ||
+        (typeof localStorage !== "undefined" &&
+          localStorage.getItem("RRHS_DEBUG") === "1"))) ||
+    false;
+
+  const log = (...args) => {
+    if (RRHS_DEBUG) console.log(...args);
+  };
+
   /* =========================
      CATEGORY IMAGE SWAP - IMAGE MAP DEFINITION 
   ========================== */
@@ -11,19 +22,30 @@
     "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
-  // DEBUG CODE - Add this temporarily
-  console.log('=== RRHS DEBUG START ===');
-  console.log('Has .ins-tile__category-collection?', !!document.querySelector('.ins-tile__category-collection'));
-  console.log('Has .ins-tile__category-image-wrapper?', !!document.querySelector('.ins-tile__category-image-wrapper'));
-  console.log('Has .ins-tile__category-image?', !!document.querySelector('.ins-tile__category-image'));
-  console.log('Has .ins-tile__image?', !!document.querySelector('.ins-tile__image'));
-  console.log('In modal?', !!document.querySelector('.ec-modal__content, .ec-popup'));
-  console.log('In checkout?', !!document.querySelector('.ec-cart, .ec-cart-step, .ec-checkout'));
+  function logContext() {
+    if (!RRHS_DEBUG) return;
+    log("=== RRHS DEBUG START ===");
+    log(
+      "Has .ins-tile__category-collection?",
+      !!document.querySelector(".ins-tile__category-collection"),
+    );
+    log(
+      "Has .ins-tile__category-image-wrapper?",
+      !!document.querySelector(".ins-tile__category-image-wrapper"),
+    );
+    log(
+      "Has .ins-tile__category-image?",
+      !!document.querySelector(".ins-tile__category-image"),
+    );
+    log("Has .ins-tile__image?", !!document.querySelector(".ins-tile__image"));
+    log("In modal?", !!document.querySelector(".ec-modal__content, .ec-popup"));
+    log("In checkout?", !!document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout"));
 
-  for (const id in IMAGE_MAP) {
-    console.log(`Has ${id}?`, !!document.getElementById(id));
+    for (const id in IMAGE_MAP) {
+      log(`Has ${id}?`, !!document.getElementById(id));
+    }
+    log("=== RRHS DEBUG END ===");
   }
-  console.log('=== RRHS DEBUG END ===');
 
   /* =========================
      MODAL UTILITIES
@@ -366,7 +388,7 @@
     // Only run if we have the category tile structure AND we're not in any restricted context
     const shouldRun = hasCategoryTile && hasImageWrapper && !inModal && !inCheckout && !hasContactForm;
     
-    console.log('RRHS: shouldRunImageSwap check:', {
+    log('RRHS: shouldRunImageSwap check:', {
       hasCategoryTile,
       hasImageWrapper,
       inModal: !!inModal,
@@ -380,19 +402,19 @@
 
   function initCategoryImageSwap() {
     if (!shouldRunImageSwap()) {
-      console.log('RRHS: shouldRunImageSwap returned false, skipping');
+      log('RRHS: shouldRunImageSwap returned false, skipping');
       return;
     }
 
     const root = findTileRoot();
     if (!root) {
-      console.log('RRHS: Could not find tile root');
+      log('RRHS: Could not find tile root');
       return;
     }
 
     const existingOverlay = root.querySelector('img[data-rrhs-overlay="1"]');
     if (existingOverlay && existingOverlay.parentNode) {
-      console.log('RRHS: Overlay already exists');
+      log('RRHS: Overlay already exists');
       return;
     }
     
@@ -410,11 +432,11 @@
     const wrap = root.querySelector(".ins-tile__category-items-wrapper");
     
     if (!container || !wrap) {
-      console.log('RRHS: Could not find container or wrapper', {container, wrap});
+      log('RRHS: Could not find container or wrapper', {container, wrap});
       return;
     }
 
-    console.log('RRHS: Found container and wrapper, initializing image swap');
+    log('RRHS: Found container and wrapper, initializing image swap');
 
     const position = getComputedStyle(container).position;
     if (position === "static") {
@@ -441,7 +463,7 @@
       if (!url || currentUrl === url) return;
       currentUrl = url;
       
-      console.log('RRHS: Setting image to', url);
+      log('RRHS: Setting image to', url);
       
       overlay.style.opacity = "0";
       
@@ -467,7 +489,7 @@
     }
     
     if (initialItem && IMAGE_MAP[initialItem.id]) {
-      console.log('RRHS: Setting initial image for', initialItem.id);
+      log('RRHS: Setting initial image for', initialItem.id);
       overlay.src = IMAGE_MAP[initialItem.id];
       overlay.style.opacity = "1";
       currentUrl = IMAGE_MAP[initialItem.id];
@@ -698,26 +720,55 @@
      BOOTSTRAP
   ========================== */
   function boot() {
-    initRoomAutocomplete();
-    initRoomContinueButton();
-    initCategoryImageSwap();
-    wrapCheckoutButton();
-    refreshCartState(() => {
-      manageCheckoutButton();
-      updateCheckoutOverlay();
-    });
+    try {
+      logContext();
+      initRoomAutocomplete();
+      initRoomContinueButton();
+      initCategoryImageSwap();
+      wrapCheckoutButton();
+
+      // Avoid hammering the Ecwid API and DOM when the cart/checkout UI isn't present yet.
+      const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
+      if (checkoutButton) {
+        refreshCartState(() => {
+          manageCheckoutButton();
+          updateCheckoutOverlay();
+        });
+      }
+    } catch (e) {
+      log("RRHS: boot error", e);
+    }
   }
 
-  boot();
+  // Debounce boot to prevent excessive calls during Ecwid modal/page rendering.
+  let bootScheduled = false;
+  const raf =
+    (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function")
+      ? window.requestAnimationFrame.bind(window)
+      : (fn) => setTimeout(fn, 0);
+  const scheduleBoot = () => {
+    if (bootScheduled) return;
+    bootScheduled = true;
+    raf(() => {
+      bootScheduled = false;
+      boot();
+    });
+  };
 
-  const observer = new MutationObserver(boot);
-  observer.observe(document.body, { childList: true, subtree: true });
+  scheduleBoot();
+
+  const observer = new MutationObserver(scheduleBoot);
+  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
+    document.addEventListener("DOMContentLoaded", scheduleBoot);
   }
 
   setInterval(() => {
+    // Only run periodic checks when the cart/checkout UI exists.
+    const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
+    const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
+    if (!inCartOrCheckout || !checkoutButton) return;
     refreshCartState(() => {
       manageCheckoutButton();
       updateCheckoutOverlay();
