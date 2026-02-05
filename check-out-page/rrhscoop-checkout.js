@@ -1,0 +1,192 @@
+/* rrhscoop-checkout.js - extracted checkout & cart logic */
+(function () {
+  const RRHS_DEBUG =
+    (typeof window !== "undefined" &&
+      (window.RRHS_DEBUG === true ||
+        (typeof localStorage !== "undefined" &&
+          localStorage.getItem("RRHS_DEBUG") === "1"))) ||
+    false;
+
+  const log = (...args) => {
+    if (RRHS_DEBUG) console.log(...args);
+  };
+
+  /* Modal utilities */
+  function createModal(message) {
+    const existing = document.getElementById('rrhs-error-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'rrhs-error-modal';
+    modal.style.cssText = `position: fixed !important; top: 20px !important; left: 50% !important; transform: translateX(-50%) translateY(-100vh) !important; width: 90%; max-width: 600px; background: #670000; color: #EBEBE2; padding: 16px 20px 16px 48px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); z-index: 999999 !important; display: flex; align-items: center;`;
+    modal.innerHTML = `
+      <button id="rrhs-modal-close" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: transparent; color: #EBEBE2; border: none; padding: 0; cursor: pointer; font-size: 20px; line-height: 1; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease, opacity 0.2s ease; opacity: 0.8;" onmouseover="this.style.transform='translateY(-50%) rotate(90deg)'; this.style.opacity='1';" onmouseout="this.style.transform='translateY(-50%) rotate(0deg)'; this.style.opacity='0.8';">×</button>
+      <div style="font-size: 0.95em; font-weight: 500; flex: 1;">${message}</div>
+    `;
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => { requestAnimationFrame(() => { modal.style.transition = 'transform 0.4s ease'; modal.style.transform = 'translateX(-50%) translateY(0)'; }); });
+    if (!document.getElementById('rrhs-modal-styles')) {
+      const style = document.createElement('style');
+      style.id = 'rrhs-modal-styles';
+      style.textContent = `#rrhs-error-modal{position:fixed!important;top:130px!important;}@keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-8px);}20%,40%,60%,80%{transform:translateX(8px);}}`;
+      document.head.appendChild(style);
+    }
+    const closeModal = () => { modal.style.transition = 'transform 0.3s ease'; modal.style.transform = 'translateX(-50%) translateY(-100vh)'; setTimeout(() => modal.remove(), 300); };
+    document.getElementById('rrhs-modal-close').addEventListener('click', closeModal);
+    setTimeout(closeModal, 5000);
+    return modal;
+  }
+
+  function shakeElement(element) {
+    element.style.animation = 'shake 0.5s ease';
+    setTimeout(() => { element.style.animation = ''; }, 500);
+  }
+
+  /* Room autocomplete + continue validation */
+  const ROOM_DATA = [
+    { room: "1308", teacher: "Dinh Nguyen" },
+    { room: "1309", teacher: "Katie Lawson" },
+    { room: "1312", teacher: "Eric Oliver" },
+    { room: "1313", teacher: "Julile Harrison" },
+    { room: "1314", teacher: "Eric Chaverria" },
+    { room: "1316", teacher: "Elizabeth Bell" },
+    { room: "1317", teacher: "Gin Dreyer" },
+    { room: "1318", teacher: "Ms. Brekke" },
+    { room: "1319", teacher: "Stacey Dry" }
+  ];
+
+  function initRoomAutocomplete() {
+    refreshCartState(() => {
+      const input = document.querySelector('input[name="z7rty2b"]');
+      if (!input || input.dataset.autocompleteInit) return;
+      input.dataset.autocompleteInit = "true";
+      const section = input.closest(".ec-cart-step__section"); if (section) section.style.transition = "padding-bottom 0.2s ease";
+      const wrapper = document.createElement("div"); wrapper.style.position = "relative"; wrapper.style.width = "100%"; input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
+
+      const dropdown = document.createElement("div"); dropdown.style.cssText = `position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-top:none;max-height:250px;overflow-y:auto;z-index:999999;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1);`;
+      wrapper.appendChild(dropdown);
+
+      const errorMsg = document.createElement("div"); errorMsg.style.cssText = `color:#d32f2f;font-size:.875em;margin-top:4px;display:none;outline:none!important;border:none!important;box-shadow:none!important;pointer-events:none;`;
+      errorMsg.textContent = "We couldn't find that room. Please select a valid room from the list."; errorMsg.tabIndex = -1; wrapper.appendChild(errorMsg);
+
+      function updateWrapperPadding(show) { const sec = input.closest(".ec-cart-step__section"); if (!sec) return; if (show) { const dataLength = rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther ? 1 : ROOM_DATA.length; const dropdownHeight = Math.min(dataLength * 65, 250); sec.style.paddingBottom = dropdownHeight + "px"; } else { sec.style.paddingBottom = "0px"; } }
+
+      function filterRooms(query) { if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) { return [{ room: "Room number already specified on Valentine's Order, select this option and continue", teacher: "" }]; } const q = (query || "").toLowerCase(); return ROOM_DATA.filter(r => r.room.toLowerCase().includes(q) || r.teacher.toLowerCase().includes(q)); }
+
+      function validateRoom(value, showError = false) { const v = (value || "").trim(); let isValid = false; if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) { isValid = (v === "Room number already specified on Valentine's Order, select this option and continue"); } else { isValid = ROOM_DATA.some(r => r.room === v); } const isPartialMatch = v && (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther ? false : ROOM_DATA.some(r => r.room.startsWith(v))); input.style.outline = "none"; input.style.boxShadow = "none"; wrapper.style.outline = "none"; wrapper.style.boxShadow = "none"; if (showError && v && !isValid && !isPartialMatch) { input.style.border = "2px solid #d32f2f"; input.style.backgroundColor = "#ffebee"; errorMsg.style.display = "block"; return false; } else { input.style.border = "1px solid #ddd"; input.style.backgroundColor = ""; errorMsg.style.display = "none"; return true; } }
+
+      function renderDropdown(rooms) { if (!rooms || rooms.length === 0) { dropdown.style.display = "none"; updateWrapperPadding(false); return; } dropdown.innerHTML = rooms.map(r => `\n          <div class="room-option" data-room="${r.room}" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;">\n            <div style="font-weight:600;margin-bottom:2px;">${r.room.startsWith("Room") ? r.room : `Room ${r.room}`}</div>\n            <div style="font-size:.9em;color:#666;">${r.teacher}</div>\n          </div>\n        `).join(""); dropdown.style.display = "block"; updateWrapperPadding(true); dropdown.querySelectorAll(".room-option").forEach(opt => { opt.addEventListener("mouseenter", () => (opt.style.backgroundColor = "#f5f5f5")); opt.addEventListener("mouseleave", () => (opt.style.backgroundColor = "white")); opt.addEventListener("click", () => { const room = opt.dataset.room || ""; input.value = room; input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); dropdown.style.display = "none"; updateWrapperPadding(false); validateRoom(room); }); }); }
+
+      input.addEventListener("input", (e) => { const val = e.target.value || ""; validateRoom(val, false); if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) { renderDropdown([{ room: "Room number already specified on Valentine's Order, select this option and continue", teacher: "" }]); } else { renderDropdown(val.length === 0 ? ROOM_DATA : filterRooms(val)); } });
+
+      input.addEventListener("focus", () => { validateRoom(input.value, false); if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) { renderDropdown([{ room: "Room number already specified on Valentine's Order, select this option and continue", teacher: "" }]); } else { renderDropdown((input.value || "").length === 0 ? ROOM_DATA : filterRooms(input.value)); } });
+
+      input.addEventListener("blur", () => validateRoom(input.value, true));
+      document.addEventListener("click", (e) => { if (!wrapper.contains(e.target)) { dropdown.style.display = "none"; updateWrapperPadding(false); } });
+      validateRoom(input.value);
+    });
+  }
+
+  function initRoomContinueButton() {
+    const continueBtn = document.querySelector('.form-control--button button.form-control__button');
+    if (!continueBtn || continueBtn.dataset.rrhsValidation) return;
+    continueBtn.dataset.rrhsValidation = "true";
+    continueBtn.addEventListener('click', (e) => {
+      const input = document.querySelector('input[name="z7rty2b"]');
+      if (!input) return;
+      const value = (input.value || "").trim();
+      let isValid = false;
+      if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
+        isValid = (value === "Room number already specified on Valentine's Order, select this option and continue");
+      } else {
+        isValid = ROOM_DATA.some(r => r.room === value);
+      }
+      if (!isValid) {
+        e.preventDefault(); e.stopPropagation(); shakeElement(continueBtn);
+        const wrapper = input.parentElement; const errorMsg = wrapper ? wrapper.querySelector('div[style*="color: rgb(211, 47, 47)"]') : null; if (errorMsg) errorMsg.style.display = "block";
+        input.style.border = "2px solid #d32f2f"; input.style.backgroundColor = "#ffebee"; createModal('Please enter a valid room number from the list.');
+      }
+    });
+  }
+
+  /* Checkout time restriction and cart state */
+  const CHECKOUT_ALWAYS_ALLOW = false;
+  const REFERENCE_A_DAY = '2026-01-27';
+  const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
+  const FLOWERS_SKU = "703_sku";
+  const rrhsCartState = { ready: false, hasFlowers: false, hasOther: false, lastUpdated: 0 };
+
+  function isFlowersItem(item) { const p = item && item.product; if (!p) return false; return (p.sku === FLOWERS_SKU) && (p.name === FLOWERS_PRODUCT_NAME); }
+
+  function computeCartFlags(cart) { const items = (cart && Array.isArray(cart.items)) ? cart.items : []; const hasFlowers = items.some(isFlowersItem); const hasOther = items.some((it) => { if (!it || !it.product) return false; return !isFlowersItem(it); }); rrhsCartState.ready = true; rrhsCartState.hasFlowers = hasFlowers; rrhsCartState.hasOther = hasOther; rrhsCartState.lastUpdated = Date.now(); }
+
+  function refreshCartState(cb) {
+    try {
+      if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.get !== "function") { rrhsCartState.ready = false; rrhsCartState.hasFlowers = false; rrhsCartState.hasOther = false; rrhsCartState.lastUpdated = Date.now(); if (typeof cb === "function") cb(); return; }
+      Ecwid.Cart.get(function(cart) { computeCartFlags(cart); if (typeof cb === "function") cb(); });
+    } catch (e) { rrhsCartState.ready = false; rrhsCartState.hasFlowers = false; rrhsCartState.hasOther = false; rrhsCartState.lastUpdated = Date.now(); if (typeof cb === "function") cb(); }
+  }
+
+  function getRestrictionMessage() {
+    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+      return `Only <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;"> Valentine’s Day Flowers </a> can be ordered at any time. All other items are available during 1st and 2nd period only.`;
+    }
+    return "We’re sorry, we do not accept orders at this time.";
+  }
+
+  function isADay() {
+    const now = new Date(); const referenceDate = new Date(REFERENCE_A_DAY + 'T00:00:00'); now.setHours(0,0,0,0); referenceDate.setHours(0,0,0,0); let dayCount = 0; const current = new Date(referenceDate);
+    while (current < now) { current.setDate(current.getDate() + 1); const dayOfWeek = current.getDay(); if (dayOfWeek !== 0 && dayOfWeek !== 6) { dayCount++; } }
+    return dayCount % 2 === 0;
+  }
+
+  function checkOrderingWindowBase() {
+    if (CHECKOUT_ALWAYS_ALLOW) return true; const now = new Date(); const day = now.getDay(); const hours = now.getHours(); const minutes = now.getMinutes(); const timeInMinutes = hours * 60 + minutes; if (day === 0 || day === 6) return false; if (!isADay()) return false; const inWindow1 = timeInMinutes >= 540 && timeInMinutes <= 620; const inWindow2 = timeInMinutes >= 650 && timeInMinutes <= 715; return inWindow1 || inWindow2;
+  }
+
+  function checkOrderingWindow() { if (rrhsCartState.hasFlowers && !rrhsCartState.hasOther) return true; return checkOrderingWindowBase(); }
+
+  function manageCheckoutButton() {
+    const button = document.querySelector('.ec-cart__button--checkout button'); if (!button) return; const isAllowed = checkOrderingWindow(); if (isAllowed) { button.disabled = false; button.style.opacity = '1'; button.style.cursor = 'pointer'; button.title = ''; if (button.dataset.rrhsClickHandler && button._rrhsClickHandler) { button.removeEventListener('click', button._rrhsClickHandler, true); delete button.dataset.rrhsClickHandler; delete button._rrhsClickHandler; } } else { button.disabled = true; button.style.opacity = '0.5'; button.style.cursor = 'not-allowed'; button.title = getRestrictionMessage(); if (!button.dataset.rrhsClickHandler) { button.dataset.rrhsClickHandler = "true"; button._rrhsClickHandler = (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); shakeElement(button); createModal(getRestrictionMessage()); return false; }; button.addEventListener('click', button._rrhsClickHandler, true); } }
+  }
+
+  function wrapCheckoutButton() {
+    const button = document.querySelector('.ec-cart__button--checkout button'); if (!button || button.dataset.rrhsWrapped) return; const parent = button.parentElement; if (!parent) return; const wrapper = document.createElement('div'); wrapper.style.cssText = 'position: relative; display: inline-block; width: 100%;'; wrapper.dataset.rrhsWrapper = 'true'; parent.insertBefore(wrapper, button); wrapper.appendChild(button);
+    const overlay = document.createElement('div'); overlay.style.cssText = `position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: not-allowed; display: none;`; overlay.dataset.rrhsOverlayBtn = 'true'; wrapper.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); shakeElement(button); createModal(getRestrictionMessage()); }); button.dataset.rrhsWrapped = 'true';
+  }
+
+  function updateCheckoutOverlay() { const button = document.querySelector('.ec-cart__button--checkout button'); const overlay = document.querySelector('[data-rrhs-overlay-btn="true"]'); if (!button || !overlay) return; const isAllowed = checkOrderingWindow(); if (isAllowed) { overlay.style.display = 'none'; } else { overlay.style.display = 'block'; } }
+
+  let rrhsCartChangedListenerAdded = false;
+  function initCartChangedListener() {
+    if (rrhsCartChangedListenerAdded) return; const ecwid = window.Ecwid; if (ecwid && ecwid.OnCartChanged && typeof ecwid.OnCartChanged.add === "function") { rrhsCartChangedListenerAdded = true; ecwid.OnCartChanged.add(function(cart) { computeCartFlags(cart); wrapCheckoutButton(); manageCheckoutButton(); updateCheckoutOverlay(); }); }
+  }
+
+  function boot() {
+    try {
+      log('RRHS checkout boot');
+      initCartChangedListener();
+      initRoomAutocomplete();
+      initRoomContinueButton();
+      wrapCheckoutButton();
+      const checkoutButton = document.querySelector('.ec-cart__button--checkout button'); if (checkoutButton) { refreshCartState(() => { manageCheckoutButton(); updateCheckoutOverlay(); }); }
+    } catch (e) { log('RRHS checkout boot error', e); }
+  }
+
+  let bootScheduled = false;
+  const raf = (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") ? window.requestAnimationFrame.bind(window) : (fn) => setTimeout(fn, 0);
+  const scheduleBoot = () => { if (bootScheduled) return; bootScheduled = true; raf(() => { bootScheduled = false; boot(); }); };
+
+  scheduleBoot();
+  const observer = new MutationObserver(scheduleBoot);
+  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
+
+  setInterval(() => {
+    const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
+    const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
+    if (!inCartOrCheckout || !checkoutButton) return;
+    refreshCartState(() => { manageCheckoutButton(); updateCheckoutOverlay(); });
+  }, 60000);
+
+})();
