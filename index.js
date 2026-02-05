@@ -23,8 +23,12 @@
   const base = baseForCurrentScript();
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
+  const agent = new URL('agent/rrhscoop-assistant.js', base).href;
 
-  // Load visuals first, then checkout (order doesn't strictly matter but keeps things deterministic)
-  loadScript(visuals).catch(() => {}).then(() => { loadScript(checkout).catch(() => {}); });
+  // Load visuals -> checkout -> agent (sequential to keep deterministic ordering)
+  loadScript(visuals)
+    .catch(() => {})
+    .then(() => loadScript(checkout).catch(() => {}))
+    .then(() => loadScript(agent).catch(() => {}));
 
 })();
