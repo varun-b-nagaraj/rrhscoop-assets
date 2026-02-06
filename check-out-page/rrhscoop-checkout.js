@@ -109,7 +109,7 @@
   }
 
   /* Checkout time restriction and cart state */
-  const CHECKOUT_ALWAYS_ALLOW = false;
+  const CHECKOUT_ALWAYS_ALLOW = true;
   const REFERENCE_A_DAY = '2026-01-27';
   const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
   const FLOWERS_SKU = "703_sku";

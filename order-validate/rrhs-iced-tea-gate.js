@@ -19,7 +19,8 @@
   // ---------------------------
   // Config (edit these)
   // ---------------------------
-  const API_BASE = "https://order-enforcement.vercel.app/";
+  // Keep as an origin (no trailing slash). Example: "https://order-enforcement.vercel.app"
+  const API_BASE = "https://order-enforcement.vercel.app";
   const ICED_TEA_PRODUCT_ID = 814252012; // replace with real product id
   const EMPLOYEE_FIELD_NAME = "pvhvhag";
   const EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
@@ -103,9 +104,13 @@
       return;
     }
 
-    if (!state.overlayBlockedByUs) return;
+    // Only undo what we did (avoid collisions with other checkout logic using the same overlay).
+    if (overlay.dataset.rrhsTeaGate !== "blocked") return;
+
     state.overlayBlockedByUs = false;
-    overlay.style.display = state.overlayPrevDisplay == null ? "" : state.overlayPrevDisplay;
+    const checkoutButton = document.querySelector(".ec-cart__button--checkout button");
+    const blockedElsewhere = !!(checkoutButton && checkoutButton.disabled);
+    overlay.style.display = blockedElsewhere ? "block" : (state.overlayPrevDisplay == null ? "" : state.overlayPrevDisplay);
     state.overlayPrevDisplay = null;
     delete overlay.dataset.rrhsTeaGate;
     overlay.setAttribute("aria-hidden", "true");
@@ -237,6 +242,19 @@
     });
 
     if (!res.ok) {
+      if (res.status === 429) {
+        const retryAfter = safeTrim(res.headers && res.headers.get ? res.headers.get("Retry-After") : "");
+        let retryAfterSeconds = parseInt(retryAfter, 10);
+        if (!Number.isFinite(retryAfterSeconds)) {
+          const retryAtMs = Date.parse(retryAfter);
+          if (Number.isFinite(retryAtMs)) retryAfterSeconds = Math.max(1, Math.ceil((retryAtMs - Date.now()) / 1000));
+        }
+        if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds <= 0) retryAfterSeconds = 30;
+        const err = new Error("rate_limited");
+        err.code = "rate_limited";
+        err.retryAfterSeconds = retryAfterSeconds;
+        throw err;
+      }
       throw new Error(`Eligibility HTTP ${res.status}`);
     }
 
@@ -308,7 +326,14 @@
       const decision = await postEligibility(employeeId, email);
       if (!decision) return; // stale response
       applyDecision(decision);
-    } catch (_) {
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      if (err && err.code === "rate_limited") {
+        const seconds = Number(err.retryAfterSeconds) || 30;
+        setOverlayBlocked(true);
+        showBanner(`Too many checks—wait ${seconds}s and try again.`);
+        return;
+      }
       setOverlayBlocked(true);
       showBanner("Could not verify eligibility. Try again.");
     }
