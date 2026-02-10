@@ -71,7 +71,7 @@ RRHS_OVERRIDES.setSimTime(null); // back to real clock
 **Change delivery-window close delta (minutes before period end):**
 
 ```js
-RRHS_OVERRIDES.setCloseDeltaMinutes(20); // default behavior
+RRHS_OVERRIDES.setCloseDeltaMinutes(15); // default behavior (ordering closes 15 min before bell)
 ```
 
 **Override bell schedule base periods (periods 5–8 mirror via p-4):**

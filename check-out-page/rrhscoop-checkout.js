@@ -353,9 +353,9 @@
   }
 
   const BASE_PERIOD_WINDOWS = Object.freeze({
-    1: { start: "09:00", end: "10:40" },
+    1: { start: "09:00", end: "10:32" },
     2: { start: "10:40", end: "12:12" },
-    3: { start: "12:12", end: "13:59" },
+    3: { start: "12:20", end: "14:39" },
     4: { start: "14:47", end: "16:20" }
   });
 
@@ -468,7 +468,8 @@
     const endMin = parseTimeToMinutes(w.end);
     if (startMin == null || endMin == null) return null;
     const closeDelta = rrhsGetCloseDeltaMinutesOverride();
-    const closeMin = Math.max(startMin, endMin - (closeDelta == null ? 20 : closeDelta));
+    // Ordering closes N minutes before the bell (default 15).
+    const closeMin = Math.max(startMin, endMin - (closeDelta == null ? 15 : closeDelta));
     return { startMin, endMin, closeMin };
   }
 
@@ -509,7 +510,7 @@
       help: () => {
         return {
           setAlwaysAllow: "RRHS_OVERRIDES.setAlwaysAllow(true|false)",
-          setCloseDeltaMinutes: "RRHS_OVERRIDES.setCloseDeltaMinutes(20)",
+          setCloseDeltaMinutes: "RRHS_OVERRIDES.setCloseDeltaMinutes(15)",
           setBasePeriodWindow: "RRHS_OVERRIDES.setBasePeriodWindow(1, '09:00', '10:40')",
           setSimDayType: "RRHS_OVERRIDES.setSimDayType('A'|'B'|null)",
           setSimTime: "RRHS_OVERRIDES.setSimTime('HH:MM'|null)",
@@ -830,7 +831,7 @@
         message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
       };
     }
-    if (nowMin > w.closeMin) {
+    if (nowMin >= w.closeMin) {
       return {
         ok: false,
         message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
@@ -1332,7 +1333,7 @@
     return allowedPeriods.some((p) => {
       const w = getPeriodWindow(p);
       if (!w) return false;
-      return nowMin >= w.startMin && nowMin <= w.closeMin;
+      return nowMin >= w.startMin && nowMin < w.closeMin;
     });
   }
 
