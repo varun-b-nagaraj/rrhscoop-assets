@@ -12,6 +12,14 @@ When you embed `index.js`, it loads `rrhs-runtime.js` first. This provides a sha
 
 File: `check-out-page/rrhscoop-checkout.js`
 
+### Ordering Period Matrix (Allowed Periods)
+
+To restrict (or expand) which class periods can place orders, edit the matrix in:
+
+- `check-out-page/rrhscoop-checkout.js` → `RRHS_ORDERING_PERIOD_MATRIX`
+
+Default behavior is **only Period 1–2 on A days** and **only Period 5–6 on B days**. To add more later, extend the arrays with period numbers `1`–`8`.
+
 ### Room Schedule CSV
 
 The checkout script loads room/teacher schedule data from:

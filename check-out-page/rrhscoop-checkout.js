@@ -353,6 +353,44 @@
     4: { start: "14:47", end: "16:20" }
   });
 
+  // ---------------------------
+  // Ordering periods (edit this "matrix")
+  // ---------------------------
+  // Controls which period numbers (1–8) are eligible for ordering, by day type.
+  // Default: only the first two periods (A: 1–2, B: 5–6).
+  //
+  // To expand later, edit these arrays (e.g. add 3/4 and 7/8 when needed).
+  const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
+    A: [1, 2],
+    B: [5, 6]
+  });
+
+  function rrhsNormalizePeriodList(list) {
+    if (!Array.isArray(list)) return [];
+    const uniq = new Set();
+    list.forEach((v) => {
+      const n = Math.floor(Number(v));
+      if (!Number.isFinite(n)) return;
+      if (n < 1 || n > 8) return;
+      uniq.add(n);
+    });
+    return Array.from(uniq).sort((a, b) => a - b);
+  }
+
+  function rrhsGetOrderingMatrix() {
+    const w =
+      (typeof window !== "undefined" &&
+        window.RRHS_ORDERING_PERIOD_MATRIX &&
+        typeof window.RRHS_ORDERING_PERIOD_MATRIX === "object")
+        ? window.RRHS_ORDERING_PERIOD_MATRIX
+        : RRHS_ORDERING_PERIOD_MATRIX;
+
+    return {
+      A: rrhsNormalizePeriodList(w.A),
+      B: rrhsNormalizePeriodList(w.B)
+    };
+  }
+
   const RRHS_SESSION_OVERRIDE_KEYS = Object.freeze({
     alwaysAllow: "RRHS_ALWAYS_ALLOW",
     closeDeltaMinutes: "RRHS_CLOSE_DELTA_MINUTES",
@@ -560,7 +598,10 @@
   installRrhsDevtoolsOverrides();
 
   function getAllowedPeriodsForDay(dayType) {
-    return dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8];
+    const dt = dayType === "A" ? "A" : "B";
+    const matrix = rrhsGetOrderingMatrix();
+    const allowed = matrix[dt] || [];
+    return allowed;
   }
 
   function rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin = null) {
@@ -587,9 +628,36 @@
 
   function rrhsGetCurrentOrNextPeriodForToday(nowMin = null) {
     const dayType = getTodayDayType();
-    const base = rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin);
-    if (!base) return null;
-    return dayType === "A" ? base : base + 4;
+    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    if (!allowedPeriods || allowedPeriods.length === 0) return null;
+
+    const minutes = nowMin == null ? getNowMinutes(new Date()) : Number(nowMin);
+    if (!Number.isFinite(minutes)) return null;
+
+    // Prefer an allowed period that is currently in-session (start..end)
+    for (let i = 0; i < allowedPeriods.length; i++) {
+      const p = allowedPeriods[i];
+      const w = getPeriodWindow(p);
+      if (!w) continue;
+      if (minutes >= w.startMin && minutes < w.endMin) return p;
+    }
+
+    // Otherwise, choose the next upcoming allowed period start
+    let next = null;
+    let nextStart = Infinity;
+    for (let i = 0; i < allowedPeriods.length; i++) {
+      const p = allowedPeriods[i];
+      const w = getPeriodWindow(p);
+      if (!w) continue;
+      if (minutes < w.startMin && w.startMin < nextStart) {
+        nextStart = w.startMin;
+        next = p;
+      }
+    }
+    if (next != null) return next;
+
+    // After the last allowed period, keep it stable on the last allowed period
+    return allowedPeriods[allowedPeriods.length - 1];
   }
 
   function resolveTeacherName(value) {
@@ -1184,12 +1252,18 @@
       if (!validation.ok && validation.message) return validation.message;
     }
 
-    const w1 = getPeriodWindow(1);
-    const w2 = getPeriodWindow(2);
-    const w3 = getPeriodWindow(3);
-    const w4 = getPeriodWindow(4);
-    if (w1 && w2 && w3 && w4) {
-      return `Ordering is available during delivery windows only:<br/>Period 1/5: ${formatMinutes(w1.startMin)}–${formatMinutes(w1.closeMin)}<br/>Period 2/6: ${formatMinutes(w2.startMin)}–${formatMinutes(w2.closeMin)}<br/>Period 3/7: ${formatMinutes(w3.startMin)}–${formatMinutes(w3.closeMin)}<br/>Period 4/8: ${formatMinutes(w4.startMin)}–${formatMinutes(w4.closeMin)}`;
+    const dayType = getTodayDayType();
+    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    const lines = (allowedPeriods || [])
+      .map((p) => {
+        const w = getPeriodWindow(p);
+        if (!w) return null;
+        return `Period ${p}: ${formatMinutes(w.startMin)}–${formatMinutes(w.closeMin)}`;
+      })
+      .filter(Boolean);
+
+    if (lines.length) {
+      return `Ordering is available during delivery windows only:<br/>${lines.join("<br/>")}`;
     }
 
     return "We’re sorry, we do not accept orders at this time.";
@@ -1220,9 +1294,10 @@
     const now = new Date();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
-    const basePeriods = [1, 2, 3, 4];
     const nowMin = getNowMinutes(now);
-    return basePeriods.some((p) => {
+    const dayType = getTodayDayType();
+    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    return allowedPeriods.some((p) => {
       const w = getPeriodWindow(p);
       if (!w) return false;
       return nowMin >= w.startMin && nowMin <= w.closeMin;
