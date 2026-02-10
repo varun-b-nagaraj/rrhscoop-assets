@@ -1235,6 +1235,8 @@
         return;
       }
 
+      // VALIDATION DISABLED - uncomment to re-enable
+      /*
       const validation = getSelectionValidation();
       if (!validation.ok) {
         e.preventDefault();
@@ -1243,6 +1245,7 @@
 
         createModal(validation.message || "Please select a room from the list.");
       }
+      */
     });
   }
 
