@@ -11,6 +11,49 @@
     if (RRHS_DEBUG) console.log(...args);
   };
 
+  const rrhsUiRefreshers = [];
+  let rrhsLastDayType = null;
+  let rrhsLastOverrideSignature = null;
+
+  function rrhsGetOverrideSignature() {
+    const ss = rrhsGetSessionStorage();
+    if (!ss) return null;
+    const alwaysAllow = ss.getItem("RRHS_ALWAYS_ALLOW");
+    const closeDelta = ss.getItem("RRHS_CLOSE_DELTA_MINUTES");
+    const baseWindows = ss.getItem("RRHS_BASE_PERIOD_WINDOWS");
+    return `${alwaysAllow || ""}|${closeDelta || ""}|${baseWindows || ""}`;
+  }
+
+  function rrhsInvalidateDerivedSchedule() {
+    rrhsDerivedSchedule.dayType = null;
+    rrhsDerivedSchedule.teacherNames = [];
+    rrhsDerivedSchedule.teacherToEntries = Object.create(null);
+    rrhsDerivedSchedule.roomToEntries = Object.create(null);
+    rrhsDerivedSchedule.allEntries = [];
+  }
+
+  function rrhsRefreshEverything(reason = "") {
+    try {
+      const todayDay = getTodayDayType();
+      if (rrhsLastDayType !== todayDay) {
+        rrhsLastDayType = todayDay;
+        rrhsInvalidateDerivedSchedule();
+      }
+
+      const sig = rrhsGetOverrideSignature();
+      if (sig != null && rrhsLastOverrideSignature !== sig) {
+        rrhsLastOverrideSignature = sig;
+      }
+
+      rrhsRecheckCheckoutAvailability();
+      rrhsUiRefreshers.forEach((fn) => {
+        try {
+          if (typeof fn === "function") fn(reason);
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
   const RRHS_ASSET_BASE_URL = (() => {
     try {
       const cur = document.currentScript;
@@ -392,7 +435,7 @@
       setAlwaysAllow: (value) => {
         if (!ss) return false;
         ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow, value ? "1" : "0");
-        rrhsRecheckCheckoutAvailability();
+        rrhsRefreshEverything("override:setAlwaysAllow");
         return true;
       },
       setCloseDeltaMinutes: (minutes) => {
@@ -400,7 +443,7 @@
         const n = Number(minutes);
         if (!Number.isFinite(n)) return false;
         ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes, String(Math.floor(n)));
-        rrhsRecheckCheckoutAvailability();
+        rrhsRefreshEverything("override:setCloseDeltaMinutes");
         return true;
       },
       setBasePeriodWindow: (basePeriod, startHHMM, endHHMM) => {
@@ -412,7 +455,7 @@
         const current = rrhsGetBaseWindowsOverride() || {};
         current[String(b)] = { start: String(startHHMM), end: String(endHHMM) };
         ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows, JSON.stringify(current));
-        rrhsRecheckCheckoutAvailability();
+        rrhsRefreshEverything("override:setBasePeriodWindow");
         return true;
       },
       reset: () => {
@@ -420,7 +463,7 @@
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
-        rrhsRecheckCheckoutAvailability();
+        rrhsRefreshEverything("override:reset");
         return true;
       }
     };
@@ -620,6 +663,15 @@
       let ignoreInput = false;
       let blurTimer = null;
       let lastRenderedQuery = null;
+
+      if (input.dataset.rrhsUiRefresher !== "1") {
+        input.dataset.rrhsUiRefresher = "1";
+        rrhsUiRefreshers.push(() => {
+          if (document.activeElement !== input) return;
+          lastRenderedQuery = null;
+          handleQueryChange();
+        });
+      }
 
       function updateWrapperPadding(show, itemCount) {
         const sec = input.closest(".ec-cart-step__section");
@@ -1111,10 +1163,7 @@
     const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
     const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
     if (!inCartOrCheckout || !checkoutButton) return;
-    refreshCartState(() => {
-      manageCheckoutButton();
-      updateCheckoutOverlay();
-    });
+    rrhsRefreshEverything("tick:1m");
   }, 60000);
 
 })();

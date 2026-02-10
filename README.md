@@ -1,0 +1,52 @@
+# rrhscoop-assets
+
+Static assets + client-side scripts used by the RRHS COOP Ecwid storefront embed.
+
+## Checkout Script
+
+File: `check-out-page/rrhscoop-checkout.js`
+
+### Room Schedule CSV
+
+The checkout script loads room/teacher schedule data from:
+
+- `check-out-page/schedule_processed.xlsx - Room Schedule.csv`
+
+If you host these assets on Vercel (or anywhere else) and see a 404 for the CSV, you can override the URL from DevTools:
+
+```js
+window.RRHS_ROOM_SCHEDULE_CSV_URL = "https://<your-domain>/check-out-page/schedule_processed.xlsx%20-%20Room%20Schedule.csv";
+```
+
+### Session-Only DevTools Overrides
+
+The checkout script exposes `window.RRHS_OVERRIDES` for **your current tab only** (stored in `sessionStorage`). These are intended for admins/testing from DevTools.
+
+```js
+RRHS_OVERRIDES.help();
+RRHS_OVERRIDES.get();
+RRHS_OVERRIDES.reset();
+```
+
+**Always allow checkout (bypass delivery windows):**
+
+```js
+RRHS_OVERRIDES.setAlwaysAllow(true);
+RRHS_OVERRIDES.setAlwaysAllow(false);
+```
+
+**Change delivery-window close delta (minutes before period end):**
+
+```js
+RRHS_OVERRIDES.setCloseDeltaMinutes(20); // default behavior
+```
+
+**Override bell schedule base periods (periods 5–8 mirror via p-4):**
+
+```js
+RRHS_OVERRIDES.setBasePeriodWindow(1, "09:00", "10:40");
+RRHS_OVERRIDES.setBasePeriodWindow(2, "10:40", "12:12");
+RRHS_OVERRIDES.setBasePeriodWindow(3, "12:12", "13:59");
+RRHS_OVERRIDES.setBasePeriodWindow(4, "14:47", "16:20");
+```
+
