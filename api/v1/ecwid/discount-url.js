@@ -265,6 +265,16 @@ function setCached(key, responseObj) {
 }
 
 module.exports = async (req, res) => {
+  // LOG EVERYTHING (even GET / OPTIONS / failures)
+  console.log(
+    JSON.stringify({
+      msg: 'discount_url_hit',
+      method: req.method,
+      url: req.url,
+      ua: req.headers?.['user-agent'] || null,
+    })
+  );
+
   const startedAt = nowMs();
 
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
