@@ -10,6 +10,7 @@
  * Purpose: UI-only guardrail enforcing "one iced tea per employee" by blocking checkout until eligibility
  * is verified. Backend webhook must still enforce the rule for real.
  */
+/*
 (() => {
   "use strict";
 
@@ -447,3 +448,4 @@
   // Boot
   waitForEcwidAndInit();
 })();
+*/
