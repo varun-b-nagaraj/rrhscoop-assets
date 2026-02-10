@@ -21,6 +21,17 @@
     nowMinutes: null // number (0..1439) | null
   };
 
+  function rrhsRunInBackground(fn, timeoutMs = 2000) {
+    if (typeof fn !== "function") return;
+    try {
+      if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(() => fn(), { timeout: Math.max(0, Number(timeoutMs) || 0) });
+        return;
+      }
+    } catch (e) {}
+    setTimeout(fn, 0);
+  }
+
   function rrhsGetOverrideSignature() {
     const ss = rrhsGetSessionStorage();
     if (!ss) return null;
@@ -420,10 +431,25 @@
       const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
       if (!inCartOrCheckout || !checkoutButton) return;
-      refreshCartState(() => {
-        manageCheckoutButton();
-        updateCheckoutOverlay();
-      });
+      const now = Date.now();
+      const cartStale =
+        !rrhsCartState.ready ||
+        !rrhsCartState.lastUpdated ||
+        now - rrhsCartState.lastUpdated > 5 * 60 * 1000;
+
+      // Always update UI immediately using current cached state (fast path)
+      manageCheckoutButton();
+      updateCheckoutOverlay();
+
+      // If cart flags might be stale, refresh in the background and then re-apply
+      if (cartStale) {
+        rrhsRunInBackground(() => {
+          rrhsRefreshCartStateThrottled(() => {
+            manageCheckoutButton();
+            updateCheckoutOverlay();
+          });
+        });
+      }
     } catch (e) {}
   }
 
@@ -721,7 +747,10 @@
   }
 
   function initRoomAutocomplete() {
-    refreshCartState(() => {
+    const input0 = document.querySelector('input[name="z7rty2b"]');
+    if (!input0 || input0.dataset.autocompleteInit) return;
+
+    const proceed = () => {
       const input = document.querySelector('input[name="z7rty2b"]');
       if (!input || input.dataset.autocompleteInit) return;
       input.dataset.autocompleteInit = "true";
@@ -1024,7 +1053,13 @@
           log("Room schedule load error", e);
           createModal("Room schedule failed to load. Please refresh and try again.");
         });
-    });
+    };
+
+    if (rrhsCartState.ready) {
+      proceed();
+      return;
+    }
+    rrhsRefreshCartStateThrottled(proceed);
   }
 
   function initRoomContinueButton() {
@@ -1098,6 +1133,41 @@
       rrhsCartState.lastUpdated = Date.now();
       if (typeof cb === "function") cb();
     }
+  }
+
+  let rrhsCartFetchInFlight = false;
+  let rrhsCartFetchLastStartedAt = 0;
+  const rrhsCartFetchWaiters = [];
+  function rrhsRefreshCartStateThrottled(cb, minIntervalMs = 15000) {
+    const now = Date.now();
+
+    if (typeof cb === "function") rrhsCartFetchWaiters.push(cb);
+
+    if (rrhsCartFetchInFlight) return;
+
+    const interval = Math.max(0, Number(minIntervalMs) || 0);
+    const force = !rrhsCartState.ready;
+    if (!force && now - rrhsCartFetchLastStartedAt < interval) {
+      const waiters = rrhsCartFetchWaiters.splice(0, rrhsCartFetchWaiters.length);
+      waiters.forEach((fn) => {
+        try {
+          fn(false);
+        } catch (e) {}
+      });
+      return;
+    }
+
+    rrhsCartFetchInFlight = true;
+    rrhsCartFetchLastStartedAt = now;
+    refreshCartState(() => {
+      rrhsCartFetchInFlight = false;
+      const waiters = rrhsCartFetchWaiters.splice(0, rrhsCartFetchWaiters.length);
+      waiters.forEach((fn) => {
+        try {
+          fn(true);
+        } catch (e) {}
+      });
+    });
   }
 
   function getRestrictionMessage() {
@@ -1263,10 +1333,7 @@
       wrapCheckoutButton();
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
       if (checkoutButton) {
-        refreshCartState(() => {
-          manageCheckoutButton();
-          updateCheckoutOverlay();
-        });
+        rrhsRecheckCheckoutAvailability();
       }
     } catch (e) {
       log('RRHS checkout boot error', e);
@@ -1289,15 +1356,26 @@
   };
 
   scheduleBoot();
-  const observer = new MutationObserver(scheduleBoot);
-  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
+  const runtime = (typeof window !== "undefined") ? window.RRHS_RUNTIME : null;
+  if (runtime && typeof runtime.onDomChanged === "function") {
+    runtime.onDomChanged(scheduleBoot, { runNow: false });
+  } else {
+    const observer = new MutationObserver(scheduleBoot);
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
+  }
 
-  setInterval(() => {
+  const tick1m = () => {
     const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
     const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
     if (!inCartOrCheckout || !checkoutButton) return;
     rrhsRefreshEverything("tick:1m");
-  }, 60000);
+  };
+
+  if (runtime && typeof runtime.every === "function") {
+    runtime.every(60000, tick1m);
+  } else {
+    setInterval(tick1m, 60000);
+  }
 
 })();

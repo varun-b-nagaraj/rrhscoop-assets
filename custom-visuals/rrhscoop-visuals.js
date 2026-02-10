@@ -182,9 +182,14 @@
     raf(() => { bootScheduled = false; boot(); });
   };
 
-  scheduleBoot();
-  const observer = new MutationObserver(scheduleBoot);
-  if (document.body) observer.observe(document.body, { childList: true, subtree: true });
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
+  const runtime = (typeof window !== "undefined") ? window.RRHS_RUNTIME : null;
+  if (runtime && typeof runtime.onDomChanged === "function") {
+    runtime.onDomChanged(scheduleBoot, { runNow: true });
+  } else {
+    scheduleBoot();
+    const observer = new MutationObserver(scheduleBoot);
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
+  }
 
 })();

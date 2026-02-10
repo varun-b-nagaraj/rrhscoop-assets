@@ -487,7 +487,13 @@
     function schedulePings() {
       if (window.__RRHS_PING_TIMER__) return;
       pingEndpoints();
-      window.__RRHS_PING_TIMER__ = setInterval(pingEndpoints, PING_INTERVAL_MS);
+      const runtime = window.RRHS_RUNTIME;
+      if (runtime && typeof runtime.every === "function") {
+        // Use shared interval if available (fewer timers overall).
+        window.__RRHS_PING_TIMER__ = runtime.every(PING_INTERVAL_MS, pingEndpoints);
+      } else {
+        window.__RRHS_PING_TIMER__ = setInterval(pingEndpoints, PING_INTERVAL_MS);
+      }
     }
 
     schedulePings();
