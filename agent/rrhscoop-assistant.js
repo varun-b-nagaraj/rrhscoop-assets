@@ -1030,12 +1030,6 @@
             if (options && Object.keys(options).length) {
               product.options = options;
             }
-            if (a.selectedPrice != null) {
-              product.selectedPrice = String(a.selectedPrice);
-            }
-            if (a.recurringChargeSettings && typeof a.recurringChargeSettings === "object") {
-              product.recurringChargeSettings = a.recurringChargeSettings;
-            }
 
             console.log(`[RRHS Assistant] ➕ addProduct #${idx}`, {
               productId,
