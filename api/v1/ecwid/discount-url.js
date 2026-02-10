@@ -20,6 +20,21 @@ function nowMs() {
   return Date.now();
 }
 
+function envFlag(name, defaultValue) {
+  const raw = process.env[name];
+  if (raw == null) return defaultValue;
+  const v = String(raw).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(v)) return true;
+  if (['0', 'false', 'no', 'n', 'off'].includes(v)) return false;
+  return defaultValue;
+}
+
+// Toggle: disable all server-side cart modifications (surcharges/discounts).
+// Set `RRHS_CUSTOM_PRICING_ENABLED=true` to enable it.
+function customPricingEnabled() {
+  return envFlag('RRHS_CUSTOM_PRICING_ENABLED', false);
+}
+
 function getHeader(req, name) {
   const key = String(name || '').toLowerCase();
   const headers = req && req.headers ? req.headers : {};
@@ -282,6 +297,16 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return sendJson(res, 405, { surcharges: [] });
 
   if (!authOk(req)) return sendJson(res, 401, { surcharges: [] });
+
+  if (!customPricingEnabled()) {
+    console.log(
+      JSON.stringify({
+        msg: 'ecwid_discount_url_custom_pricing_disabled',
+        ts: new Date().toISOString(),
+      })
+    );
+    return sendJson(res, 200, { surcharges: [] });
+  }
 
   const payload = await readJsonBody(req);
   if (payload == null) {

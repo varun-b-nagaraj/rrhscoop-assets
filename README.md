@@ -102,6 +102,7 @@ This repo includes a production-ready Vercel Serverless Function that returns **
 
 ### Environment variables (optional)
 
+- `RRHS_CUSTOM_PRICING_ENABLED`: Set to `true` to enable server-calculated surcharges/discounts. Default: disabled (`false`).
 - `DISCOUNT_URL_SHARED_SECRET`: If set, require `?token=<secret>` (or `Authorization: Bearer <secret>` / `X-Discount-Secret`) on requests.
 - `EXCLUDED_COUPON_CODES`: Comma-separated list of coupon codes that disable the surcharge (default: `ECOMMERCE`).
 - `TARGET_PAYMENT_METHODS`: Comma-separated allowlist (exact string match). If set and not matched, returns no surcharge.

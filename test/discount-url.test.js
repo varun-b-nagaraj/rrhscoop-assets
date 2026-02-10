@@ -48,6 +48,17 @@ function restoreEnv(key, previousValue) {
 }
 
 test.describe('discountUrl', { concurrency: 1 }, () => {
+  let prevCustomPricingEnabled;
+
+  test.before(() => {
+    prevCustomPricingEnabled = process.env.RRHS_CUSTOM_PRICING_ENABLED;
+    process.env.RRHS_CUSTOM_PRICING_ENABLED = 'true';
+  });
+
+  test.after(() => {
+    restoreEnv('RRHS_CUSTOM_PRICING_ENABLED', prevCustomPricingEnabled);
+  });
+
   test('responds 204 to OPTIONS', async () => {
     const req = makeReq({ method: 'OPTIONS' });
     const res = makeRes();
@@ -99,6 +110,21 @@ test.describe('discountUrl', { concurrency: 1 }, () => {
       assert.deepEqual(json, { surcharges: [] });
     } finally {
       restoreEnv('DISCOUNT_URL_SHARED_SECRET', prev);
+    }
+  });
+
+  test('returns empty surcharges when custom pricing is disabled', async () => {
+    const prev = process.env.RRHS_CUSTOM_PRICING_ENABLED;
+    process.env.RRHS_CUSTOM_PRICING_ENABLED = 'false';
+    try {
+      const req = makeReq({ body: { cart: { subtotal: 100.0 } } });
+      const res = makeRes();
+      await handler(req, res);
+      assert.equal(res.statusCode, 200);
+      const json = parseJson(res);
+      assert.deepEqual(json, { surcharges: [] });
+    } finally {
+      restoreEnv('RRHS_CUSTOM_PRICING_ENABLED', prev);
     }
   });
 
