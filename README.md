@@ -35,6 +35,19 @@ RRHS_OVERRIDES.setAlwaysAllow(true);
 RRHS_OVERRIDES.setAlwaysAllow(false);
 ```
 
+**Simulate day/time (admin testing)**
+
+These are **in-memory only** and reset when you refresh the page.
+
+```js
+RRHS_OVERRIDES.setSimDayType("A"); // force A Day
+RRHS_OVERRIDES.setSimDayType("B"); // force B Day
+RRHS_OVERRIDES.setSimDayType(null); // back to real isADay()
+
+RRHS_OVERRIDES.setSimTime("10:15"); // force "now" to 10:15
+RRHS_OVERRIDES.setSimTime(null); // back to real clock
+```
+
 **Change delivery-window close delta (minutes before period end):**
 
 ```js
@@ -49,4 +62,3 @@ RRHS_OVERRIDES.setBasePeriodWindow(2, "10:40", "12:12");
 RRHS_OVERRIDES.setBasePeriodWindow(3, "12:12", "13:59");
 RRHS_OVERRIDES.setBasePeriodWindow(4, "14:47", "16:20");
 ```
-

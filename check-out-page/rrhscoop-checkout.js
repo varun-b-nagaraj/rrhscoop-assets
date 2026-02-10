@@ -15,6 +15,12 @@
   let rrhsLastDayType = null;
   let rrhsLastOverrideSignature = null;
 
+  // In-memory simulation overrides (reset on refresh)
+  const rrhsSim = {
+    dayType: null, // "A" | "B" | null
+    nowMinutes: null // number (0..1439) | null
+  };
+
   function rrhsGetOverrideSignature() {
     const ss = rrhsGetSessionStorage();
     if (!ss) return null;
@@ -26,6 +32,7 @@
 
   function rrhsInvalidateDerivedSchedule() {
     rrhsDerivedSchedule.dayType = null;
+    rrhsDerivedSchedule.period = null;
     rrhsDerivedSchedule.teacherNames = [];
     rrhsDerivedSchedule.teacherToEntries = Object.create(null);
     rrhsDerivedSchedule.roomToEntries = Object.create(null);
@@ -35,7 +42,11 @@
   function rrhsRefreshEverything(reason = "") {
     try {
       const todayDay = getTodayDayType();
-      if (rrhsLastDayType !== todayDay) {
+      const currentPeriod = rrhsGetCurrentOrNextPeriodForToday();
+      const dayOrPeriodChanged =
+        rrhsLastDayType !== todayDay ||
+        (rrhsDerivedSchedule.period !== null && rrhsDerivedSchedule.period !== currentPeriod);
+      if (dayOrPeriodChanged) {
         rrhsLastDayType = todayDay;
         rrhsInvalidateDerivedSchedule();
       }
@@ -43,6 +54,7 @@
       const sig = rrhsGetOverrideSignature();
       if (sig != null && rrhsLastOverrideSignature !== sig) {
         rrhsLastOverrideSignature = sig;
+        rrhsInvalidateDerivedSchedule();
       }
 
       rrhsRecheckCheckoutAvailability();
@@ -124,11 +136,13 @@
     dayType: null,
     teacher: null,
     period: null,
-    room: null
+    room: null,
+    mode: null
   };
 
   const rrhsDerivedSchedule = {
     dayType: null,
+    period: null,
     teacherNames: [],
     teacherToEntries: Object.create(null),
     roomToEntries: Object.create(null),
@@ -291,6 +305,7 @@
   }
 
   function getTodayDayType() {
+    if (rrhsSim.dayType === "A" || rrhsSim.dayType === "B") return rrhsSim.dayType;
     return isADay() ? "A" : "B";
   }
 
@@ -314,6 +329,9 @@
   }
 
   function getNowMinutes(date = new Date()) {
+    if (Number.isFinite(rrhsSim.nowMinutes)) {
+      return Math.max(0, Math.min(24 * 60 - 1, Math.floor(Number(rrhsSim.nowMinutes))));
+    }
     return date.getHours() * 60 + date.getMinutes();
   }
 
@@ -421,15 +439,24 @@
           setAlwaysAllow: "RRHS_OVERRIDES.setAlwaysAllow(true|false)",
           setCloseDeltaMinutes: "RRHS_OVERRIDES.setCloseDeltaMinutes(20)",
           setBasePeriodWindow: "RRHS_OVERRIDES.setBasePeriodWindow(1, '09:00', '10:40')",
+          setSimDayType: "RRHS_OVERRIDES.setSimDayType('A'|'B'|null)",
+          setSimTime: "RRHS_OVERRIDES.setSimTime('HH:MM'|null)",
+          setSimMinutes: "RRHS_OVERRIDES.setSimMinutes(0..1439|null)",
           reset: "RRHS_OVERRIDES.reset()",
-          note: "Overrides are stored in sessionStorage and only affect your current tab/session."
+          note:
+            "Config overrides are stored in sessionStorage (tab-only). Simulation overrides are in-memory and reset on refresh."
         };
       },
       get: () => {
         return {
           alwaysAllow: rrhsGetAlwaysAllowOverride(),
           closeDeltaMinutes: rrhsGetCloseDeltaMinutesOverride(),
-          basePeriodWindows: rrhsGetBaseWindowsOverride()
+          basePeriodWindows: rrhsGetBaseWindowsOverride(),
+          simDayType: rrhsSim.dayType,
+          simNowMinutes: rrhsSim.nowMinutes,
+          simNowLabel: Number.isFinite(rrhsSim.nowMinutes)
+            ? formatMinutes(rrhsSim.nowMinutes)
+            : null
         };
       },
       setAlwaysAllow: (value) => {
@@ -458,11 +485,44 @@
         rrhsRefreshEverything("override:setBasePeriodWindow");
         return true;
       },
+      setSimDayType: (dayType) => {
+        const v = dayType == null ? null : String(dayType).trim().toUpperCase();
+        if (v !== "A" && v !== "B" && v !== null) return false;
+        rrhsSim.dayType = v;
+        rrhsRefreshEverything("sim:setDayType");
+        return true;
+      },
+      setSimTime: (hhmm) => {
+        if (hhmm == null || String(hhmm).trim() === "") {
+          rrhsSim.nowMinutes = null;
+          rrhsRefreshEverything("sim:clearTime");
+          return true;
+        }
+        const minutes = parseTimeToMinutes(hhmm);
+        if (minutes == null) return false;
+        rrhsSim.nowMinutes = minutes;
+        rrhsRefreshEverything("sim:setTime");
+        return true;
+      },
+      setSimMinutes: (minutes) => {
+        if (minutes == null || minutes === "") {
+          rrhsSim.nowMinutes = null;
+          rrhsRefreshEverything("sim:clearMinutes");
+          return true;
+        }
+        const n = Number(minutes);
+        if (!Number.isFinite(n)) return false;
+        rrhsSim.nowMinutes = Math.max(0, Math.min(24 * 60 - 1, Math.floor(n)));
+        rrhsRefreshEverything("sim:setMinutes");
+        return true;
+      },
       reset: () => {
         if (!ss) return false;
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
+        rrhsSim.dayType = null;
+        rrhsSim.nowMinutes = null;
         rrhsRefreshEverything("override:reset");
         return true;
       }
@@ -475,6 +535,35 @@
 
   function getAllowedPeriodsForDay(dayType) {
     return dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8];
+  }
+
+  function rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin = null) {
+    const minutes = nowMin == null ? getNowMinutes(new Date()) : Number(nowMin);
+    if (!Number.isFinite(minutes)) return null;
+
+    // Prefer a period that is currently in-session (start..end)
+    for (let base = 1; base <= 4; base++) {
+      const w = getPeriodWindow(base);
+      if (!w) continue;
+      if (minutes >= w.startMin && minutes < w.endMin) return base;
+    }
+
+    // Otherwise, choose the next upcoming period start
+    for (let base = 1; base <= 4; base++) {
+      const w = getPeriodWindow(base);
+      if (!w) continue;
+      if (minutes < w.startMin) return base;
+    }
+
+    // After the last period, keep it stable on the last base period
+    return 4;
+  }
+
+  function rrhsGetCurrentOrNextPeriodForToday(nowMin = null) {
+    const dayType = getTodayDayType();
+    const base = rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin);
+    if (!base) return null;
+    return dayType === "A" ? base : base + 4;
   }
 
   function resolveTeacherName(value) {
@@ -490,7 +579,8 @@
     const dayType = getTodayDayType();
     if (!rrhsRoomSchedule.ready) return null;
 
-    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    const activePeriod = rrhsGetCurrentOrNextPeriodForToday();
+    const allowedPeriods = activePeriod ? [activePeriod] : getAllowedPeriodsForDay(dayType);
     const teacherToEntries = Object.create(null);
     const roomToEntries = Object.create(null);
     const teacherNames = [];
@@ -532,17 +622,31 @@
     });
 
     rrhsDerivedSchedule.dayType = dayType;
+    rrhsDerivedSchedule.period = activePeriod;
     rrhsDerivedSchedule.teacherNames = teacherNames;
     rrhsDerivedSchedule.teacherToEntries = teacherToEntries;
     rrhsDerivedSchedule.roomToEntries = roomToEntries;
     rrhsDerivedSchedule.allEntries = allEntries;
+
+    log("Derived schedule rebuilt:", {
+      dayType,
+      period: activePeriod,
+      teachers: teacherNames.length,
+      entries: allEntries.length
+    });
+    log("Derived schedule sample:", allEntries.slice(0, 5));
     return rrhsDerivedSchedule;
   }
 
   function getDerivedScheduleForToday() {
     const today = getTodayDayType();
     if (!rrhsRoomSchedule.ready) return null;
-    if (rrhsDerivedSchedule.dayType === today && rrhsDerivedSchedule.teacherNames.length) {
+    const currentPeriod = rrhsGetCurrentOrNextPeriodForToday();
+    if (
+      rrhsDerivedSchedule.dayType === today &&
+      rrhsDerivedSchedule.period === currentPeriod &&
+      rrhsDerivedSchedule.teacherNames.length
+    ) {
       return rrhsDerivedSchedule;
     }
     return buildDerivedScheduleForToday();
@@ -666,8 +770,36 @@
 
       if (input.dataset.rrhsUiRefresher !== "1") {
         input.dataset.rrhsUiRefresher = "1";
-        rrhsUiRefreshers.push(() => {
-          if (document.activeElement !== input) return;
+        rrhsUiRefreshers.push((reason) => {
+          const schedule = getDerivedScheduleForToday();
+          if (!schedule) return;
+
+          if (rrhsDeliverySelection.mode === "teacher" && rrhsDeliverySelection.teacher) {
+            const teacher = rrhsDeliverySelection.teacher;
+            const entries = schedule.teacherToEntries[teacher] || [];
+            if (entries[0] && entries[0].room && entries[0].room !== rrhsDeliverySelection.room) {
+              log("Teacher room auto-updated:", {
+                reason,
+                teacher,
+                from: rrhsDeliverySelection.room,
+                to: entries[0].room,
+                period: entries[0].period
+              });
+              selectRoom(entries[0], "teacher");
+              return;
+            }
+          }
+
+          const qTrim = String(input.value || "").trim();
+          const teacherExact = matchesTeacherExact(qTrim, schedule.teacherNames);
+          const roomExact = Boolean(qTrim && schedule.roomToEntries[qTrim]);
+          const shouldUpdate =
+            document.activeElement === input ||
+            teacherExact ||
+            roomExact ||
+            rrhsDeliverySelection.mode === "teacher";
+          if (!shouldUpdate) return;
+
           lastRenderedQuery = null;
           handleQueryChange();
         });
@@ -712,6 +844,7 @@
         rrhsDeliverySelection.teacher = null;
         rrhsDeliverySelection.period = null;
         rrhsDeliverySelection.room = null;
+        rrhsDeliverySelection.mode = null;
       }
 
       function setRoomValue(value) {
@@ -722,18 +855,19 @@
         ignoreInput = false;
       }
 
-      function setSelectionFromEntry(entry) {
+      function setSelectionFromEntry(entry, mode = "room") {
         if (!entry) return;
         rrhsDeliverySelection.dayType = getTodayDayType();
         rrhsDeliverySelection.teacher = entry.teacher;
         rrhsDeliverySelection.period = entry.period;
         rrhsDeliverySelection.room = entry.room;
+        rrhsDeliverySelection.mode = mode;
       }
 
-      function selectRoom(entry) {
+      function selectRoom(entry, mode = "room") {
         if (!entry) return;
         showError(false);
-        setSelectionFromEntry(entry);
+        setSelectionFromEntry(entry, mode);
         setRoomValue(entry.room);
         hideDropdown();
       }
@@ -754,7 +888,7 @@
         if (teacherExact) {
           const entries = schedule.teacherToEntries[teacherExact] || [];
           if (entries.length === 1) {
-            selectRoom(entries[0]);
+            selectRoom(entries[0], "teacher");
             return [];
           }
           return entries.map((e) => ({
@@ -767,7 +901,7 @@
 
         if (q && schedule.roomToEntries[q] && schedule.roomToEntries[q].length) {
           const resolved = resolveRoomDeterministic(q);
-          if (resolved) setSelectionFromEntry(resolved);
+          if (resolved) setSelectionFromEntry(resolved, "room");
           return schedule.roomToEntries[q].map((e) => ({
             teacher: e.teacher,
             period: e.period,
@@ -817,7 +951,7 @@
           el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
           el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
           el.addEventListener("click", () => {
-            selectRoom(item);
+            selectRoom(item, "room");
           });
 
           dropdown.appendChild(el);
