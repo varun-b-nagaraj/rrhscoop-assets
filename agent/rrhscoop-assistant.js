@@ -922,7 +922,7 @@
       messagesEl.dataset.rrhsIntroShown = "1";
       addMessage(
         "assistant",
-        "Hello! I’m the RRHS COOP Bot. Ask me anything about products, sizes, or recommendations.",
+        "Hello! I’m the RRHS COOP Bot. You can ask me anything about products, sizes, or recommendations. I am currently under construction, so check in later!",
         [],
         { persist: false }
       );
