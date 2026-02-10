@@ -115,7 +115,83 @@ function extractFields(payload) {
     body.subtotal ??
     null;
 
-  return { storeId, cartId, paymentMethod, subtotal };
+  const couponCodes = extractCouponCodes(body, cart, order);
+
+  return { storeId, cartId, paymentMethod, subtotal, couponCodes };
+}
+
+function extractCouponCodes(body, cart, order) {
+  const codes = [];
+  const pushIfString = (v) => {
+    if (typeof v !== 'string') return;
+    const t = v.trim();
+    if (t) codes.push(t);
+  };
+
+  // Common-ish fields (names vary by Ecwid payload version and integrations).
+  pushIfString(cart.couponCode);
+  pushIfString(cart.coupon);
+  pushIfString(cart.couponName);
+  pushIfString(cart.coupon_name);
+  pushIfString(cart.coupon_code);
+
+  pushIfString(order.couponCode);
+  pushIfString(order.coupon);
+  pushIfString(order.couponName);
+  pushIfString(order.coupon_code);
+
+  // Sometimes coupon data is nested.
+  if (cart.discountCoupon) {
+    if (typeof cart.discountCoupon === 'string') pushIfString(cart.discountCoupon);
+    if (typeof cart.discountCoupon === 'object' && cart.discountCoupon) {
+      pushIfString(cart.discountCoupon.code);
+      pushIfString(cart.discountCoupon.name);
+    }
+  }
+
+  // Arrays of coupons / discounts.
+  const candidates = [cart.coupons, cart.discountCoupons, cart.discounts, body.coupons, body.discounts];
+  for (const arr of candidates) {
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      if (typeof item === 'string') {
+        pushIfString(item);
+        continue;
+      }
+      if (item && typeof item === 'object') {
+        pushIfString(item.code);
+        pushIfString(item.name);
+        pushIfString(item.couponCode);
+        pushIfString(item.coupon);
+      }
+    }
+  }
+
+  return codes;
+}
+
+function normalizeCouponCodes(couponCodes) {
+  if (!Array.isArray(couponCodes) || couponCodes.length === 0) return [];
+  const out = [];
+  for (const c of couponCodes) {
+    if (typeof c !== 'string') continue;
+    const t = c.trim();
+    if (!t) continue;
+    out.push(t.toUpperCase());
+  }
+  return Array.from(new Set(out)).sort();
+}
+
+function shouldSkipForCouponCodes(couponCodes) {
+  const excluded = (process.env.EXCLUDED_COUPON_CODES || 'ECOMMERCE')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  if (excluded.length === 0) return false;
+
+  const normalized = normalizeCouponCodes(couponCodes);
+  if (normalized.length === 0) return false;
+  return normalized.some((code) => excluded.includes(code));
 }
 
 function isAllowedPaymentMethod(paymentMethod) {
@@ -155,12 +231,13 @@ function authOk(req) {
   return false;
 }
 
-function makeCacheKey({ storeId, cartId, subtotal, paymentMethod }) {
+function makeCacheKey({ storeId, cartId, subtotal, paymentMethod, couponCodes }) {
   return JSON.stringify({
     storeId: storeId ?? null,
     cartId: cartId ?? null,
     subtotal: subtotal ?? null,
     paymentMethod: paymentMethod ?? null,
+    couponCodes: normalizeCouponCodes(couponCodes),
   });
 }
 
@@ -206,7 +283,23 @@ module.exports = async (req, res) => {
     return sendJson(res, 200, { surcharges: [] });
   }
 
-  const { storeId, cartId, paymentMethod, subtotal } = extractFields(payload);
+  const { storeId, cartId, paymentMethod, subtotal, couponCodes } = extractFields(payload);
+
+  if (shouldSkipForCouponCodes(couponCodes)) {
+    const numericSubtotal = toFiniteNumber(subtotal);
+    console.log(
+      JSON.stringify({
+        msg: 'ecwid_discount_url_coupon_skipped',
+        ts: new Date().toISOString(),
+        storeId,
+        cartId,
+        subtotal: Number.isFinite(numericSubtotal) ? numericSubtotal : null,
+        paymentMethod,
+        couponCodes: normalizeCouponCodes(couponCodes),
+      })
+    );
+    return sendJson(res, 200, { surcharges: [] });
+  }
 
   // Optional scoping; default is "apply to all".
   if (!isAllowedPaymentMethod(paymentMethod)) {
@@ -223,7 +316,13 @@ module.exports = async (req, res) => {
   }
 
   const numericSubtotal = toFiniteNumber(subtotal);
-  const cacheKey = makeCacheKey({ storeId, cartId, subtotal: numericSubtotal, paymentMethod });
+  const cacheKey = makeCacheKey({
+    storeId,
+    cartId,
+    subtotal: numericSubtotal,
+    paymentMethod,
+    couponCodes,
+  });
   const cached = getCached(cacheKey);
   if (cached) {
     console.log(
@@ -234,6 +333,7 @@ module.exports = async (req, res) => {
         cartId,
         subtotal: Number.isFinite(numericSubtotal) ? numericSubtotal : null,
         paymentMethod,
+        couponCodes: normalizeCouponCodes(couponCodes),
         cacheHit: true,
         durationMs: nowMs() - startedAt,
       })
@@ -260,6 +360,7 @@ module.exports = async (req, res) => {
       cartId,
       subtotal: Number.isFinite(numericSubtotal) ? numericSubtotal : null,
       paymentMethod,
+      couponCodes: normalizeCouponCodes(couponCodes),
       computedFee: feeValue,
       cacheHit: false,
       durationMs: nowMs() - startedAt,
