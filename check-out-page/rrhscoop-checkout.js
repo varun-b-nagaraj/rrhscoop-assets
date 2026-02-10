@@ -339,6 +339,14 @@
     return `${h12}:${mm} ${suffix}`;
   }
 
+  function rrhsFormatPeriodLabel(periodNumber) {
+    const p = Math.floor(Number(periodNumber));
+    if (!Number.isFinite(p)) return "Period";
+    const base = p <= 4 ? p : p - 4;
+    if (!Number.isFinite(base) || base < 1 || base > 4) return `Period ${p}`;
+    return `Period ${base}/${base + 4}`;
+  }
+
   function getNowMinutes(date = new Date()) {
     if (Number.isFinite(rrhsSim.nowMinutes)) {
       return Math.max(0, Math.min(24 * 60 - 1, Math.floor(Number(rrhsSim.nowMinutes))));
@@ -357,12 +365,14 @@
   // Ordering periods (edit this "matrix")
   // ---------------------------
   // Controls which period numbers (1–8) are eligible for ordering, by day type.
-  // Default: only the first two periods (A: 1–2, B: 5–6).
+  // Default: only the first two delivery windows:
+  // - A Day: Periods 1–2
+  // - B Day: use base period numbers (1–2) which map to Periods 5–6
   //
   // To expand later, edit these arrays (e.g. add 3/4 and 7/8 when needed).
   const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
     A: [1, 2],
-    B: [5, 6]
+    B: [1, 2]
   });
 
   function rrhsNormalizePeriodList(list) {
@@ -600,8 +610,16 @@
   function getAllowedPeriodsForDay(dayType) {
     const dt = dayType === "A" ? "A" : "B";
     const matrix = rrhsGetOrderingMatrix();
-    const allowed = matrix[dt] || [];
-    return allowed;
+    const raw = matrix[dt] || [];
+    const mapped = raw
+      .map((p) => {
+        const n = Math.floor(Number(p));
+        if (!Number.isFinite(n)) return null;
+        if (dt === "B" && n >= 1 && n <= 4) return n + 4;
+        return n;
+      })
+      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 8);
+    return Array.from(new Set(mapped)).sort((a, b) => a - b);
   }
 
   function rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin = null) {
@@ -805,10 +823,16 @@
 
     const nowMin = getNowMinutes(today);
     if (nowMin < w.startMin) {
-      return { ok: false, message: `Delivery for Period ${period} starts at ${formatMinutes(w.startMin)}.` };
+      return {
+        ok: false,
+        message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
+      };
     }
     if (nowMin > w.closeMin) {
-      return { ok: false, message: `Delivery for Period ${period} closes at ${formatMinutes(w.closeMin)}.` };
+      return {
+        ok: false,
+        message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
+      };
     }
 
     return { ok: true, message: "" };
@@ -1258,7 +1282,7 @@
       .map((p) => {
         const w = getPeriodWindow(p);
         if (!w) return null;
-        return `Period ${p}: ${formatMinutes(w.startMin)}–${formatMinutes(w.closeMin)}`;
+        return `${rrhsFormatPeriodLabel(p)}: ${formatMinutes(w.startMin)}–${formatMinutes(w.closeMin)}`;
       })
       .filter(Boolean);
 

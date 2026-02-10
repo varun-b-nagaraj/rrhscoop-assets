@@ -18,7 +18,11 @@ To restrict (or expand) which class periods can place orders, edit the matrix in
 
 - `check-out-page/rrhscoop-checkout.js` → `RRHS_ORDERING_PERIOD_MATRIX`
 
-Default behavior is **only Period 1–2 on A days** and **only Period 5–6 on B days**. To add more later, extend the arrays with period numbers `1`–`8`.
+Default behavior is **only the first two delivery windows**:
+- A Day: `A: [1, 2]`
+- B Day: `B: [1, 2]` (base periods that map to Periods `5, 6`)
+
+To add more later, extend the arrays (for B Day, base periods `1`–`4` map to `5`–`8`).
 
 ### Room Schedule CSV
 
