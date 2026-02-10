@@ -73,6 +73,14 @@
     room: null
   };
 
+  const rrhsDerivedSchedule = {
+    dayType: null,
+    teacherNames: [],
+    teacherToEntries: Object.create(null),
+    roomToEntries: Object.create(null),
+    allEntries: []
+  };
+
   function normalizeHeaderValue(value) {
     return String(value || "")
       .toLowerCase()
@@ -288,6 +296,78 @@
     return match || null;
   }
 
+  function buildDerivedScheduleForToday() {
+    const dayType = getTodayDayType();
+    if (!rrhsRoomSchedule.ready) return null;
+
+    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    const teacherToEntries = Object.create(null);
+    const roomToEntries = Object.create(null);
+    const teacherNames = [];
+    const allEntries = [];
+
+    rrhsRoomSchedule.teachers.forEach((teacher) => {
+      const periodsForTeacher = ROOM_DATA[teacher];
+      if (!periodsForTeacher) return;
+
+      const roomToPeriod = Object.create(null);
+      allowedPeriods.forEach((p) => {
+        const room = periodsForTeacher[p];
+        if (!room) return;
+        const existing = roomToPeriod[room];
+        if (!existing || p < existing) roomToPeriod[room] = p;
+      });
+
+      const rooms = Object.keys(roomToPeriod);
+      if (rooms.length === 0) return;
+
+      const entries = rooms
+        .map((room) => ({ teacher, room, period: roomToPeriod[room] }))
+        .sort((a, b) => a.period - b.period || a.room.localeCompare(b.room));
+
+      teacherToEntries[teacher] = entries;
+      teacherNames.push(teacher);
+
+      entries.forEach((e) => {
+        if (!roomToEntries[e.room]) roomToEntries[e.room] = [];
+        roomToEntries[e.room].push({ teacher: e.teacher, period: e.period, room: e.room });
+        allEntries.push({ teacher: e.teacher, period: e.period, room: e.room });
+      });
+    });
+
+    Object.keys(roomToEntries).forEach((room) => {
+      roomToEntries[room].sort(
+        (a, b) => a.teacher.localeCompare(b.teacher) || a.period - b.period
+      );
+    });
+
+    rrhsDerivedSchedule.dayType = dayType;
+    rrhsDerivedSchedule.teacherNames = teacherNames;
+    rrhsDerivedSchedule.teacherToEntries = teacherToEntries;
+    rrhsDerivedSchedule.roomToEntries = roomToEntries;
+    rrhsDerivedSchedule.allEntries = allEntries;
+    return rrhsDerivedSchedule;
+  }
+
+  function getDerivedScheduleForToday() {
+    const today = getTodayDayType();
+    if (!rrhsRoomSchedule.ready) return null;
+    if (rrhsDerivedSchedule.dayType === today && rrhsDerivedSchedule.teacherNames.length) {
+      return rrhsDerivedSchedule;
+    }
+    return buildDerivedScheduleForToday();
+  }
+
+  function resolveRoomDeterministic(room) {
+    const s = getDerivedScheduleForToday();
+    if (!s) return null;
+    const key = String(room || "").trim();
+    if (!key) return null;
+    const matches = s.roomToEntries[key];
+    if (!matches || matches.length === 0) return null;
+    return matches[0];
+  }
+
   function getSelectionValidation() {
     const today = new Date();
     const dow = today.getDay();
@@ -307,32 +387,29 @@
       };
     }
 
-    const selectedDay = rrhsDeliverySelection.dayType;
     const todayDay = getTodayDayType();
-    if (selectedDay !== "A" && selectedDay !== "B") {
-      return { ok: false, message: "Please select A Day or B Day." };
-    }
-    if (selectedDay !== todayDay) {
-      return { ok: false, message: `Today is an ${todayDay} Day. Please select ${todayDay} Day.` };
-    }
+    rrhsDeliverySelection.dayType = todayDay;
 
     const teacher = rrhsDeliverySelection.teacher;
     if (!teacher || !ROOM_DATA[teacher]) {
-      return { ok: false, message: "Please select a teacher." };
+      return { ok: false, message: "Please select a room from the list." };
     }
 
     const period = Number(rrhsDeliverySelection.period);
     if (!Number.isFinite(period)) {
-      return { ok: false, message: "Please select a period." };
+      return { ok: false, message: "Please select a room from the list." };
     }
-    const allowed = getAllowedPeriodsForDay(selectedDay);
+    const allowed = getAllowedPeriodsForDay(todayDay);
     if (!allowed.includes(period)) {
-      return { ok: false, message: `Period ${period} is not available on ${selectedDay} Day.` };
+      return { ok: false, message: "Please select a room from the list." };
     }
 
     const room = (ROOM_DATA[teacher] && ROOM_DATA[teacher][period]) || null;
     if (!room) {
-      return { ok: false, message: "No room is available for that teacher/period." };
+      return { ok: false, message: "Please select a room from the list." };
+    }
+    if (rrhsDeliverySelection.room && rrhsDeliverySelection.room !== room) {
+      return { ok: false, message: "Please select a room from the list." };
     }
 
     const w = getPeriodWindow(period);
@@ -355,223 +432,260 @@
       if (!input || input.dataset.autocompleteInit) return;
       input.dataset.autocompleteInit = "true";
 
+      if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
+        rrhsDeliverySelection.dayType = null;
+        rrhsDeliverySelection.teacher = null;
+        rrhsDeliverySelection.period = null;
+        rrhsDeliverySelection.room = FLOWERS_ROOM_SENTINEL;
+        input.value = FLOWERS_ROOM_SENTINEL;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+
+      rrhsDeliverySelection.dayType = getTodayDayType();
+      rrhsDeliverySelection.teacher = null;
+      rrhsDeliverySelection.period = null;
+      rrhsDeliverySelection.room = null;
+
+      const section = input.closest(".ec-cart-step__section");
+      if (section) section.style.transition = "padding-bottom 0.2s ease";
+
       const wrapper = document.createElement("div");
       wrapper.style.position = "relative";
       wrapper.style.width = "100%";
       input.parentNode.insertBefore(wrapper, input);
       wrapper.appendChild(input);
 
-      const statusMsg = document.createElement("div");
-      statusMsg.style.cssText =
-        "margin-top:6px;color:#d32f2f;font-size:.875em;display:none;";
-      wrapper.appendChild(statusMsg);
+      const dropdown = document.createElement("div");
+      dropdown.style.cssText =
+        "position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-top:none;max-height:250px;overflow-y:auto;z-index:999999;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+      wrapper.appendChild(dropdown);
 
-      const setStatus = (text) => {
-        if (!text) {
-          statusMsg.style.display = "none";
-          statusMsg.textContent = "";
+      const errorMsg = document.createElement("div");
+      errorMsg.style.cssText =
+        "color:#d32f2f;font-size:.875em;margin-top:4px;display:none;outline:none!important;border:none!important;box-shadow:none!important;pointer-events:none;";
+      errorMsg.textContent =
+        "We couldn't find that room. Please select a valid room from the list.";
+      errorMsg.tabIndex = -1;
+      wrapper.appendChild(errorMsg);
+
+      let ignoreInput = false;
+      let blurTimer = null;
+      let lastRenderedQuery = null;
+
+      function updateWrapperPadding(show, itemCount) {
+        const sec = input.closest(".ec-cart-step__section");
+        if (!sec) return;
+        if (show) {
+          const count = Math.max(0, Number(itemCount || 0));
+          const dropdownHeight = Math.min(count * 65, 250);
+          sec.style.paddingBottom = dropdownHeight + "px";
         } else {
-          statusMsg.style.display = "block";
-          statusMsg.textContent = text;
+          sec.style.paddingBottom = "0px";
         }
-      };
+      }
 
-      const setRoomValue = (value) => {
+      function showDropdown(itemCount) {
+        dropdown.style.display = "block";
+        updateWrapperPadding(true, itemCount);
+      }
+
+      function hideDropdown() {
+        dropdown.style.display = "none";
+        updateWrapperPadding(false, 0);
+      }
+
+      function showError(show) {
+        if (show) {
+          input.style.border = "2px solid #d32f2f";
+          input.style.backgroundColor = "#ffebee";
+          errorMsg.style.display = "block";
+        } else {
+          input.style.border = "1px solid #ddd";
+          input.style.backgroundColor = "";
+          errorMsg.style.display = "none";
+        }
+      }
+
+      function clearSelection() {
+        rrhsDeliverySelection.dayType = getTodayDayType();
+        rrhsDeliverySelection.teacher = null;
+        rrhsDeliverySelection.period = null;
+        rrhsDeliverySelection.room = null;
+      }
+
+      function setRoomValue(value) {
+        ignoreInput = true;
         input.value = value;
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.dispatchEvent(new Event("change", { bubbles: true }));
-      };
-
-      if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
-        rrhsDeliverySelection.dayType = null;
-        rrhsDeliverySelection.teacher = null;
-        rrhsDeliverySelection.period = null;
-        rrhsDeliverySelection.room = FLOWERS_ROOM_SENTINEL;
-        setRoomValue(FLOWERS_ROOM_SENTINEL);
-        return;
+        ignoreInput = false;
       }
 
-      input.style.display = "none";
+      function setSelectionFromEntry(entry) {
+        if (!entry) return;
+        rrhsDeliverySelection.dayType = getTodayDayType();
+        rrhsDeliverySelection.teacher = entry.teacher;
+        rrhsDeliverySelection.period = entry.period;
+        rrhsDeliverySelection.room = entry.room;
+      }
 
-      const ui = document.createElement("div");
-      ui.style.cssText = "display:flex;flex-direction:column;gap:10px;";
-      wrapper.insertBefore(ui, input);
+      function selectRoom(entry) {
+        if (!entry) return;
+        showError(false);
+        setSelectionFromEntry(entry);
+        setRoomValue(entry.room);
+        hideDropdown();
+      }
 
-      const rowStyle = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;";
-      const labelStyle = "font-weight:600;min-width:72px;";
-      const controlStyle =
-        "flex:1;min-width:220px;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:1em;box-sizing:border-box;";
+      function matchesTeacherExact(query, teacherNames) {
+        const q = String(query || "").trim();
+        if (!q) return null;
+        const lower = q.toLowerCase();
+        return teacherNames.find((t) => t.toLowerCase() === lower) || null;
+      }
 
-      const dayRow = document.createElement("div");
-      dayRow.style.cssText = rowStyle;
-      const dayLabel = document.createElement("div");
-      dayLabel.textContent = "Day";
-      dayLabel.style.cssText = labelStyle;
-      const daySelect = document.createElement("select");
-      daySelect.style.cssText = controlStyle;
-      daySelect.innerHTML = `<option value="">Select day…</option><option value="A">A Day</option><option value="B">B Day</option>`;
-      dayRow.appendChild(dayLabel);
-      dayRow.appendChild(daySelect);
-      ui.appendChild(dayRow);
+      function buildSuggestions(query) {
+        const schedule = getDerivedScheduleForToday();
+        if (!schedule) return [];
 
-      const teacherRow = document.createElement("div");
-      teacherRow.style.cssText = rowStyle;
-      const teacherLabel = document.createElement("div");
-      teacherLabel.textContent = "Teacher";
-      teacherLabel.style.cssText = labelStyle;
-      const teacherInput = document.createElement("input");
-      teacherInput.type = "text";
-      teacherInput.placeholder = "Start typing a teacher name…";
-      teacherInput.style.cssText = controlStyle;
-      const datalistId = `rrhs-teacher-list-${Math.random().toString(36).slice(2)}`;
-      teacherInput.setAttribute("list", datalistId);
-      const teacherList = document.createElement("datalist");
-      teacherList.id = datalistId;
-      teacherRow.appendChild(teacherLabel);
-      teacherRow.appendChild(teacherInput);
-      ui.appendChild(teacherRow);
-      ui.appendChild(teacherList);
+        const q = String(query || "").trim();
+        const teacherExact = matchesTeacherExact(q, schedule.teacherNames);
+        if (teacherExact) {
+          const entries = schedule.teacherToEntries[teacherExact] || [];
+          if (entries.length === 1) {
+            selectRoom(entries[0]);
+            return [];
+          }
+          return entries.map((e) => ({
+            teacher: teacherExact,
+            period: e.period,
+            room: e.room,
+            label: `${teacherExact} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
+          }));
+        }
 
-      const periodRow = document.createElement("div");
-      periodRow.style.cssText = rowStyle;
-      const periodLabel = document.createElement("div");
-      periodLabel.textContent = "Period";
-      periodLabel.style.cssText = labelStyle;
-      const periodSelect = document.createElement("select");
-      periodSelect.style.cssText = controlStyle;
-      periodSelect.disabled = true;
-      periodSelect.innerHTML = `<option value="">Select period…</option>`;
-      periodRow.appendChild(periodLabel);
-      periodRow.appendChild(periodSelect);
-      ui.appendChild(periodRow);
+        if (q && schedule.roomToEntries[q] && schedule.roomToEntries[q].length) {
+          const resolved = resolveRoomDeterministic(q);
+          if (resolved) setSelectionFromEntry(resolved);
+          return schedule.roomToEntries[q].map((e) => ({
+            teacher: e.teacher,
+            period: e.period,
+            room: e.room,
+            label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
+          }));
+        }
 
-      const roomPreview = document.createElement("div");
-      roomPreview.style.cssText = "color:#555;font-size:.9em;";
-      roomPreview.textContent = "Room: —";
-      ui.appendChild(roomPreview);
+        if (!q) {
+          return schedule.allEntries.slice(0, 40).map((e) => ({
+            teacher: e.teacher,
+            period: e.period,
+            room: e.room,
+            label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
+          }));
+        }
 
-      const updateTeacherListForSelectedDay = () => {
-        if (!rrhsRoomSchedule.ready) return;
-        teacherList.innerHTML = "";
-
-        const dayType = String(daySelect.value || "").trim().toUpperCase();
-        const allowedPeriods =
-          dayType === "A" || dayType === "B"
-            ? getAllowedPeriodsForDay(dayType)
-            : null;
-
-        const teachers = allowedPeriods
-          ? rrhsRoomSchedule.teachers.filter((t) => {
-            const periodsForTeacher = ROOM_DATA[t];
-            return (
-              periodsForTeacher &&
-              allowedPeriods.some((p) => Boolean(periodsForTeacher[p]))
-            );
+        const qLower = q.toLowerCase();
+        return schedule.allEntries
+          .filter((e) => {
+            const teacherLower = String(e.teacher || "").toLowerCase();
+            const roomLower = String(e.room || "").toLowerCase();
+            return teacherLower.includes(qLower) || roomLower.includes(qLower);
           })
-          : rrhsRoomSchedule.teachers;
+          .slice(0, 40)
+          .map((e) => ({
+            teacher: e.teacher,
+            period: e.period,
+            room: e.room,
+            label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
+          }));
+      }
 
-        teachers.forEach((t) => {
-          const opt = document.createElement("option");
-          opt.value = t;
-          teacherList.appendChild(opt);
-        });
-      };
-
-      const renderPeriods = () => {
-        const dayType = String(daySelect.value || "").trim().toUpperCase();
-        rrhsDeliverySelection.dayType = dayType === "A" || dayType === "B" ? dayType : null;
-
-        const teacherName = resolveTeacherName(teacherInput.value);
-        rrhsDeliverySelection.teacher = teacherName;
-
-        periodSelect.innerHTML = `<option value="">Select period…</option>`;
-        periodSelect.disabled = true;
-        rrhsDeliverySelection.period = null;
-        rrhsDeliverySelection.room = null;
-        roomPreview.textContent = "Room: —";
-        setRoomValue("");
-
-        if (!rrhsDeliverySelection.dayType) return;
-        if (!teacherName) return;
-
-        const allowedPeriods = getAllowedPeriodsForDay(rrhsDeliverySelection.dayType);
-        const periodsForTeacher = ROOM_DATA[teacherName] || Object.create(null);
-        const available = allowedPeriods.filter((p) => periodsForTeacher[p]);
-        if (available.length === 0) {
-          setStatus("No rooms available for that teacher on the selected day.");
+      function renderSuggestions(items) {
+        dropdown.innerHTML = "";
+        if (!items || items.length === 0) {
+          hideDropdown();
           return;
         }
 
-        available.forEach((p) => {
-          const opt = document.createElement("option");
-          opt.value = String(p);
-          opt.textContent = `Period ${p}`;
-          periodSelect.appendChild(opt);
+        items.forEach((item) => {
+          const el = document.createElement("div");
+          el.style.cssText =
+            "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;";
+          el.textContent = item.label;
+
+          el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
+          el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
+          el.addEventListener("click", () => {
+            selectRoom(item);
+          });
+
+          dropdown.appendChild(el);
         });
-        periodSelect.disabled = false;
-      };
 
-      const applyPeriodSelection = () => {
-        const teacherName = rrhsDeliverySelection.teacher;
-        const p = Number(periodSelect.value);
-        rrhsDeliverySelection.period = Number.isFinite(p) ? p : null;
+        showDropdown(items.length);
+      }
 
-        const room =
-          teacherName && rrhsDeliverySelection.period
-            ? (ROOM_DATA[teacherName] && ROOM_DATA[teacherName][rrhsDeliverySelection.period]) || null
-            : null;
-        rrhsDeliverySelection.room = room;
+      function handleQueryChange() {
+        if (ignoreInput) return;
+        showError(false);
 
-        if (room) {
-          roomPreview.textContent = `Room: ${room}`;
-          setRoomValue(room);
-        } else {
-          roomPreview.textContent = "Room: —";
-          setRoomValue("");
+        const schedule = getDerivedScheduleForToday();
+        const query = String(input.value || "");
+
+        if (!schedule) {
+          hideDropdown();
+          return;
         }
 
-        if (
-          rrhsDeliverySelection.dayType &&
-          rrhsDeliverySelection.teacher &&
-          rrhsDeliverySelection.period
-        ) {
-          const validation = getSelectionValidation();
-          if (!validation.ok) {
-            setStatus(validation.message);
-          } else {
-            setStatus("");
+        const qTrim = query.trim();
+        if (rrhsDeliverySelection.room && rrhsDeliverySelection.room !== qTrim) {
+          clearSelection();
+        }
+
+        if (lastRenderedQuery === query) return;
+        lastRenderedQuery = query;
+
+        const items = buildSuggestions(query);
+        renderSuggestions(items);
+      }
+
+      input.addEventListener("input", handleQueryChange);
+      input.addEventListener("focus", handleQueryChange);
+
+      input.addEventListener("blur", () => {
+        if (blurTimer) clearTimeout(blurTimer);
+        blurTimer = setTimeout(() => {
+          hideDropdown();
+
+          const schedule = getDerivedScheduleForToday();
+          const qTrim = String(input.value || "").trim();
+          if (!schedule || !qTrim) {
+            showError(false);
+            return;
           }
-        } else {
-          setStatus("");
-        }
-      };
-
-      daySelect.addEventListener("change", () => {
-        setStatus("");
-        updateTeacherListForSelectedDay();
-        renderPeriods();
-        applyPeriodSelection();
+          const teacherExact = matchesTeacherExact(qTrim, schedule.teacherNames);
+          const roomExact = Boolean(schedule.roomToEntries[qTrim]);
+          if (teacherExact || roomExact) {
+            showError(false);
+            return;
+          }
+          showError(true);
+        }, 150);
       });
 
-      teacherInput.addEventListener("input", () => {
-        setStatus("");
-        renderPeriods();
+      document.addEventListener("click", (e) => {
+        if (!wrapper.contains(e.target)) hideDropdown();
       });
-
-      periodSelect.addEventListener("change", applyPeriodSelection);
 
       loadRoomSchedule()
         .then(() => {
-          const todayDay = getTodayDayType();
-          daySelect.value = todayDay;
-          rrhsDeliverySelection.dayType = todayDay;
-          updateTeacherListForSelectedDay();
-          renderPeriods();
-          applyPeriodSelection();
+          buildDerivedScheduleForToday();
+          if (document.activeElement === input) handleQueryChange();
         })
         .catch((e) => {
           log("Room schedule load error", e);
-          setStatus("Room schedule failed to load. Please refresh and try again.");
           createModal("Room schedule failed to load. Please refresh and try again.");
         });
     });
@@ -596,7 +710,7 @@
         e.stopPropagation();
         shakeElement(continueBtn);
 
-        createModal(validation.message || "Please select a valid teacher and period.");
+        createModal(validation.message || "Please select a room from the list.");
       }
     });
   }
