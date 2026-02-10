@@ -616,7 +616,11 @@
         if (dt === "B" && n >= 1 && n <= 4) return n + 4;
         return n;
       })
-      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 8);
+      .filter((n) => {
+        if (!Number.isFinite(n)) return false;
+        if (dt === "A") return n >= 1 && n <= 4;
+        return n >= 5 && n <= 8;
+      });
     return Array.from(new Set(mapped)).sort((a, b) => a - b);
   }
 
@@ -1274,18 +1278,24 @@
       if (!validation.ok && validation.message) return validation.message;
     }
 
-    const dayType = getTodayDayType();
-    const allowedPeriods = getAllowedPeriodsForDay(dayType);
-    const lines = (allowedPeriods || [])
-      .map((p) => {
-        const w = getPeriodWindow(p);
-        if (!w) return null;
-        return `${rrhsFormatPeriodLabel(p)}: ${formatMinutes(w.startMin)}–${formatMinutes(w.closeMin)}`;
-      })
-      .filter(Boolean);
+    function buildLinesForPeriods(periods) {
+      return (periods || [])
+        .map((p) => {
+          const w = getPeriodWindow(p);
+          if (!w) return null;
+          return `${rrhsFormatPeriodLabel(p)}: ${formatMinutes(w.startMin)}–${formatMinutes(w.closeMin)}`;
+        })
+        .filter(Boolean);
+    }
 
-    if (lines.length) {
-      return `Ordering is available during delivery windows only:<br/>${lines.join("<br/>")}`;
+    const aLines = buildLinesForPeriods(getAllowedPeriodsForDay("A"));
+    const bLines = buildLinesForPeriods(getAllowedPeriodsForDay("B"));
+    const parts = [];
+    if (aLines.length) parts.push(`<strong>A Day</strong><br/>${aLines.join("<br/>")}`);
+    if (bLines.length) parts.push(`<strong>B Day</strong><br/>${bLines.join("<br/>")}`);
+
+    if (parts.length) {
+      return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
     return "We’re sorry, we do not accept orders at this time.";
