@@ -93,26 +93,91 @@
     const existing = document.getElementById('rrhs-error-modal');
     if (existing) existing.remove();
 
-    const modal = document.createElement('div');
-    modal.id = 'rrhs-error-modal';
-    modal.style.cssText = `position: fixed !important; top: 20px !important; left: 50% !important; transform: translateX(-50%) translateY(-100vh) !important; width: 90%; max-width: 600px; background: #670000; color: #EBEBE2; padding: 16px 20px 16px 48px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); z-index: 999999 !important; display: flex; align-items: center;`;
-    modal.innerHTML = `
-      <button id="rrhs-modal-close" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: transparent; color: #EBEBE2; border: none; padding: 0; cursor: pointer; font-size: 20px; line-height: 1; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease, opacity 0.2s ease; opacity: 0.8;" onmouseover="this.style.transform='translateY(-50%) rotate(90deg)'; this.style.opacity='1';" onmouseout="this.style.transform='translateY(-50%) rotate(0deg)'; this.style.opacity='0.8';">×</button>
-      <div style="font-size: 0.95em; font-weight: 500; flex: 1;">${message}</div>
+    const modal = document.createElement("div");
+    modal.id = "rrhs-error-modal";
+    modal.style.cssText = `
+      position: fixed !important;
+      top: 20px !important;
+      left: 50% !important;
+      transform: translateX(-50%) translateY(-100vh) !important;
+
+      width: 90%;
+      max-width: 600px;
+
+      background: #670000;
+      color: #EBEBE2;
+
+      padding: 16px 20px 16px 52px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+      z-index: 999999 !important;
+      display: flex;
+      align-items: center;
     `;
+
+    modal.innerHTML = `
+      <button
+        id="rrhs-modal-close"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 16px;
+          transform: translateY(-50%);
+
+          background: transparent;
+          color: #EBEBE2;
+          border: none;
+          padding: 0;
+
+          cursor: pointer;
+          font-size: 20px;
+          line-height: 1;
+
+          width: 20px;
+          height: 20px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          transition: transform 0.2s ease, opacity 0.2s ease;
+          opacity: 0.8;
+        "
+        onmouseover="this.style.transform='translateY(-50%) rotate(90deg)'; this.style.opacity='1';"
+        onmouseout="this.style.transform='translateY(-50%) rotate(0deg)'; this.style.opacity='0.8';"
+        aria-label="Close"
+        type="button"
+      >×</button>
+
+      <div style="font-size: 0.95em; font-weight: 500; flex: 1; margin: 0;">
+        ${message}
+      </div>
+    `;
+
     document.body.appendChild(modal);
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        modal.style.transition = 'transform 0.4s ease';
-        modal.style.transform = 'translateX(-50%) translateY(0)';
+        modal.style.transition = "transform 0.4s ease";
+        modal.style.transform = "translateX(-50%) translateY(0)";
       });
     });
-    if (!document.getElementById('rrhs-modal-styles')) {
-      const style = document.createElement('style');
-      style.id = 'rrhs-modal-styles';
-      style.textContent = `#rrhs-error-modal{position:fixed!important;top:130px!important;}@keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-8px);}20%,40%,60%,80%{transform:translateX(8px);}}`;
+
+    if (!document.getElementById("rrhs-modal-styles")) {
+      const style = document.createElement("style");
+      style.id = "rrhs-modal-styles";
+      style.textContent = `
+        #rrhs-error-modal { position: fixed !important; top: 130px !important; }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+      `;
       document.head.appendChild(style);
     }
+
     const closeModal = () => {
       modal.style.transition = 'transform 0.3s ease';
       modal.style.transform = 'translateX(-50%) translateY(-100vh)';
