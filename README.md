@@ -82,3 +82,39 @@ RRHS_OVERRIDES.setBasePeriodWindow(2, "10:40", "12:12");
 RRHS_OVERRIDES.setBasePeriodWindow(3, "12:12", "13:59");
 RRHS_OVERRIDES.setBasePeriodWindow(4, "14:47", "16:20");
 ```
+
+## Ecwid Service Charge (server-side `discountUrl`)
+
+This repo includes a production-ready Vercel Serverless Function that returns **exactly one** dynamic surcharge line item using Ecwid’s official server-side cart calculation hook (`discountUrl`).
+
+### Endpoint
+
+- Versioned path (recommended for Ecwid): `https://<your-domain>/v1/ecwid/discount-url`
+- Implementation (Vercel function): `api/v1/ecwid/discount-url.js`
+- Shared calculation logic: `check-out-page/checkout-charges.js`
+- Configure this URL as your Ecwid `discountUrl` (cart calculation hook) in the Ecwid admin.
+
+### Calculation
+
+- Uses `cart.subtotal` (pre-tax, pre-shipping)
+- `fee = round_to_cents(subtotal * 0.029 + 0.30)`
+- If cart is empty / subtotal `<= 0` / fee `< 0.01` → returns `{"surcharges":[]}`
+
+### Environment variables (optional)
+
+- `DISCOUNT_URL_SHARED_SECRET`: If set, require `?token=<secret>` (or `Authorization: Bearer <secret>` / `X-Discount-Secret`) on requests.
+- `TARGET_PAYMENT_METHODS`: Comma-separated allowlist (exact string match). If set and not matched, returns no surcharge.
+
+### Reliability notes
+
+- No external calls; should respond well under Ecwid’s 5-second limit.
+- Structured logs include `storeId`, `cartId`, `subtotal`, `computedFee`, `paymentMethod`.
+- In-memory cache (≤ 60s TTL) keyed by `(storeId, cartId, subtotal, paymentMethod)`.
+
+### Tests
+
+Run unit tests (Node 18+):
+
+```bash
+node --test
+```
