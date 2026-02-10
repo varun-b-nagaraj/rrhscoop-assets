@@ -183,7 +183,7 @@ function normalizeCouponCodes(couponCodes) {
 }
 
 function shouldSkipForCouponCodes(couponCodes) {
-  const excluded = (process.env.EXCLUDED_COUPON_CODES || 'ECOMMERCE')
+  const excluded = (process.env.EXCLUDED_COUPON_CODES || '')
     .split(',')
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean);
