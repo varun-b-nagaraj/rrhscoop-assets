@@ -370,7 +370,7 @@
   // To expand later, edit these arrays (e.g. add 3/4 and 7/8 when needed).
   const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
     A: [1, 2],
-    B: []
+    B: [7]
   });
 
   function rrhsNormalizePeriodList(list) {
