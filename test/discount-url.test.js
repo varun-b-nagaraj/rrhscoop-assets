@@ -58,10 +58,28 @@ test.describe('discountUrl', { concurrency: 1 }, () => {
   });
 
   test('responds 405 to non-POST', async () => {
-    const req = makeReq({ method: 'GET' });
+    const req = makeReq({ method: 'PUT' });
     const res = makeRes();
     await handler(req, res);
     assert.equal(res.statusCode, 405);
+    const json = parseJson(res);
+    assert.deepEqual(json, { surcharges: [] });
+  });
+
+  test('responds 200 to GET with empty surcharges', async () => {
+    const req = makeReq({ method: 'GET' });
+    const res = makeRes();
+    await handler(req, res);
+    assert.equal(res.statusCode, 200);
+    const json = parseJson(res);
+    assert.deepEqual(json, { surcharges: [] });
+  });
+
+  test('responds 200 to HEAD with empty surcharges', async () => {
+    const req = makeReq({ method: 'HEAD' });
+    const res = makeRes();
+    await handler(req, res);
+    assert.equal(res.statusCode, 200);
     const json = parseJson(res);
     assert.deepEqual(json, { surcharges: [] });
   });

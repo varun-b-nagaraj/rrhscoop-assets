@@ -28,7 +28,7 @@ function getHeader(req, name) {
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET, HEAD');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Discount-Secret');
 }
 
@@ -265,19 +265,20 @@ function setCached(key, responseObj) {
 }
 
 module.exports = async (req, res) => {
-  // LOG EVERYTHING (even GET / OPTIONS / failures)
   console.log(
     JSON.stringify({
-      msg: 'discount_url_hit',
+      msg: 'ecwid_discount_url_hit',
+      ts: new Date().toISOString(),
       method: req.method,
       url: req.url,
-      ua: req.headers?.['user-agent'] || null,
+      ua: getHeader(req, 'user-agent') || null,
     })
   );
 
   const startedAt = nowMs();
 
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
+  if (req.method === 'HEAD' || req.method === 'GET') return sendJson(res, 200, { surcharges: [] });
   if (req.method !== 'POST') return sendJson(res, 405, { surcharges: [] });
 
   if (!authOk(req)) return sendJson(res, 401, { surcharges: [] });
