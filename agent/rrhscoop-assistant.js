@@ -4,7 +4,7 @@
   window.__RRHS_ASSISTANT__ = true;
 
   const DEFAULT_CONFIG = {
-    apiUrl: "https://mcp-client-production-17fb.up.railway.app//chat",
+    apiUrl: "https://orchestrator-j8dq.onrender.com/chat",
     apiKey: "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a"
   };
   const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.RRHS_ASSISTANT_CONFIG || {});
@@ -13,8 +13,8 @@
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
   const Z = 2147483647;
   const PING_URLS = [
-    "https://mcp-lightspeedbackend-production.up.railway.app//health",
-    "https://mcp-client-production-17fb.up.railway.app//health"
+    "https://orchestrator-j8dq.onrender.com/health",
+    "https://mcp-lightspeedbackend.onrender.com/health"
   ];
   const PING_INTERVAL_MS = 5 * 60 * 1000;
 
