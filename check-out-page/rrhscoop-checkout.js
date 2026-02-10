@@ -281,18 +281,154 @@
     4: { start: "14:47", end: "16:20" }
   });
 
+  const RRHS_SESSION_OVERRIDE_KEYS = Object.freeze({
+    alwaysAllow: "RRHS_ALWAYS_ALLOW",
+    closeDeltaMinutes: "RRHS_CLOSE_DELTA_MINUTES",
+    baseWindows: "RRHS_BASE_PERIOD_WINDOWS"
+  });
+
+  function rrhsGetSessionStorage() {
+    try {
+      return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function rrhsGetAlwaysAllowOverride() {
+    const ss = rrhsGetSessionStorage();
+    if (!ss) return null;
+    const v = ss.getItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
+    if (v === "1") return true;
+    if (v === "0") return false;
+    return null;
+  }
+
+  function rrhsGetCloseDeltaMinutesOverride() {
+    const ss = rrhsGetSessionStorage();
+    if (!ss) return null;
+    const raw = ss.getItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    const clamped = Math.max(0, Math.min(120, Math.floor(n)));
+    return clamped;
+  }
+
+  function rrhsGetBaseWindowsOverride() {
+    const ss = rrhsGetSessionStorage();
+    if (!ss) return null;
+    const raw = ss.getItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function rrhsGetBaseWindowForPeriod(basePeriod) {
+    const b = Number(basePeriod);
+    if (!Number.isFinite(b) || b < 1 || b > 4) return null;
+    const override = rrhsGetBaseWindowsOverride();
+    const candidate = override && override[String(b)];
+    if (candidate && typeof candidate === "object" && candidate.start && candidate.end) {
+      return { start: String(candidate.start), end: String(candidate.end) };
+    }
+    return BASE_PERIOD_WINDOWS[b] || null;
+  }
+
   function getPeriodWindow(periodNumber) {
     const p = Number(periodNumber);
     if (!Number.isFinite(p) || p < 1 || p > 8) return null;
     const base = p <= 4 ? p : p - 4;
-    const w = BASE_PERIOD_WINDOWS[base];
+    const w = rrhsGetBaseWindowForPeriod(base);
     if (!w) return null;
     const startMin = parseTimeToMinutes(w.start);
     const endMin = parseTimeToMinutes(w.end);
     if (startMin == null || endMin == null) return null;
-    const closeMin = Math.max(startMin, endMin - 20);
+    const closeDelta = rrhsGetCloseDeltaMinutesOverride();
+    const closeMin = Math.max(startMin, endMin - (closeDelta == null ? 20 : closeDelta));
     return { startMin, endMin, closeMin };
   }
+
+  function rrhsRecheckCheckoutAvailability() {
+    try {
+      const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
+      const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
+      if (!inCartOrCheckout || !checkoutButton) return;
+      refreshCartState(() => {
+        manageCheckoutButton();
+        updateCheckoutOverlay();
+      });
+    } catch (e) {}
+  }
+
+  function installRrhsDevtoolsOverrides() {
+    if (typeof window === "undefined") return;
+    if (window.RRHS_OVERRIDES && window.RRHS_OVERRIDES.__installed) return;
+
+    const ss = rrhsGetSessionStorage();
+    const api = {
+      __installed: true,
+      help: () => {
+        return {
+          setAlwaysAllow: "RRHS_OVERRIDES.setAlwaysAllow(true|false)",
+          setCloseDeltaMinutes: "RRHS_OVERRIDES.setCloseDeltaMinutes(20)",
+          setBasePeriodWindow: "RRHS_OVERRIDES.setBasePeriodWindow(1, '09:00', '10:40')",
+          reset: "RRHS_OVERRIDES.reset()",
+          note: "Overrides are stored in sessionStorage and only affect your current tab/session."
+        };
+      },
+      get: () => {
+        return {
+          alwaysAllow: rrhsGetAlwaysAllowOverride(),
+          closeDeltaMinutes: rrhsGetCloseDeltaMinutesOverride(),
+          basePeriodWindows: rrhsGetBaseWindowsOverride()
+        };
+      },
+      setAlwaysAllow: (value) => {
+        if (!ss) return false;
+        ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow, value ? "1" : "0");
+        rrhsRecheckCheckoutAvailability();
+        return true;
+      },
+      setCloseDeltaMinutes: (minutes) => {
+        if (!ss) return false;
+        const n = Number(minutes);
+        if (!Number.isFinite(n)) return false;
+        ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes, String(Math.floor(n)));
+        rrhsRecheckCheckoutAvailability();
+        return true;
+      },
+      setBasePeriodWindow: (basePeriod, startHHMM, endHHMM) => {
+        if (!ss) return false;
+        const b = Number(basePeriod);
+        if (!Number.isFinite(b) || b < 1 || b > 4) return false;
+        if (parseTimeToMinutes(startHHMM) == null) return false;
+        if (parseTimeToMinutes(endHHMM) == null) return false;
+        const current = rrhsGetBaseWindowsOverride() || {};
+        current[String(b)] = { start: String(startHHMM), end: String(endHHMM) };
+        ss.setItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows, JSON.stringify(current));
+        rrhsRecheckCheckoutAvailability();
+        return true;
+      },
+      reset: () => {
+        if (!ss) return false;
+        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
+        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
+        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
+        rrhsRecheckCheckoutAvailability();
+        return true;
+      }
+    };
+
+    window.RRHS_OVERRIDES = api;
+  }
+
+  installRrhsDevtoolsOverrides();
 
   function getAllowedPeriodsForDay(dayType) {
     return dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8];
@@ -730,7 +866,7 @@
   }
 
   /* Checkout time restriction and cart state */
-  const CHECKOUT_ALWAYS_ALLOW = true;
+  const CHECKOUT_ALWAYS_ALLOW = false;
   const REFERENCE_A_DAY = '2026-01-27';
   const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
   const FLOWERS_SKU = "703_sku";
@@ -823,6 +959,8 @@
 
   function checkOrderingWindowBase() {
     if (CHECKOUT_ALWAYS_ALLOW) return true;
+    const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
+    if (alwaysAllowOverride === true) return true;
     const now = new Date();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
