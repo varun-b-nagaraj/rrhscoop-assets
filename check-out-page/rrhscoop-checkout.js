@@ -655,7 +655,7 @@
           clearSelection();
         }
 
-        if (lastRenderedQuery === query) return;
+        if (lastRenderedQuery === query && dropdown.style.display !== "none") return;
         lastRenderedQuery = query;
 
         const items = buildSuggestions(query);
@@ -663,7 +663,10 @@
       }
 
       input.addEventListener("input", handleQueryChange);
-      input.addEventListener("focus", handleQueryChange);
+      input.addEventListener("focus", () => {
+        lastRenderedQuery = null;
+        handleQueryChange();
+      });
 
       input.addEventListener("blur", () => {
         if (blurTimer) clearTimeout(blurTimer);
