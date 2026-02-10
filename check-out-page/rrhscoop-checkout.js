@@ -11,6 +11,17 @@
     if (RRHS_DEBUG) console.log(...args);
   };
 
+  const RRHS_ASSET_BASE_URL = (() => {
+    try {
+      const cur = document.currentScript;
+      if (cur && cur.src) return new URL(".", cur.src).toString();
+      const scripts = document.getElementsByTagName("script");
+      const last = scripts && scripts.length ? scripts[scripts.length - 1] : null;
+      if (last && last.src) return new URL(".", last.src).toString();
+    } catch (e) {}
+    return null;
+  })();
+
   /* Modal utilities */
   function createModal(message) {
     const existing = document.getElementById('rrhs-error-modal');
@@ -198,10 +209,9 @@
         return String(window.RRHS_ROOM_SCHEDULE_CSV_URL).trim();
       }
 
-      const baseUrl =
-        (document.currentScript && document.currentScript.src)
-          ? new URL(".", document.currentScript.src)
-          : new URL(window.location.href);
+      const baseUrl = RRHS_ASSET_BASE_URL
+        ? new URL(RRHS_ASSET_BASE_URL)
+        : new URL(window.location.href);
       return new URL(ROOM_SCHEDULE_CSV_FILENAME, baseUrl).toString();
     } catch (e) {
       return ROOM_SCHEDULE_CSV_FILENAME;
@@ -212,6 +222,7 @@
     if (rrhsRoomSchedulePromise) return rrhsRoomSchedulePromise;
 
     const url = getRoomScheduleCsvUrl();
+    log("Room schedule CSV URL:", url);
     rrhsRoomSchedulePromise = fetch(url, { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load room schedule CSV (${res.status}).`);
