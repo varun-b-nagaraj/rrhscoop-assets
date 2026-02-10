@@ -342,9 +342,7 @@
   function rrhsFormatPeriodLabel(periodNumber) {
     const p = Math.floor(Number(periodNumber));
     if (!Number.isFinite(p)) return "Period";
-    const base = p <= 4 ? p : p - 4;
-    if (!Number.isFinite(base) || base < 1 || base > 4) return `Period ${p}`;
-    return `Period ${base}/${base + 4}`;
+    return `Period ${p}`;
   }
 
   function getNowMinutes(date = new Date()) {
@@ -367,7 +365,7 @@
   // Controls which period numbers (1–8) are eligible for ordering, by day type.
   // Default: only the first two delivery windows:
   // - A Day: Periods 1–2
-  // - B Day: use base period numbers (1–2) which map to Periods 5–6
+  // - B Day: Periods 5–6 (you can write either [1,2] meaning "base" -> 5/6, or [5,6] explicitly)
   //
   // To expand later, edit these arrays (e.g. add 3/4 and 7/8 when needed).
   const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({

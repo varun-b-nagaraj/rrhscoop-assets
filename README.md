@@ -22,7 +22,9 @@ Default behavior is **only the first two delivery windows**:
 - A Day: `A: [1, 2]`
 - B Day: `B: [1, 2]` (base periods that map to Periods `5, 6`)
 
-To add more later, extend the arrays (for B Day, base periods `1`–`4` map to `5`–`8`).
+Notes:
+- The checkout UI always displays the *actual* period number (so B Day will show `Period 5` / `Period 6`, not `Period 1/5`).
+- On B Day you can specify either base periods `1`–`4` (auto-mapped to `5`–`8`) or specify `5`–`8` directly.
 
 ### Room Schedule CSV
 
