@@ -89,9 +89,15 @@
   })();
 
   /* Modal utilities */
-  function createModal(message) {
+  function createModal(message, opts = null) {
     const existing = document.getElementById('rrhs-error-modal');
     if (existing) existing.remove();
+
+    const options = opts && typeof opts === "object" ? opts : {};
+    const autoCloseMsRaw = options.autoCloseMs;
+    const autoCloseMs = Number.isFinite(Number(autoCloseMsRaw))
+      ? Math.max(0, Math.min(60000, Math.floor(Number(autoCloseMsRaw))))
+      : 5000;
 
     const modal = document.createElement("div");
     modal.id = "rrhs-error-modal";
@@ -184,7 +190,7 @@
       setTimeout(() => modal.remove(), 300);
     };
     document.getElementById('rrhs-modal-close').addEventListener('click', closeModal);
-    setTimeout(closeModal, 5000);
+    if (autoCloseMs > 0) setTimeout(closeModal, autoCloseMs);
     return modal;
   }
 
@@ -1421,10 +1427,6 @@
   }
 
   function getRestrictionMessage() {
-    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-      return `Only <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;"> Valentine’s Day Flowers </a> can be ordered at any time. All other items must be ordered during an active delivery window.`;
-    }
-
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
       rrhsDeliverySelection.teacher &&
@@ -1451,10 +1453,13 @@
     if (bLines.length) parts.push(`<strong>B Day</strong><br/>${bLines.join("<br/>")}`);
 
     if (parts.length) {
+      if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+        return `Only <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;"> Valentine's Day Flowers </a> can be ordered at any time. All other items must be ordered during an active delivery window.`;
+      }
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
-    return `Website is down for regular orders due to maintenaince, we still accept Pre-Orders for Valenetine's Roses(<a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050</a>). Thank you for your patience! We will have it running again on February the 18th`;
+    return `Website is down for regular orders due to maintenance, we still accept Pre-Orders for <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine's Roses</a>. Thank you for your patience! We will have it running again on February the 18th`;
   }
 
   function isADay() {
@@ -1523,7 +1528,7 @@
           e.stopPropagation();
           e.stopImmediatePropagation();
           shakeElement(button);
-          createModal(getRestrictionMessage());
+          createModal(getRestrictionMessage(), { autoCloseMs: 11000 });
           return false;
         };
         button.addEventListener('click', button._rrhsClickHandler, true);
@@ -1551,7 +1556,7 @@
       e.preventDefault();
       e.stopPropagation();
       shakeElement(button);
-      createModal(getRestrictionMessage());
+      createModal(getRestrictionMessage(), { autoCloseMs: 11000 });
     });
     button.dataset.rrhsWrapped = 'true';
   }
