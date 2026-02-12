@@ -198,7 +198,7 @@
   /* Room schedule (CSV) + delivery selection */
   const ROOM_SCHEDULE_CSV_FILENAME = "schedule_processed.xlsx - Room Schedule.csv";
   const FLOWERS_ROOM_SENTINEL =
-    "Room number already specified on Valentine's Order, select this option and continue";
+    "Room number already specified on Valentine's Order, this field does not need to be filled out";
 
   let ROOM_DATA = Object.create(null);
   const rrhsRoomSchedule = {
@@ -224,6 +224,97 @@
     roomToEntries: Object.create(null),
     allEntries: []
   };
+
+  function rrhsLockRoomInputForFlowers(input) {
+    if (!input || input.dataset.rrhsFlowersRoomLocked === "1") return;
+
+    input.dataset.rrhsFlowersRoomLocked = "1";
+    input.dataset.rrhsFlowersPrevValue = String(input.value || "");
+    input.dataset.rrhsFlowersPrevTabindex =
+      input.hasAttribute("tabindex") ? String(input.getAttribute("tabindex")) : "";
+    input.dataset.rrhsFlowersPrevPointerEvents = String(input.style.pointerEvents || "");
+    input.dataset.rrhsFlowersPrevCursor = String(input.style.cursor || "");
+    input.dataset.rrhsFlowersPrevBackground = String(input.style.backgroundColor || "");
+
+    input.value = FLOWERS_ROOM_SENTINEL;
+    input.readOnly = true;
+    input.setAttribute("aria-readonly", "true");
+    input.style.pointerEvents = "none";
+    input.style.cursor = "not-allowed";
+    input.style.backgroundColor = "#f5f5f5";
+    input.setAttribute("tabindex", "-1");
+    if (document.activeElement === input) input.blur();
+
+    const wrapper = input.closest('[data-rrhs-room-wrapper="true"]');
+    if (wrapper) {
+      const dropdown = wrapper.querySelector('[data-rrhs-room-dropdown="true"]');
+      const errorMsg = wrapper.querySelector('[data-rrhs-room-error="true"]');
+      if (dropdown) dropdown.style.display = "none";
+      if (errorMsg) errorMsg.style.display = "none";
+    }
+
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function rrhsUnlockRoomInputForFlowers(input) {
+    if (!input || input.dataset.rrhsFlowersRoomLocked !== "1") return;
+
+    const prevValue = input.dataset.rrhsFlowersPrevValue || "";
+    const prevTabindex = input.dataset.rrhsFlowersPrevTabindex || "";
+    const prevPointerEvents = input.dataset.rrhsFlowersPrevPointerEvents || "";
+    const prevCursor = input.dataset.rrhsFlowersPrevCursor || "";
+    const prevBackground = input.dataset.rrhsFlowersPrevBackground || "";
+
+    input.readOnly = false;
+    input.removeAttribute("aria-readonly");
+    input.style.pointerEvents = prevPointerEvents;
+    input.style.cursor = prevCursor;
+    input.style.backgroundColor = prevBackground;
+    if (prevTabindex === "") input.removeAttribute("tabindex");
+    else input.setAttribute("tabindex", prevTabindex);
+
+    if (String(input.value || "") === FLOWERS_ROOM_SENTINEL) {
+      input.value = prevValue;
+    }
+
+    if (input.dataset.autocompleteInit === "flowersOnlyLocked") {
+      delete input.dataset.autocompleteInit;
+    }
+
+    delete input.dataset.rrhsFlowersRoomLocked;
+    delete input.dataset.rrhsFlowersPrevValue;
+    delete input.dataset.rrhsFlowersPrevTabindex;
+    delete input.dataset.rrhsFlowersPrevPointerEvents;
+    delete input.dataset.rrhsFlowersPrevCursor;
+    delete input.dataset.rrhsFlowersPrevBackground;
+
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function rrhsSyncFlowersOnlyRoomField(input = null) {
+    const resolvedInput = input || document.querySelector('input[name="z7rty2b"]');
+    if (!resolvedInput) return false;
+
+    const flowersOnly =
+      rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther;
+
+    if (flowersOnly) {
+      if (!resolvedInput.dataset.autocompleteInit) {
+        resolvedInput.dataset.autocompleteInit = "flowersOnlyLocked";
+      }
+      rrhsDeliverySelection.dayType = null;
+      rrhsDeliverySelection.teacher = null;
+      rrhsDeliverySelection.period = null;
+      rrhsDeliverySelection.room = FLOWERS_ROOM_SENTINEL;
+      rrhsLockRoomInputForFlowers(resolvedInput);
+      return true;
+    }
+
+    rrhsUnlockRoomInputForFlowers(resolvedInput);
+    return false;
+  }
 
   function normalizeHeaderValue(value) {
     return String(value || "")
@@ -913,19 +1004,12 @@
     const proceed = () => {
       const input = document.querySelector('input[name="z7rty2b"]');
       if (!input || input.dataset.autocompleteInit) return;
-      input.dataset.autocompleteInit = "true";
 
-      if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
-        rrhsDeliverySelection.dayType = null;
-        rrhsDeliverySelection.teacher = null;
-        rrhsDeliverySelection.period = null;
-        rrhsDeliverySelection.room = FLOWERS_ROOM_SENTINEL;
-        input.value = FLOWERS_ROOM_SENTINEL;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
+      if (rrhsSyncFlowersOnlyRoomField(input)) {
         return;
       }
 
+      input.dataset.autocompleteInit = "true";
       rrhsDeliverySelection.dayType = getTodayDayType();
       rrhsDeliverySelection.teacher = null;
       rrhsDeliverySelection.period = null;
@@ -937,12 +1021,14 @@
       const wrapper = document.createElement("div");
       wrapper.style.position = "relative";
       wrapper.style.width = "100%";
+      wrapper.dataset.rrhsRoomWrapper = "true";
       input.parentNode.insertBefore(wrapper, input);
       wrapper.appendChild(input);
 
       const dropdown = document.createElement("div");
       dropdown.style.cssText =
         "position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-top:none;max-height:250px;overflow-y:auto;z-index:999999;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+      dropdown.dataset.rrhsRoomDropdown = "true";
       wrapper.appendChild(dropdown);
 
       const errorMsg = document.createElement("div");
@@ -951,6 +1037,7 @@
       errorMsg.textContent =
         "We couldn't find that room. Please select a valid room from the list.";
       errorMsg.tabIndex = -1;
+      errorMsg.dataset.rrhsRoomError = "true";
       wrapper.appendChild(errorMsg);
 
       let ignoreInput = false;
@@ -1367,7 +1454,7 @@
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
-    return "We’re sorry, we do not accept orders at this time.";
+    return `Website is down for regular orders due to maintenaince, we still accept Pre-Orders for Valenetine's Roses(<a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050</a>). Thank you for your patience! We will have it running again on February the 18th`;
   }
 
   function isADay() {
@@ -1493,6 +1580,8 @@
       rrhsCartChangedListenerAdded = true;
       ecwid.OnCartChanged.add(function(cart) {
         computeCartFlags(cart);
+        rrhsSyncFlowersOnlyRoomField();
+        initRoomAutocomplete();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
