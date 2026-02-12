@@ -1196,7 +1196,7 @@
             showError(false);
             return;
           }
-          showError(false);
+          showError(true);
         }, 150);
       });
 
