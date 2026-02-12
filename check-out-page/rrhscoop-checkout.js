@@ -1440,9 +1440,9 @@
   }
 
   function getRestrictionMessage() {
-    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-      return `Your cart contains <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> and other items. To proceed to checkout, please remove any non-flower items and place them in a separate order (regular items can only be ordered during an active delivery window).`;
-    }
+  if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+    return `Your cart includes <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> along with other items. Flower pre-orders must be placed separately. Please remove non-flower items and complete them in a separate order, as regular items are only available during active delivery windows.`;
+  }
 
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
