@@ -1454,7 +1454,7 @@
 
     if (parts.length) {
       if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-        return `Only <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;"> Valentine's Day Flowers </a> can be ordered at any time. All other items must be ordered during an active delivery window.`;
+        return `Your cart contains <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> and other items. To proceed to checkout, please remove any non-flower items and place them in a separate order (regular items can only be ordered during an active delivery window).`;
       }
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
