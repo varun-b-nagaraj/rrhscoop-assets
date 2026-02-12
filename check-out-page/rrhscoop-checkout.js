@@ -1459,7 +1459,7 @@
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
-    return `Website is down for regular orders due to maintenance, we still accept Pre-Orders for <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine's Roses</a>. Thank you for your patience! We will have it running again on February the 18th`;
+    return `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
   }
 
   function isADay() {
