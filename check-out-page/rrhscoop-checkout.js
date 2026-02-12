@@ -1349,10 +1349,23 @@
   const FLOWERS_SKU = "703_sku";
   const rrhsCartState = { ready: false, hasFlowers: false, hasOther: false, lastUpdated: 0 };
 
+  function rrhsNormalizeProductIdentity(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[’‘]/g, "'")
+      .replace(/[^a-z0-9]+/g, "");
+  }
+
   function isFlowersItem(item) {
     const p = item && item.product;
     if (!p) return false;
-    return (p.sku === FLOWERS_SKU) && (p.name === FLOWERS_PRODUCT_NAME);
+    const skuMatch = p.sku && FLOWERS_SKU && String(p.sku) === String(FLOWERS_SKU);
+    const nameMatch =
+      rrhsNormalizeProductIdentity(p.name) === rrhsNormalizeProductIdentity(FLOWERS_PRODUCT_NAME);
+    const urlMatch =
+      rrhsNormalizeProductIdentity(p.url) ===
+      rrhsNormalizeProductIdentity("/products/Valentines-Day-Flowers-p813923050");
+    return Boolean(skuMatch || nameMatch || urlMatch);
   }
 
   function computeCartFlags(cart) {
@@ -1427,6 +1440,10 @@
   }
 
   function getRestrictionMessage() {
+    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
+      return `Your cart contains <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> and other items. To proceed to checkout, please remove any non-flower items and place them in a separate order (regular items can only be ordered during an active delivery window).`;
+    }
+
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
       rrhsDeliverySelection.teacher &&
@@ -1453,9 +1470,6 @@
     if (bLines.length) parts.push(`<strong>B Day</strong><br/>${bLines.join("<br/>")}`);
 
     if (parts.length) {
-      if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-        return `Your cart contains <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> and other items. To proceed to checkout, please remove any non-flower items and place them in a separate order (regular items can only be ordered during an active delivery window).`;
-      }
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
@@ -1499,6 +1513,7 @@
 
   function checkOrderingWindow() {
     if (rrhsCartState.hasFlowers && !rrhsCartState.hasOther) return true;
+    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) return false;
     return checkOrderingWindowBase();
   }
 
