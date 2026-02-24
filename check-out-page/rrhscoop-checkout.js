@@ -23,12 +23,29 @@
   // Room schedule source (served from this repo's assets unless RRHS_ROOM_SCHEDULE_CSV_URL is set).
   const ROOM_SCHEDULE_CSV_FILENAME = "schedule_processed.xlsx - Room Schedule.csv";
 
-  // Room field lock value used for flowers-only carts.
-  const FLOWERS_ROOM_SENTINEL =
+  // Room field lock value used when a product rule says to auto-fill/lock the room field.
+  const RRHS_LOCKED_ROOM_SENTINEL =
     "Room number already specified on Valentine's Order, this field does not need to be filled out";
 
   // Default "ordering closes N minutes before bell" (can be overridden in sessionStorage).
   const RRHS_DEFAULT_CLOSE_DELTA_MINUTES = 15;
+
+  // Room filtering (applies to values coming from the schedule CSV).
+  // Examples (default):
+  // - Valid: 1241, 1314, 1430, 2312
+  // - Invalid: 143 (3 digits), 725 (3 digits), Gym (non-numeric)
+  const RRHS_ROOM_FILTER = Object.freeze({
+    enabled: true,
+    // Rules are OR'ed together. A room is allowed if it matches any rule.
+    // - `digits` is the exact room number length to allow (digits only).
+    // - `prefixDigits` is how many leading digits to compare against `allowedPrefixes`.
+    rules: Object.freeze([
+      // 4-digit rooms: 1100s/1200s/.../2500s (prefix is first two digits).
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) }
+      // To also allow 700s later, add:
+      // { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([7]) }
+    ])
+  });
 
   // Period bell schedule (base periods 1–4). B-day periods map to 5–8 automatically.
   const BASE_PERIOD_WINDOWS = Object.freeze({
@@ -45,14 +62,31 @@
     B: []
   });
 
-  // Flowers item identity (used to allow flowers-only checkout anytime).
-  const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
-  const FLOWERS_SKU = "703_sku";
-  const FLOWERS_PRODUCT_URL_PATH = "/products/Valentines-Day-Flowers-p813923050";
-  const FLOWERS_PRODUCT_URL_FULL = `https://rrhscoop.roundrockisd.org${FLOWERS_PRODUCT_URL_PATH}`;
+  // Base origin used for product links shown in modals/tooltips.
+  const RRHS_SITE_ORIGIN = "https://rrhscoop.roundrockisd.org";
+
+  // Products that are allowed to checkout outside delivery windows (all-day).
+  // If the cart contains *only* these products, checkout is allowed any time.
+  // If the cart mixes these + regular items, checkout is blocked to prevent bypassing windows.
+  //
+  // For each product, set any of: sku, name, urlPath to identify it.
+  // - `lockRoom: true` will lock the delivery room field to `roomSentinel`.
+  const RRHS_ALL_DAY_DELIVERY_PRODUCTS = Object.freeze([
+    {
+      label: "Valentine's Day Flowers",
+      sku: "703_sku",
+      name: "Valentine's Day Flowers",
+      urlPath: "/products/Valentines-Day-Flowers-p813923050",
+      lockRoom: true,
+      roomSentinel: RRHS_LOCKED_ROOM_SENTINEL
+    }
+  ]);
+
+  // Link used in the "site closed" message when RRHS_ORDERING_PERIOD_MATRIX disables all windows.
+  const RRHS_FLOWERS_PREORDER_URL_FULL = `${RRHS_SITE_ORIGIN}/products/Valentines-Day-Flowers-p813923050`;
 
   // Message shown when all delivery windows are disabled (matrix empty).
-  const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="${FLOWERS_PRODUCT_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
+  const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="${RRHS_FLOWERS_PREORDER_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
 
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
@@ -270,18 +304,19 @@
     allEntries: []
   };
 
-  function rrhsLockRoomInputForFlowers(input) {
-    if (!input || input.dataset.rrhsFlowersRoomLocked === "1") return;
+  function rrhsLockRoomInputForAllDay(input, sentinelValue) {
+    if (!input || input.dataset.rrhsAllDayRoomLocked === "1") return;
 
-    input.dataset.rrhsFlowersRoomLocked = "1";
-    input.dataset.rrhsFlowersPrevValue = String(input.value || "");
-    input.dataset.rrhsFlowersPrevTabindex =
+    input.dataset.rrhsAllDayRoomLocked = "1";
+    input.dataset.rrhsAllDaySentinelValue = String(sentinelValue || "");
+    input.dataset.rrhsAllDayPrevValue = String(input.value || "");
+    input.dataset.rrhsAllDayPrevTabindex =
       input.hasAttribute("tabindex") ? String(input.getAttribute("tabindex")) : "";
-    input.dataset.rrhsFlowersPrevPointerEvents = String(input.style.pointerEvents || "");
-    input.dataset.rrhsFlowersPrevCursor = String(input.style.cursor || "");
-    input.dataset.rrhsFlowersPrevBackground = String(input.style.backgroundColor || "");
+    input.dataset.rrhsAllDayPrevPointerEvents = String(input.style.pointerEvents || "");
+    input.dataset.rrhsAllDayPrevCursor = String(input.style.cursor || "");
+    input.dataset.rrhsAllDayPrevBackground = String(input.style.backgroundColor || "");
 
-    input.value = FLOWERS_ROOM_SENTINEL;
+    input.value = sentinelValue;
     input.readOnly = true;
     input.setAttribute("aria-readonly", "true");
     input.style.pointerEvents = "none";
@@ -302,14 +337,18 @@
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  function rrhsUnlockRoomInputForFlowers(input) {
-    if (!input || input.dataset.rrhsFlowersRoomLocked !== "1") return;
+  function rrhsUnlockRoomInputForAllDay(input, sentinelValue = null) {
+    if (!input || input.dataset.rrhsAllDayRoomLocked !== "1") return;
 
-    const prevValue = input.dataset.rrhsFlowersPrevValue || "";
-    const prevTabindex = input.dataset.rrhsFlowersPrevTabindex || "";
-    const prevPointerEvents = input.dataset.rrhsFlowersPrevPointerEvents || "";
-    const prevCursor = input.dataset.rrhsFlowersPrevCursor || "";
-    const prevBackground = input.dataset.rrhsFlowersPrevBackground || "";
+    const sentinelResolved =
+      sentinelValue == null
+        ? String(input.dataset.rrhsAllDaySentinelValue || "")
+        : String(sentinelValue);
+    const prevValue = input.dataset.rrhsAllDayPrevValue || "";
+    const prevTabindex = input.dataset.rrhsAllDayPrevTabindex || "";
+    const prevPointerEvents = input.dataset.rrhsAllDayPrevPointerEvents || "";
+    const prevCursor = input.dataset.rrhsAllDayPrevCursor || "";
+    const prevBackground = input.dataset.rrhsAllDayPrevBackground || "";
 
     input.readOnly = false;
     input.removeAttribute("aria-readonly");
@@ -319,45 +358,50 @@
     if (prevTabindex === "") input.removeAttribute("tabindex");
     else input.setAttribute("tabindex", prevTabindex);
 
-    if (String(input.value || "") === FLOWERS_ROOM_SENTINEL) {
+    if (sentinelResolved && String(input.value || "") === sentinelResolved) {
       input.value = prevValue;
     }
 
-    if (input.dataset.autocompleteInit === "flowersOnlyLocked") {
+    if (input.dataset.autocompleteInit === "allDayRoomLocked") {
       delete input.dataset.autocompleteInit;
     }
 
-    delete input.dataset.rrhsFlowersRoomLocked;
-    delete input.dataset.rrhsFlowersPrevValue;
-    delete input.dataset.rrhsFlowersPrevTabindex;
-    delete input.dataset.rrhsFlowersPrevPointerEvents;
-    delete input.dataset.rrhsFlowersPrevCursor;
-    delete input.dataset.rrhsFlowersPrevBackground;
+    delete input.dataset.rrhsAllDayRoomLocked;
+    delete input.dataset.rrhsAllDaySentinelValue;
+    delete input.dataset.rrhsAllDayPrevValue;
+    delete input.dataset.rrhsAllDayPrevTabindex;
+    delete input.dataset.rrhsAllDayPrevPointerEvents;
+    delete input.dataset.rrhsAllDayPrevCursor;
+    delete input.dataset.rrhsAllDayPrevBackground;
 
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  function rrhsSyncFlowersOnlyRoomField(input = null) {
+  function rrhsSyncAllDayOnlyRoomField(input = null) {
     const resolvedInput = input || document.querySelector('input[name="z7rty2b"]');
     if (!resolvedInput) return false;
 
-    const flowersOnly =
-      rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther;
+    const sentinelValue = rrhsCartState.allDayRoomSentinel;
+    const shouldLockRoom =
+      rrhsCartState.ready &&
+      rrhsCartState.hasAllDayDelivery &&
+      !rrhsCartState.hasRegularItems &&
+      Boolean(sentinelValue);
 
-    if (flowersOnly) {
+    if (shouldLockRoom) {
       if (!resolvedInput.dataset.autocompleteInit) {
-        resolvedInput.dataset.autocompleteInit = "flowersOnlyLocked";
+        resolvedInput.dataset.autocompleteInit = "allDayRoomLocked";
       }
       rrhsDeliverySelection.dayType = null;
       rrhsDeliverySelection.teacher = null;
       rrhsDeliverySelection.period = null;
-      rrhsDeliverySelection.room = FLOWERS_ROOM_SENTINEL;
-      rrhsLockRoomInputForFlowers(resolvedInput);
+      rrhsDeliverySelection.room = sentinelValue;
+      rrhsLockRoomInputForAllDay(resolvedInput, sentinelValue);
       return true;
     }
 
-    rrhsUnlockRoomInputForFlowers(resolvedInput);
+    rrhsUnlockRoomInputForAllDay(resolvedInput);
     return false;
   }
 
@@ -365,6 +409,96 @@
     return String(value || "")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "");
+  }
+
+  function rrhsGetRoomFilter() {
+    try {
+      if (typeof window !== "undefined" && window.RRHS_ROOM_FILTER) {
+        const w = window.RRHS_ROOM_FILTER;
+        if (w && typeof w === "object") {
+          const enabled = w.enabled == null ? RRHS_ROOM_FILTER.enabled : Boolean(w.enabled);
+
+          // Back-compat: { requiredDigits, allowedPrefixes } => one rule.
+          if (!Array.isArray(w.rules)) {
+            const requiredDigitsRaw = Number(w.requiredDigits);
+            const requiredDigits = Number.isFinite(requiredDigitsRaw)
+              ? Math.max(1, Math.min(8, Math.floor(requiredDigitsRaw)))
+              : 4;
+            const allowedPrefixes = Array.isArray(w.allowedPrefixes)
+              ? w.allowedPrefixes
+                  .map((n) => Math.floor(Number(n)))
+                  .filter((n) => Number.isFinite(n) && n >= 0 && n <= 9999)
+              : [];
+            return {
+              enabled,
+              rules: Object.freeze([
+                {
+                  digits: requiredDigits,
+                  prefixDigits: Math.min(2, requiredDigits),
+                  allowedPrefixes: Object.freeze(allowedPrefixes)
+                }
+              ])
+            };
+          }
+
+          const rules = w.rules
+            .filter((r) => r && typeof r === "object")
+            .map((r) => {
+              const digitsRaw = Number(r.digits);
+              const digits = Number.isFinite(digitsRaw)
+                ? Math.max(1, Math.min(8, Math.floor(digitsRaw)))
+                : 4;
+              const prefixDigitsRaw = Number(r.prefixDigits);
+              const prefixDigits = Number.isFinite(prefixDigitsRaw)
+                ? Math.max(1, Math.min(digits, Math.floor(prefixDigitsRaw)))
+                : Math.min(2, digits);
+              const allowedPrefixes = Array.isArray(r.allowedPrefixes)
+                ? r.allowedPrefixes
+                    .map((n) => Math.floor(Number(n)))
+                    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 9999)
+                : [];
+              return { digits, prefixDigits, allowedPrefixes: Object.freeze(allowedPrefixes) };
+            })
+            .filter((r) => r.allowedPrefixes.length > 0);
+
+          return { enabled, rules: Object.freeze(rules) };
+        }
+      }
+    } catch (e) {}
+    return RRHS_ROOM_FILTER;
+  }
+
+  function rrhsIsAllowedRoomValue(roomValue, filter = null) {
+    const resolvedFilter = filter || rrhsGetRoomFilter();
+    if (!resolvedFilter || resolvedFilter.enabled === false) return true;
+
+    const s = String(roomValue || "").trim();
+    if (!s) return false;
+
+    const rules = Array.isArray(resolvedFilter.rules) ? resolvedFilter.rules : [];
+    if (rules.length === 0) return false;
+
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      if (!rule) continue;
+
+      const digits = Math.max(1, Math.floor(Number(rule.digits) || 0));
+      const re = new RegExp(`^(\\d{${digits}})$`);
+      const m = s.match(re);
+      if (!m) continue;
+
+      const prefixDigits = Math.max(
+        1,
+        Math.min(digits, Math.floor(Number(rule.prefixDigits) || 0))
+      );
+      const prefix = Number(m[1].slice(0, prefixDigits));
+      if (!Number.isFinite(prefix)) continue;
+
+      const allowed = Array.isArray(rule.allowedPrefixes) ? rule.allowedPrefixes : [];
+      if (allowed.includes(prefix)) return true;
+    }
+
+    return false;
   }
 
   function parseCsv(text) {
@@ -428,6 +562,7 @@
     if (!rows || rows.length < 2) {
       throw new Error("Room schedule CSV is empty.");
     }
+    const roomFilter = rrhsGetRoomFilter();
 
     const header = rows[0] || [];
     const normalized = header.map(normalizeHeaderValue);
@@ -458,6 +593,7 @@
         const roomTrimmed = roomRaw.trim();
         if (!roomTrimmed) continue;
         const roomNormalized = roomTrimmed.replace(/\s+/g, " ");
+        if (!rrhsIsAllowedRoomValue(roomNormalized, roomFilter)) continue;
         periods[p] = roomNormalized;
       }
       if (Object.keys(periods).length === 0) continue;
@@ -967,7 +1103,12 @@
       return { ok: false, message: "Deliveries are only available on school days." };
     }
 
-    if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
+    if (
+      rrhsCartState.ready &&
+      rrhsCartState.hasAllDayDelivery &&
+      !rrhsCartState.hasRegularItems &&
+      rrhsCartState.allDayRoomSentinel
+    ) {
       return { ok: true, message: "" };
     }
 
@@ -1032,7 +1173,7 @@
       const input = document.querySelector('input[name="z7rty2b"]');
       if (!input || input.dataset.autocompleteInit) return;
 
-      if (rrhsSyncFlowersOnlyRoomField(input)) {
+      if (rrhsSyncAllDayOnlyRoomField(input)) {
         return;
       }
 
@@ -1344,8 +1485,13 @@
       const input = document.querySelector('input[name="z7rty2b"]');
       if (!input) return;
 
-      if (rrhsCartState.ready && rrhsCartState.hasFlowers && !rrhsCartState.hasOther) {
-        input.value = FLOWERS_ROOM_SENTINEL;
+      if (
+        rrhsCartState.ready &&
+        rrhsCartState.hasAllDayDelivery &&
+        !rrhsCartState.hasRegularItems &&
+        rrhsCartState.allDayRoomSentinel
+      ) {
+        input.value = rrhsCartState.allDayRoomSentinel;
         return;
       }
 
@@ -1364,7 +1510,15 @@
   }
 
   /* Checkout time restriction and cart state */
-  const rrhsCartState = { ready: false, hasFlowers: false, hasOther: false, lastUpdated: 0 };
+  const rrhsCartState = {
+    ready: false,
+    hasAllDayDelivery: false,
+    hasRegularItems: false,
+    allDayLabels: [],
+    allDayDisplayParts: [],
+    allDayRoomSentinel: null,
+    lastUpdated: 0
+  };
 
   function rrhsNormalizeProductIdentity(value) {
     return String(value || "")
@@ -1373,28 +1527,106 @@
       .replace(/[^a-z0-9]+/g, "");
   }
 
-  function isFlowersItem(item) {
-    const p = item && item.product;
-    if (!p) return false;
-    const skuMatch = p.sku && FLOWERS_SKU && String(p.sku) === String(FLOWERS_SKU);
-    const nameMatch =
-      rrhsNormalizeProductIdentity(p.name) === rrhsNormalizeProductIdentity(FLOWERS_PRODUCT_NAME);
-    const urlMatch =
-      rrhsNormalizeProductIdentity(p.url) ===
-      rrhsNormalizeProductIdentity(FLOWERS_PRODUCT_URL_PATH);
-    return Boolean(skuMatch || nameMatch || urlMatch);
+  function rrhsGetAllDayDeliveryProductRules() {
+    const fromWindow =
+      (typeof window !== "undefined" && Array.isArray(window.RRHS_ALL_DAY_DELIVERY_PRODUCTS))
+        ? window.RRHS_ALL_DAY_DELIVERY_PRODUCTS
+        : null;
+    const raw = fromWindow || RRHS_ALL_DAY_DELIVERY_PRODUCTS;
+    if (!Array.isArray(raw)) return [];
+
+    return raw
+      .filter((r) => r && typeof r === "object")
+      .map((r) => {
+        const sku = r.sku == null || r.sku === "" ? null : String(r.sku);
+        const name = r.name == null || r.name === "" ? null : String(r.name);
+        const urlPath = r.urlPath == null || r.urlPath === "" ? null : String(r.urlPath);
+        const label = String(r.label || name || sku || urlPath || "All-day item");
+        const lockRoom = Boolean(r.lockRoom);
+        const roomSentinel =
+          r.roomSentinel == null || r.roomSentinel === "" ? null : String(r.roomSentinel);
+
+        return { label, sku, name, urlPath, lockRoom, roomSentinel };
+      })
+      .filter((r) => Boolean(r.sku || r.name || r.urlPath));
+  }
+
+  function rrhsFindAllDayDeliveryRuleForProduct(product, rules) {
+    const p = product && typeof product === "object" ? product : null;
+    if (!p) return null;
+
+    const sku = p.sku == null ? "" : String(p.sku);
+    const nameNorm = rrhsNormalizeProductIdentity(p.name);
+    const urlNorm = rrhsNormalizeProductIdentity(p.url);
+
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      if (!r) continue;
+
+      if (r.sku && sku && String(r.sku) === sku) return r;
+      if (r.name && nameNorm && rrhsNormalizeProductIdentity(r.name) === nameNorm) return r;
+      if (r.urlPath && urlNorm) {
+        const ruleUrlNorm = rrhsNormalizeProductIdentity(r.urlPath);
+        if (ruleUrlNorm === urlNorm) return r;
+        if (/^https?:\/\//i.test(r.urlPath)) {
+          try {
+            const pathnameNorm = rrhsNormalizeProductIdentity(new URL(r.urlPath).pathname);
+            if (pathnameNorm === urlNorm) return r;
+          } catch (e) {}
+        }
+      }
+    }
+
+    return null;
   }
 
   function computeCartFlags(cart) {
     const items = (cart && Array.isArray(cart.items)) ? cart.items : [];
-    const hasFlowers = items.some(isFlowersItem);
-    const hasOther = items.some((it) => {
-      if (!it || !it.product) return false;
-      return !isFlowersItem(it);
+    const rules = rrhsGetAllDayDeliveryProductRules();
+
+    let hasAllDayDelivery = false;
+    let hasRegularItems = false;
+    let roomSentinel = null;
+    const labels = new Set();
+    const displayParts = new Set();
+
+    items.forEach((it) => {
+      const p = it && it.product;
+      if (!p) {
+        hasRegularItems = true;
+        return;
+      }
+
+      const rule = rrhsFindAllDayDeliveryRuleForProduct(p, rules);
+      if (rule) {
+        hasAllDayDelivery = true;
+        labels.add(rule.label);
+        if (rule.urlPath) {
+          const href = /^https?:\/\//i.test(rule.urlPath)
+            ? rule.urlPath
+            : `${RRHS_SITE_ORIGIN}${rule.urlPath}`;
+          displayParts.add(
+            `<a href="${href}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">${rule.label}</a>`
+          );
+        } else {
+          displayParts.add(rule.label);
+        }
+        if (!roomSentinel && rule.lockRoom && rule.roomSentinel) {
+          roomSentinel = rule.roomSentinel;
+        }
+        return;
+      }
+
+      hasRegularItems = true;
     });
+
     rrhsCartState.ready = true;
-    rrhsCartState.hasFlowers = hasFlowers;
-    rrhsCartState.hasOther = hasOther;
+    rrhsCartState.hasAllDayDelivery = hasAllDayDelivery;
+    rrhsCartState.hasRegularItems = hasRegularItems;
+    rrhsCartState.allDayLabels = Array.from(labels);
+    rrhsCartState.allDayDisplayParts = Array.from(displayParts);
+    rrhsCartState.allDayRoomSentinel =
+      hasAllDayDelivery && !hasRegularItems ? roomSentinel : null;
     rrhsCartState.lastUpdated = Date.now();
   }
 
@@ -1402,8 +1634,11 @@
     try {
       if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.get !== "function") {
         rrhsCartState.ready = false;
-        rrhsCartState.hasFlowers = false;
-        rrhsCartState.hasOther = false;
+        rrhsCartState.hasAllDayDelivery = false;
+        rrhsCartState.hasRegularItems = false;
+        rrhsCartState.allDayLabels = [];
+        rrhsCartState.allDayDisplayParts = [];
+        rrhsCartState.allDayRoomSentinel = null;
         rrhsCartState.lastUpdated = Date.now();
         if (typeof cb === "function") cb();
         return;
@@ -1414,8 +1649,11 @@
       });
     } catch (e) {
       rrhsCartState.ready = false;
-      rrhsCartState.hasFlowers = false;
-      rrhsCartState.hasOther = false;
+      rrhsCartState.hasAllDayDelivery = false;
+      rrhsCartState.hasRegularItems = false;
+      rrhsCartState.allDayLabels = [];
+      rrhsCartState.allDayDisplayParts = [];
+      rrhsCartState.allDayRoomSentinel = null;
       rrhsCartState.lastUpdated = Date.now();
       if (typeof cb === "function") cb();
     }
@@ -1457,9 +1695,13 @@
   }
 
   function getRestrictionMessage() {
-  if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-    return `Your cart includes <a href="${FLOWERS_PRODUCT_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> along with other items. Flower pre-orders must be placed separately. Please remove non-flower items and complete them in a separate order, as regular items are only available during active delivery windows.`;
-  }
+    if (rrhsCartState.hasAllDayDelivery && rrhsCartState.hasRegularItems) {
+      const parts =
+        rrhsCartState.allDayDisplayParts && rrhsCartState.allDayDisplayParts.length
+          ? rrhsCartState.allDayDisplayParts
+          : ["all-day delivery items"];
+      return `Your cart includes ${parts.join(", ")} along with other items. Items eligible for all-day delivery must be placed separately. Please remove other items and complete them in a separate order, as regular items are only available during active delivery windows.`;
+    }
 
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
@@ -1529,8 +1771,8 @@
   }
 
   function checkOrderingWindow() {
-    if (rrhsCartState.hasFlowers && !rrhsCartState.hasOther) return true;
-    if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) return false;
+    if (rrhsCartState.hasAllDayDelivery && !rrhsCartState.hasRegularItems) return true;
+    if (rrhsCartState.hasAllDayDelivery && rrhsCartState.hasRegularItems) return false;
     return checkOrderingWindowBase();
   }
 
@@ -1617,7 +1859,7 @@
       rrhsCartChangedListenerAdded = true;
       ecwid.OnCartChanged.add(function(cart) {
         computeCartFlags(cart);
-        rrhsSyncFlowersOnlyRoomField();
+        rrhsSyncAllDayOnlyRoomField();
         initRoomAutocomplete();
         wrapCheckoutButton();
         manageCheckoutButton();
