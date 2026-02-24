@@ -1562,6 +1562,40 @@
         const qLower = q.toLowerCase();
         const specialCfg = rrhsGetSpecialDeliveryConfig();
 
+        function formatRoomTeacherSummary(roomKey, fallbackTeacher = "") {
+          if (!schedule) return String(fallbackTeacher || "");
+
+          const entriesForRoom = schedule.roomToEntries && schedule.roomToEntries[roomKey];
+          const list = [];
+          const seen = new Set();
+          if (Array.isArray(entriesForRoom)) {
+            for (let i = 0; i < entriesForRoom.length; i++) {
+              const name = String(entriesForRoom[i] && entriesForRoom[i].teacher ? entriesForRoom[i].teacher : "").trim();
+              if (!name) continue;
+              const key = name.toLowerCase();
+              if (seen.has(key)) continue;
+              seen.add(key);
+              list.push(name);
+            }
+          }
+
+          if (list.length === 0) {
+            const fallback = String(fallbackTeacher || "").trim();
+            return fallback ? fallback : "";
+          }
+
+          if (list.length === 1) return list[0];
+          if (list.length === 2) return `${list[0]} + ${list[1]}`;
+
+          return `${list[0]} + ${list[1]} + ${list.length - 2} more`;
+        }
+
+        function formatRoomLabel(roomKey) {
+          const rk = String(roomKey || "").trim();
+          if (!rk) return "";
+          return rk.startsWith("Room") ? rk : `Room ${rk}`;
+        }
+
         function buildSpecialSection(forceShowAll = false) {
           if (!specialCfg || specialCfg.enabled === false) return [];
 
@@ -1692,17 +1726,13 @@
             seenRooms.add(roomKey);
 
             const resolved = resolveRoomDeterministic(roomKey) || e;
-            const roomEntries = schedule.roomToEntries[roomKey] || [];
-            const firstTeacher = roomEntries[0] && roomEntries[0].teacher ? roomEntries[0].teacher : resolved.teacher;
-            const count = roomEntries.length;
-            const teacherPart =
-              count > 1 ? `${firstTeacher} + ${count - 1} more` : String(firstTeacher || "");
+            const teacherPart = formatRoomTeacherSummary(roomKey, resolved.teacher);
 
             baseRooms.push({
               teacher: resolved.teacher,
               period: resolved.period,
               room: resolved.room,
-              label: `Room ${roomKey}${teacherPart ? ` — ${teacherPart}` : ""}`
+              label: `${formatRoomLabel(roomKey)}${teacherPart ? ` — ${teacherPart}` : ""}`
             });
           }
 
@@ -1710,18 +1740,30 @@
         }
 
         const baseMatches = [];
+        const seenRooms = new Set();
         for (let i = 0; i < entries.length && baseMatches.length < MAX_ITEMS; i++) {
           const e = entries[i];
-          const teacherLower = String(e.teacher || "").toLowerCase();
-          const roomLower = String(e.room || "").toLowerCase();
-          if (teacherLower.includes(qLower) || roomLower.includes(qLower)) {
-            baseMatches.push({
-              teacher: e.teacher,
-              period: e.period,
-              room: e.room,
-              label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
-            });
-          }
+          const roomKey = String(e.room || "").trim();
+          if (!roomKey || seenRooms.has(roomKey)) continue;
+          seenRooms.add(roomKey);
+
+          const roomMatches = roomKey.toLowerCase().includes(qLower);
+          const roomEntries = schedule.roomToEntries && schedule.roomToEntries[roomKey] ? schedule.roomToEntries[roomKey] : [];
+          const teacherMatches = Array.isArray(roomEntries)
+            ? roomEntries.some((re) => String(re && re.teacher ? re.teacher : "").toLowerCase().includes(qLower))
+            : false;
+
+          if (!roomMatches && !teacherMatches) continue;
+
+          const resolved = (Array.isArray(roomEntries) && roomEntries[0]) ? roomEntries[0] : (resolveRoomDeterministic(roomKey) || e);
+          const teacherPart = formatRoomTeacherSummary(roomKey, resolved.teacher);
+
+          baseMatches.push({
+            teacher: resolved.teacher,
+            period: resolved.period,
+            room: resolved.room,
+            label: `${formatRoomLabel(roomKey)}${teacherPart ? ` — ${teacherPart}` : ""}`
+          });
         }
 
         const specials = baseMatches.length === 0 ? buildSpecialSection(true) : buildSpecialSection(false);
