@@ -41,7 +41,7 @@
     // - `prefixDigits` is how many leading digits to compare against `allowedPrefixes`.
     rules: Object.freeze([
       // 4-digit rooms: 1000s–1500s and 2200s–2500s (prefix is first two digits).
-      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([10, 11, 12, 13, 14, 15, 22, 23, 24, 25]) },
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) },
       // 3-digit rooms: 200s (prefix is first one digit).
       //{ digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([2]) }
       // To also allow 700s later, add:
@@ -1639,7 +1639,7 @@
           return [];
         }
 
-        const MAX_ITEMS = 40;
+        const MAX_ITEMS = 999999999999;
 
         if (!schedule) {
           return buildSpecialSection(true);
@@ -1680,13 +1680,33 @@
         if (!q) {
           const specials = specialSectionForEmpty;
           const baseLimit = Math.max(0, MAX_ITEMS - specials.length);
-          const base = entries.slice(0, baseLimit).map((e) => ({
-            teacher: e.teacher,
-            period: e.period,
-            room: e.room,
-            label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
-          }));
-          return base.concat(specials).slice(0, MAX_ITEMS);
+
+          // Show one row per room (sorted by room number), so higher prefixes (14xx/15xx/22xx/etc)
+          // are reachable without being buried under many teachers in lower rooms.
+          const baseRooms = [];
+          const seenRooms = new Set();
+          for (let i = 0; i < entries.length && baseRooms.length < baseLimit; i++) {
+            const e = entries[i];
+            const roomKey = String(e.room || "").trim();
+            if (!roomKey || seenRooms.has(roomKey)) continue;
+            seenRooms.add(roomKey);
+
+            const resolved = resolveRoomDeterministic(roomKey) || e;
+            const roomEntries = schedule.roomToEntries[roomKey] || [];
+            const firstTeacher = roomEntries[0] && roomEntries[0].teacher ? roomEntries[0].teacher : resolved.teacher;
+            const count = roomEntries.length;
+            const teacherPart =
+              count > 1 ? `${firstTeacher} + ${count - 1} more` : String(firstTeacher || "");
+
+            baseRooms.push({
+              teacher: resolved.teacher,
+              period: resolved.period,
+              room: resolved.room,
+              label: `Room ${roomKey}${teacherPart ? ` — ${teacherPart}` : ""}`
+            });
+          }
+
+          return baseRooms.concat(specials).slice(0, MAX_ITEMS);
         }
 
         const baseMatches = [];
