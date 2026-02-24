@@ -32,7 +32,7 @@
 
   // Room filtering (applies to values coming from the schedule CSV).
   // Examples (default):
-  // - Valid: 1241, 1314, 1430, 2312
+  // - Valid: 1003, 1241, 1314, 1430, 2312, 208
   // - Invalid: 143 (3 digits), 725 (3 digits), Gym (non-numeric)
   const RRHS_ROOM_FILTER = Object.freeze({
     enabled: true,
@@ -40,8 +40,10 @@
     // - `digits` is the exact room number length to allow (digits only).
     // - `prefixDigits` is how many leading digits to compare against `allowedPrefixes`.
     rules: Object.freeze([
-      // 4-digit rooms: 1100s/1200s/.../2500s (prefix is first two digits).
-      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) }
+      // 4-digit rooms: 1000s–1500s and 2200s–2500s (prefix is first two digits).
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([10, 11, 12, 13, 14, 15, 22, 23, 24, 25]) },
+      // 3-digit rooms: 200s (prefix is first one digit).
+      //{ digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([2]) }
       // To also allow 700s later, add:
       // { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([7]) }
     ])
@@ -512,7 +514,8 @@
       if (!rule) continue;
 
       const digits = Math.max(1, Math.floor(Number(rule.digits) || 0));
-      const re = new RegExp(`^(\\d{${digits}})$`);
+      // Allow an optional trailing letter (e.g. "207A", "2312B") but no other suffixes.
+      const re = new RegExp(`^(\\d{${digits}})([a-zA-Z])?$`);
       const m = s.match(re);
       if (!m) continue;
 
