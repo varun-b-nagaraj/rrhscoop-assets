@@ -1603,6 +1603,15 @@
           const section = [];
           section.push({ kind: "header", label: specialCfg.headerLabel || "Special Locations" });
 
+          otherMatches.forEach((o) => {
+            section.push({
+              kind: "special",
+              id: o.id,
+              label: o.label,
+              roomValue: o.roomValue
+            });
+          });
+
           const showAlphaSection =
             alphaEnabled && (forceShowAll || !q || alphaChildMatches.length > 0);
           if (showAlphaSection) {
@@ -1617,15 +1626,6 @@
               });
             });
           }
-
-          otherMatches.forEach((o) => {
-            section.push({
-              kind: "special",
-              id: o.id,
-              label: o.label,
-              roomValue: o.roomValue
-            });
-          });
 
           return section;
         }
