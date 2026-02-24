@@ -11,6 +11,49 @@
     if (RRHS_DEBUG) console.log(...args);
   };
 
+  // ---------------------------
+  // Frequently edited settings
+  // ---------------------------
+  // A/B day reference (YYYY-MM-DD). This date is treated as an "A Day".
+  const REFERENCE_A_DAY = "2026-02-24";
+
+  // Emergency bypass (ignores day/period windows).
+  const CHECKOUT_ALWAYS_ALLOW = false;
+
+  // Room schedule source (served from this repo's assets unless RRHS_ROOM_SCHEDULE_CSV_URL is set).
+  const ROOM_SCHEDULE_CSV_FILENAME = "schedule_processed.xlsx - Room Schedule.csv";
+
+  // Room field lock value used for flowers-only carts.
+  const FLOWERS_ROOM_SENTINEL =
+    "Room number already specified on Valentine's Order, this field does not need to be filled out";
+
+  // Default "ordering closes N minutes before bell" (can be overridden in sessionStorage).
+  const RRHS_DEFAULT_CLOSE_DELTA_MINUTES = 15;
+
+  // Period bell schedule (base periods 1–4). B-day periods map to 5–8 automatically.
+  const BASE_PERIOD_WINDOWS = Object.freeze({
+    1: { start: "09:00", end: "10:32" },
+    2: { start: "10:40", end: "12:12" },
+    3: { start: "12:20", end: "14:39" },
+    4: { start: "14:47", end: "16:20" }
+  });
+
+  // Controls which period numbers (1–8) are eligible for ordering, by day type.
+  // For B Day, you can write either [1,2] meaning "base" -> 5/6, or [5,6] explicitly.
+  const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
+    A: [1, 2],
+    B: []
+  });
+
+  // Flowers item identity (used to allow flowers-only checkout anytime).
+  const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
+  const FLOWERS_SKU = "703_sku";
+  const FLOWERS_PRODUCT_URL_PATH = "/products/Valentines-Day-Flowers-p813923050";
+  const FLOWERS_PRODUCT_URL_FULL = `https://rrhscoop.roundrockisd.org${FLOWERS_PRODUCT_URL_PATH}`;
+
+  // Message shown when all delivery windows are disabled (matrix empty).
+  const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="${FLOWERS_PRODUCT_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
+
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
   let rrhsLastOverrideSignature = null;
@@ -202,10 +245,6 @@
   }
 
   /* Room schedule (CSV) + delivery selection */
-  const ROOM_SCHEDULE_CSV_FILENAME = "schedule_processed.xlsx - Room Schedule.csv";
-  const FLOWERS_ROOM_SENTINEL =
-    "Room number already specified on Valentine's Order, this field does not need to be filled out";
-
   let ROOM_DATA = Object.create(null);
   const rrhsRoomSchedule = {
     ready: false,
@@ -514,27 +553,6 @@
     return date.getHours() * 60 + date.getMinutes();
   }
 
-  const BASE_PERIOD_WINDOWS = Object.freeze({
-    1: { start: "09:00", end: "10:32" },
-    2: { start: "10:40", end: "12:12" },
-    3: { start: "12:20", end: "14:39" },
-    4: { start: "14:47", end: "16:20" }
-  });
-
-  // ---------------------------
-  // Ordering periods (edit this "matrix")
-  // ---------------------------
-  // Controls which period numbers (1–8) are eligible for ordering, by day type.
-  // Default: only the first two delivery windows:
-  // - A Day: Periods 1–2
-  // - B Day: Periods 5–6 (you can write either [1,2] meaning "base" -> 5/6, or [5,6] explicitly)
-  //
-  // To expand later, edit these arrays (e.g. add 3/4 and 7/8 when needed).
-  const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
-    A: [],
-    B: []
-  });
-
   function rrhsNormalizePeriodList(list) {
     if (!Array.isArray(list)) return [];
     const uniq = new Set();
@@ -631,7 +649,10 @@
     if (startMin == null || endMin == null) return null;
     const closeDelta = rrhsGetCloseDeltaMinutesOverride();
     // Ordering closes N minutes before the bell (default 15).
-    const closeMin = Math.max(startMin, endMin - (closeDelta == null ? 15 : closeDelta));
+    const closeMin = Math.max(
+      startMin,
+      endMin - (closeDelta == null ? RRHS_DEFAULT_CLOSE_DELTA_MINUTES : closeDelta)
+    );
     return { startMin, endMin, closeMin };
   }
 
@@ -1343,10 +1364,6 @@
   }
 
   /* Checkout time restriction and cart state */
-  const CHECKOUT_ALWAYS_ALLOW = false;
-  const REFERENCE_A_DAY = '2026-01-27';
-  const FLOWERS_PRODUCT_NAME = "Valentine's Day Flowers";
-  const FLOWERS_SKU = "703_sku";
   const rrhsCartState = { ready: false, hasFlowers: false, hasOther: false, lastUpdated: 0 };
 
   function rrhsNormalizeProductIdentity(value) {
@@ -1364,7 +1381,7 @@
       rrhsNormalizeProductIdentity(p.name) === rrhsNormalizeProductIdentity(FLOWERS_PRODUCT_NAME);
     const urlMatch =
       rrhsNormalizeProductIdentity(p.url) ===
-      rrhsNormalizeProductIdentity("/products/Valentines-Day-Flowers-p813923050");
+      rrhsNormalizeProductIdentity(FLOWERS_PRODUCT_URL_PATH);
     return Boolean(skuMatch || nameMatch || urlMatch);
   }
 
@@ -1441,7 +1458,7 @@
 
   function getRestrictionMessage() {
   if (rrhsCartState.hasFlowers && rrhsCartState.hasOther) {
-    return `Your cart includes <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> along with other items. Flower pre-orders must be placed separately. Please remove non-flower items and complete them in a separate order, as regular items are only available during active delivery windows.`;
+    return `Your cart includes <a href="${FLOWERS_PRODUCT_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Day Flowers</a> along with other items. Flower pre-orders must be placed separately. Please remove non-flower items and complete them in a separate order, as regular items are only available during active delivery windows.`;
   }
 
     const hasCompleteSelection =
@@ -1473,7 +1490,7 @@
       return `Ordering is available during delivery windows only:<br/>${parts.join("<br/><br/>")}`;
     }
 
-    return `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="https://rrhscoop.roundrockisd.org/products/Valentines-Day-Flowers-p813923050" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
+    return RRHS_CLOSED_MESSAGE_HTML;
   }
 
   function isADay() {
