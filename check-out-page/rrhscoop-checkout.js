@@ -47,6 +47,32 @@
     ])
   });
 
+  // Special delivery locations (appear in the room dropdown even if not in the schedule CSV).
+  // These are string values that will be written into the room input when selected.
+  const RRHS_SPECIAL_DELIVERY = Object.freeze({
+    enabled: true,
+    headerLabel: "Special Locations",
+    alphaOffice: Object.freeze({
+      enabled: true,
+      groupLabel: "Alpha Office",
+      rooms: Object.freeze([1300, 1400, 1500]),
+      roomLabelSuffix: "Alpha Office"
+    }),
+    locations: Object.freeze([
+      Object.freeze({
+        id: "front_desk",
+        label: "Front Desk",
+        roomValue:
+          "Front Desk (Pickup required — we leave it with the front desk staff)"
+      }),
+      Object.freeze({
+        id: "library",
+        label: "Library",
+        roomValue: "Library (Pickup required — we leave it at the front counter)"
+      })
+    ])
+  });
+
   // Period bell schedule (base periods 1–4). B-day periods map to 5–8 automatically.
   const BASE_PERIOD_WINDOWS = Object.freeze({
     1: { start: "09:00", end: "10:32" },
@@ -292,7 +318,8 @@
     teacher: null,
     period: null,
     room: null,
-    mode: null
+    mode: null,
+    specialId: null
   };
 
   const rrhsDerivedSchedule = {
@@ -499,6 +526,112 @@
     }
 
     return false;
+  }
+
+  function rrhsGetSpecialDeliveryConfig() {
+    try {
+      const w =
+        typeof window !== "undefined" && window.RRHS_SPECIAL_DELIVERY
+          ? window.RRHS_SPECIAL_DELIVERY
+          : null;
+      const raw = w && typeof w === "object" ? w : RRHS_SPECIAL_DELIVERY;
+
+      const enabled =
+        raw.enabled == null ? RRHS_SPECIAL_DELIVERY.enabled : Boolean(raw.enabled);
+      const headerLabel =
+        raw.headerLabel == null || raw.headerLabel === ""
+          ? RRHS_SPECIAL_DELIVERY.headerLabel
+          : String(raw.headerLabel);
+
+      const alphaRaw =
+        raw.alphaOffice && typeof raw.alphaOffice === "object" ? raw.alphaOffice : {};
+      const alphaEnabled =
+        alphaRaw.enabled == null
+          ? RRHS_SPECIAL_DELIVERY.alphaOffice.enabled
+          : Boolean(alphaRaw.enabled);
+      const alphaGroupLabel =
+        alphaRaw.groupLabel == null || alphaRaw.groupLabel === ""
+          ? RRHS_SPECIAL_DELIVERY.alphaOffice.groupLabel
+          : String(alphaRaw.groupLabel);
+      const alphaRooms = Array.isArray(alphaRaw.rooms)
+        ? alphaRaw.rooms
+            .map((n) => Math.floor(Number(n)))
+            .filter((n) => Number.isFinite(n) && n > 0 && n < 10000)
+        : RRHS_SPECIAL_DELIVERY.alphaOffice.rooms;
+      const alphaSuffix =
+        alphaRaw.roomLabelSuffix == null || alphaRaw.roomLabelSuffix === ""
+          ? RRHS_SPECIAL_DELIVERY.alphaOffice.roomLabelSuffix
+          : String(alphaRaw.roomLabelSuffix);
+
+      const locRaw = Array.isArray(raw.locations)
+        ? raw.locations
+        : RRHS_SPECIAL_DELIVERY.locations;
+      const locations = locRaw
+        .filter((l) => l && typeof l === "object")
+        .map((l) => {
+          const id = String(l.id || l.label || "location");
+          const label = String(l.label || l.roomValue || id);
+          const roomValue = String(l.roomValue || label);
+          return Object.freeze({ id, label, roomValue });
+        });
+
+      return Object.freeze({
+        enabled,
+        headerLabel,
+        alphaOffice: Object.freeze({
+          enabled: alphaEnabled,
+          groupLabel: alphaGroupLabel,
+          rooms: Object.freeze(alphaRooms),
+          roomLabelSuffix: alphaSuffix
+        }),
+        locations: Object.freeze(locations)
+      });
+    } catch (e) {}
+    return RRHS_SPECIAL_DELIVERY;
+  }
+
+  function rrhsGetSpecialDeliveryFlatOptions() {
+    const cfg = rrhsGetSpecialDeliveryConfig();
+    if (!cfg || cfg.enabled === false) return [];
+
+    const out = [];
+
+    const alpha = cfg.alphaOffice;
+    if (alpha && alpha.enabled !== false && Array.isArray(alpha.rooms)) {
+      alpha.rooms.forEach((roomNum) => {
+        const room = Math.floor(Number(roomNum));
+        if (!Number.isFinite(room) || room <= 0) return;
+        const suffix = String(alpha.roomLabelSuffix || "").trim();
+        const label = suffix ? `${room} ${suffix}` : String(room);
+        out.push(Object.freeze({ id: `alpha_office_${room}`, label, roomValue: label }));
+      });
+    }
+
+    const locations = Array.isArray(cfg.locations) ? cfg.locations : [];
+    locations.forEach((l) => {
+      if (!l || !l.roomValue) return;
+      out.push(
+        Object.freeze({
+          id: String(l.id || l.label || l.roomValue),
+          label: String(l.label || l.roomValue),
+          roomValue: String(l.roomValue)
+        })
+      );
+    });
+
+    return out;
+  }
+
+  function rrhsMatchSpecialDeliveryExact(query) {
+    const q = String(query || "").trim();
+    if (!q) return null;
+    const lower = q.toLowerCase();
+    const options = rrhsGetSpecialDeliveryFlatOptions();
+    return (
+      options.find((o) => String(o.roomValue || "").toLowerCase() === lower) ||
+      options.find((o) => String(o.label || "").toLowerCase() === lower) ||
+      null
+    );
   }
 
   function parseCsv(text) {
@@ -1112,6 +1245,49 @@
       return { ok: true, message: "" };
     }
 
+    if (rrhsDeliverySelection.mode === "special" && rrhsDeliverySelection.room) {
+      const special = rrhsMatchSpecialDeliveryExact(rrhsDeliverySelection.room);
+      if (!special) {
+        return { ok: false, message: "Please select a room from the list." };
+      }
+
+      const todayDay = getTodayDayType();
+      rrhsDeliverySelection.dayType = todayDay;
+
+      const allowed = getAllowedPeriodsForDay(todayDay);
+      if (!allowed || allowed.length === 0) {
+        return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+      }
+
+      const periodCandidate = rrhsGetCurrentOrNextPeriodForToday();
+      if (periodCandidate == null) {
+        return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+      }
+      rrhsDeliverySelection.period = periodCandidate;
+      if (!allowed.includes(periodCandidate)) {
+        return { ok: false, message: "Please select a room from the list." };
+      }
+
+      const w = getPeriodWindow(periodCandidate);
+      if (!w) return { ok: false, message: "Invalid period selected." };
+
+      const nowMin = getNowMinutes(today);
+      if (nowMin < w.startMin) {
+        return {
+          ok: false,
+          message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} starts at ${formatMinutes(w.startMin)}.`
+        };
+      }
+      if (nowMin >= w.closeMin) {
+        return {
+          ok: false,
+          message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} closes at ${formatMinutes(w.closeMin)}.`
+        };
+      }
+
+      return { ok: true, message: "" };
+    }
+
     if (!rrhsRoomSchedule.ready) {
       return {
         ok: false,
@@ -1182,6 +1358,8 @@
       rrhsDeliverySelection.teacher = null;
       rrhsDeliverySelection.period = null;
       rrhsDeliverySelection.room = null;
+      rrhsDeliverySelection.mode = null;
+      rrhsDeliverySelection.specialId = null;
 
       const section = input.closest(".ec-cart-step__section");
       if (section) section.style.transition = "padding-bottom 0.2s ease";
@@ -1289,6 +1467,7 @@
         rrhsDeliverySelection.period = null;
         rrhsDeliverySelection.room = null;
         rrhsDeliverySelection.mode = null;
+        rrhsDeliverySelection.specialId = null;
       }
 
       function setRoomValue(value) {
@@ -1306,6 +1485,27 @@
         rrhsDeliverySelection.period = entry.period;
         rrhsDeliverySelection.room = entry.room;
         rrhsDeliverySelection.mode = mode;
+        rrhsDeliverySelection.specialId = null;
+      }
+
+      const rrhsSpecialUiState = { alphaOfficeOpen: false };
+
+      function setSelectionFromSpecial(option) {
+        if (!option || !option.roomValue) return;
+        rrhsDeliverySelection.dayType = getTodayDayType();
+        rrhsDeliverySelection.teacher = null;
+        rrhsDeliverySelection.period = rrhsGetCurrentOrNextPeriodForToday();
+        rrhsDeliverySelection.room = option.roomValue;
+        rrhsDeliverySelection.mode = "special";
+        rrhsDeliverySelection.specialId = String(option.id || "");
+      }
+
+      function selectSpecial(option) {
+        if (!option || !option.roomValue) return;
+        showError(false);
+        setSelectionFromSpecial(option);
+        setRoomValue(option.roomValue);
+        hideDropdown();
       }
 
       function selectRoom(entry, mode = "room") {
@@ -1325,9 +1525,97 @@
 
       function buildSuggestions(query) {
         const schedule = getDerivedScheduleForToday();
-        if (!schedule) return [];
 
         const q = String(query || "").trim();
+        const qLower = q.toLowerCase();
+
+        const specialCfg = rrhsGetSpecialDeliveryConfig();
+        const specialItems = [];
+        if (specialCfg && specialCfg.enabled !== false) {
+          const matchesAll = !q;
+
+          const alpha = specialCfg.alphaOffice;
+          const alphaEnabled = alpha && alpha.enabled !== false;
+          const alphaGroupLabel = alphaEnabled ? String(alpha.groupLabel || "Alpha Office") : "";
+          const alphaRooms = alphaEnabled && Array.isArray(alpha.rooms) ? alpha.rooms : [];
+          const alphaSuffix = alphaEnabled ? String(alpha.roomLabelSuffix || "").trim() : "";
+
+          const alphaChildren = alphaRooms
+            .map((n) => Math.floor(Number(n)))
+            .filter((n) => Number.isFinite(n) && n > 0)
+            .map((n) => {
+              const label = alphaSuffix ? `${n} ${alphaSuffix}` : String(n);
+              return { id: `alpha_office_${n}`, label, roomValue: label };
+            });
+
+          const locationOptions = rrhsGetSpecialDeliveryFlatOptions().filter(
+            (o) => !String(o.id || "").startsWith("alpha_office_")
+          );
+
+          const alphaChildMatches = alphaChildren.filter((c) => {
+            if (matchesAll) return true;
+            return String(c.label || "").toLowerCase().includes(qLower);
+          });
+          const alphaGroupMatches =
+            matchesAll || (alphaGroupLabel && alphaGroupLabel.toLowerCase().includes(qLower));
+          const otherMatches = locationOptions.filter((o) => {
+            if (matchesAll) return true;
+            const labelLower = String(o.label || "").toLowerCase();
+            const roomLower = String(o.roomValue || "").toLowerCase();
+            return labelLower.includes(qLower) || roomLower.includes(qLower);
+          });
+
+          const anySpecialMatches =
+            (alphaEnabled && (alphaGroupMatches || alphaChildMatches.length > 0)) ||
+            otherMatches.length > 0;
+
+          if (anySpecialMatches) {
+            specialItems.push({ kind: "header", label: specialCfg.headerLabel || "Special" });
+
+            if (alphaEnabled && alphaGroupMatches) {
+              specialItems.push({
+                kind: "toggle",
+                id: "alphaOffice",
+                label: alphaGroupLabel,
+                open: Boolean(rrhsSpecialUiState.alphaOfficeOpen)
+              });
+            }
+
+            const showAlphaChildren =
+              !q ? Boolean(rrhsSpecialUiState.alphaOfficeOpen) : alphaChildMatches.length > 0;
+            if (alphaEnabled && showAlphaChildren) {
+              const children = !q ? alphaChildren : alphaChildMatches;
+              children.forEach((c) => {
+                specialItems.push({
+                  kind: "special",
+                  id: c.id,
+                  label: c.label,
+                  roomValue: c.roomValue
+                });
+              });
+            }
+
+            otherMatches.forEach((o) => {
+              specialItems.push({
+                kind: "special",
+                id: o.id,
+                label: o.label,
+                roomValue: o.roomValue
+              });
+            });
+          }
+        }
+
+        const specialExact = rrhsMatchSpecialDeliveryExact(q);
+        if (specialExact) {
+          selectSpecial(specialExact);
+          return [];
+        }
+
+        if (!schedule) {
+          return specialItems;
+        }
+
         const teacherExact = matchesTeacherExact(q, schedule.teacherNames);
         if (teacherExact) {
           const entries = schedule.teacherToEntries[teacherExact] || [];
@@ -1355,16 +1643,16 @@
         }
 
         if (!q) {
-          return schedule.allEntries.slice(0, 40).map((e) => ({
+          const base = schedule.allEntries.slice(0, 40).map((e) => ({
             teacher: e.teacher,
             period: e.period,
             room: e.room,
             label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
           }));
+          return specialItems.length ? specialItems.concat(base) : base;
         }
 
-        const qLower = q.toLowerCase();
-        return schedule.allEntries
+        const baseMatches = schedule.allEntries
           .filter((e) => {
             const teacherLower = String(e.teacher || "").toLowerCase();
             const roomLower = String(e.room || "").toLowerCase();
@@ -1377,6 +1665,8 @@
             room: e.room,
             label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
           }));
+
+        return specialItems.length ? specialItems.concat(baseMatches) : baseMatches;
       }
 
       function renderSuggestions(items) {
@@ -1388,10 +1678,49 @@
 
         items.forEach((item) => {
           const el = document.createElement("div");
+          const kind = item && item.kind ? String(item.kind) : "";
+
+          if (kind === "header") {
+            el.style.cssText =
+              "padding:10px 16px;background:#f8f8f8;color:#444;font-weight:600;border-bottom:1px solid #f0f0f0;cursor:default;";
+            el.textContent = String(item.label || "Special");
+            dropdown.appendChild(el);
+            return;
+          }
+
+          if (kind === "toggle") {
+            el.style.cssText =
+              "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-weight:600;";
+            el.textContent = `${item.open ? "▼" : "▶"} ${String(item.label || "Group")}`;
+            el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
+            el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
+            el.addEventListener("click", () => {
+              if (item.id === "alphaOffice") {
+                rrhsSpecialUiState.alphaOfficeOpen = !rrhsSpecialUiState.alphaOfficeOpen;
+                lastRenderedQuery = null;
+                handleQueryChange();
+              }
+            });
+            dropdown.appendChild(el);
+            return;
+          }
+
+          if (kind === "special") {
+            el.style.cssText =
+              "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;";
+            el.textContent = String(item.label || item.roomValue || "");
+            el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
+            el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
+            el.addEventListener("click", () => {
+              selectSpecial(item);
+            });
+            dropdown.appendChild(el);
+            return;
+          }
+
           el.style.cssText =
             "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;";
           el.textContent = item.label;
-
           el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
           el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
           el.addEventListener("click", () => {
@@ -1407,14 +1736,7 @@
       function handleQueryChange() {
         if (ignoreInput) return;
         showError(false);
-
-        const schedule = getDerivedScheduleForToday();
         const query = String(input.value || "");
-
-        if (!schedule) {
-          hideDropdown();
-          return;
-        }
 
         const qTrim = query.trim();
         if (rrhsDeliverySelection.room && rrhsDeliverySelection.room !== qTrim) {
@@ -1441,6 +1763,15 @@
 
           const schedule = getDerivedScheduleForToday();
           const qTrim = String(input.value || "").trim();
+          const specialExact = rrhsMatchSpecialDeliveryExact(qTrim);
+          if (specialExact) {
+            showError(false);
+            setSelectionFromSpecial(specialExact);
+            if (String(input.value || "") !== String(specialExact.roomValue || "")) {
+              setRoomValue(String(specialExact.roomValue || ""));
+            }
+            return;
+          }
           if (!schedule || !qTrim) {
             showError(false);
             return;
@@ -1705,8 +2036,9 @@
 
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
-      rrhsDeliverySelection.teacher &&
-      rrhsDeliverySelection.period;
+      rrhsDeliverySelection.room &&
+      (rrhsDeliverySelection.mode === "special" ||
+        (rrhsDeliverySelection.teacher && rrhsDeliverySelection.period));
     if (hasCompleteSelection) {
       const validation = getSelectionValidation();
       if (!validation.ok && validation.message) return validation.message;
