@@ -151,6 +151,7 @@
     rrhsDerivedSchedule.teacherToEntries = Object.create(null);
     rrhsDerivedSchedule.roomToEntries = Object.create(null);
     rrhsDerivedSchedule.allEntries = [];
+    rrhsDerivedSchedule.allEntriesByRoom = [];
   }
 
   function rrhsRefreshEverything(reason = "") {
@@ -328,7 +329,8 @@
     teacherNames: [],
     teacherToEntries: Object.create(null),
     roomToEntries: Object.create(null),
-    allEntries: []
+    allEntries: [],
+    allEntriesByRoom: []
   };
 
   function rrhsLockRoomInputForAllDay(input, sentinelValue) {
@@ -632,6 +634,15 @@
       options.find((o) => String(o.label || "").toLowerCase() === lower) ||
       null
     );
+  }
+
+  function rrhsGetRoomSortKey(roomValue) {
+    const s = String(roomValue || "").trim();
+    if (!s) return Infinity;
+    const m = s.match(/^(\d{1,6})\b/);
+    if (!m) return Infinity;
+    const n = Number(m[1]);
+    return Number.isFinite(n) ? n : Infinity;
   }
 
   function parseCsv(text) {
@@ -1188,12 +1199,20 @@
       );
     });
 
+    const allEntriesByRoom = allEntries.slice().sort((a, b) => {
+      const aKey = rrhsGetRoomSortKey(a.room);
+      const bKey = rrhsGetRoomSortKey(b.room);
+      if (aKey !== bKey) return aKey - bKey;
+      return a.teacher.localeCompare(b.teacher) || String(a.room).localeCompare(String(b.room));
+    });
+
     rrhsDerivedSchedule.dayType = dayType;
     rrhsDerivedSchedule.period = activePeriod;
     rrhsDerivedSchedule.teacherNames = teacherNames;
     rrhsDerivedSchedule.teacherToEntries = teacherToEntries;
     rrhsDerivedSchedule.roomToEntries = roomToEntries;
     rrhsDerivedSchedule.allEntries = allEntries;
+    rrhsDerivedSchedule.allEntriesByRoom = allEntriesByRoom;
 
     log("Derived schedule rebuilt:", {
       dayType,
@@ -1377,6 +1396,18 @@
       dropdown.dataset.rrhsRoomDropdown = "true";
       wrapper.appendChild(dropdown);
 
+      if (!document.getElementById("rrhs-room-dropdown-styles")) {
+        const style = document.createElement("style");
+        style.id = "rrhs-room-dropdown-styles";
+        style.textContent = `
+          @keyframes rrhsFadeIn {
+            from { opacity: 0; transform: translateY(-2px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
       const errorMsg = document.createElement("div");
       errorMsg.style.cssText =
         "color:#d32f2f;font-size:.875em;margin-top:4px;display:none;outline:none!important;border:none!important;box-shadow:none!important;pointer-events:none;";
@@ -1488,7 +1519,31 @@
         rrhsDeliverySelection.specialId = null;
       }
 
-      const rrhsSpecialUiState = { alphaOfficeOpen: false };
+      const rrhsSpecialUiState = { alphaOfficeOpen: false, alphaCloseTimer: null };
+
+      function rrhsOpenAlphaOffice() {
+        if (rrhsSpecialUiState.alphaCloseTimer) {
+          clearTimeout(rrhsSpecialUiState.alphaCloseTimer);
+          rrhsSpecialUiState.alphaCloseTimer = null;
+        }
+        if (rrhsSpecialUiState.alphaOfficeOpen) return;
+        rrhsSpecialUiState.alphaOfficeOpen = true;
+        lastRenderedQuery = null;
+        handleQueryChange();
+      }
+
+      function rrhsScheduleCloseAlphaOffice(delayMs = 150) {
+        if (rrhsSpecialUiState.alphaCloseTimer) {
+          clearTimeout(rrhsSpecialUiState.alphaCloseTimer);
+        }
+        rrhsSpecialUiState.alphaCloseTimer = setTimeout(() => {
+          rrhsSpecialUiState.alphaCloseTimer = null;
+          if (!rrhsSpecialUiState.alphaOfficeOpen) return;
+          rrhsSpecialUiState.alphaOfficeOpen = false;
+          lastRenderedQuery = null;
+          handleQueryChange();
+        }, Math.max(0, Number(delayMs) || 0));
+      }
 
       function setSelectionFromSpecial(option) {
         if (!option || !option.roomValue) return;
@@ -1528,11 +1583,10 @@
 
         const q = String(query || "").trim();
         const qLower = q.toLowerCase();
-
         const specialCfg = rrhsGetSpecialDeliveryConfig();
-        const specialItems = [];
-        if (specialCfg && specialCfg.enabled !== false) {
-          const matchesAll = !q;
+
+        function buildSpecialSection(forceShowAll = false) {
+          if (!specialCfg || specialCfg.enabled === false) return [];
 
           const alpha = specialCfg.alphaOffice;
           const alphaEnabled = alpha && alpha.enabled !== false;
@@ -1548,62 +1602,66 @@
               return { id: `alpha_office_${n}`, label, roomValue: label };
             });
 
-          const locationOptions = rrhsGetSpecialDeliveryFlatOptions().filter(
+          const locations = rrhsGetSpecialDeliveryFlatOptions().filter(
             (o) => !String(o.id || "").startsWith("alpha_office_")
           );
 
+          const alphaGroupMatches = !q || (alphaGroupLabel && alphaGroupLabel.toLowerCase().includes(qLower));
           const alphaChildMatches = alphaChildren.filter((c) => {
-            if (matchesAll) return true;
+            if (!q) return true;
             return String(c.label || "").toLowerCase().includes(qLower);
           });
-          const alphaGroupMatches =
-            matchesAll || (alphaGroupLabel && alphaGroupLabel.toLowerCase().includes(qLower));
-          const otherMatches = locationOptions.filter((o) => {
-            if (matchesAll) return true;
-            const labelLower = String(o.label || "").toLowerCase();
-            const roomLower = String(o.roomValue || "").toLowerCase();
-            return labelLower.includes(qLower) || roomLower.includes(qLower);
-          });
+          const otherMatches = forceShowAll
+            ? locations
+            : locations.filter((o) => {
+                if (!q) return true;
+                const labelLower = String(o.label || "").toLowerCase();
+                const roomLower = String(o.roomValue || "").toLowerCase();
+                return labelLower.includes(qLower) || roomLower.includes(qLower);
+              });
 
-          const anySpecialMatches =
-            (alphaEnabled && (alphaGroupMatches || alphaChildMatches.length > 0)) ||
+          const anyMatches =
+            (alphaEnabled && alphaGroupMatches) ||
+            alphaChildMatches.length > 0 ||
             otherMatches.length > 0;
+          if (!anyMatches) return [];
 
-          if (anySpecialMatches) {
-            specialItems.push({ kind: "header", label: specialCfg.headerLabel || "Special" });
+          const section = [];
+          section.push({ kind: "header", label: specialCfg.headerLabel || "Special Locations" });
 
-            if (alphaEnabled && alphaGroupMatches) {
-              specialItems.push({
-                kind: "toggle",
-                id: "alphaOffice",
-                label: alphaGroupLabel,
-                open: Boolean(rrhsSpecialUiState.alphaOfficeOpen)
-              });
-            }
+          if (alphaEnabled && (alphaGroupMatches || forceShowAll)) {
+            section.push({
+              kind: "alphaGroup",
+              id: "alphaOffice",
+              label: alphaGroupLabel,
+              open: Boolean(rrhsSpecialUiState.alphaOfficeOpen)
+            });
+          }
 
-            const showAlphaChildren =
-              !q ? Boolean(rrhsSpecialUiState.alphaOfficeOpen) : alphaChildMatches.length > 0;
-            if (alphaEnabled && showAlphaChildren) {
-              const children = !q ? alphaChildren : alphaChildMatches;
-              children.forEach((c) => {
-                specialItems.push({
-                  kind: "special",
-                  id: c.id,
-                  label: c.label,
-                  roomValue: c.roomValue
-                });
-              });
-            }
-
-            otherMatches.forEach((o) => {
-              specialItems.push({
+          const showAlphaChildren =
+            Boolean(rrhsSpecialUiState.alphaOfficeOpen) || (q && alphaChildMatches.length > 0);
+          if (alphaEnabled && showAlphaChildren) {
+            const children = rrhsSpecialUiState.alphaOfficeOpen ? alphaChildren : alphaChildMatches;
+            children.forEach((c) => {
+              section.push({
                 kind: "special",
-                id: o.id,
-                label: o.label,
-                roomValue: o.roomValue
+                id: c.id,
+                label: c.label,
+                roomValue: c.roomValue
               });
             });
           }
+
+          otherMatches.forEach((o) => {
+            section.push({
+              kind: "special",
+              id: o.id,
+              label: o.label,
+              roomValue: o.roomValue
+            });
+          });
+
+          return section;
         }
 
         const specialExact = rrhsMatchSpecialDeliveryExact(q);
@@ -1612,8 +1670,10 @@
           return [];
         }
 
+        const MAX_ITEMS = 40;
+
         if (!schedule) {
-          return specialItems;
+          return buildSpecialSection(true);
         }
 
         const teacherExact = matchesTeacherExact(q, schedule.teacherNames);
@@ -1642,31 +1702,42 @@
           }));
         }
 
+        const specialSectionForEmpty = buildSpecialSection(false);
+
+        const entries = Array.isArray(schedule.allEntriesByRoom) && schedule.allEntriesByRoom.length
+          ? schedule.allEntriesByRoom
+          : schedule.allEntries;
+
         if (!q) {
-          const base = schedule.allEntries.slice(0, 40).map((e) => ({
+          const specials = specialSectionForEmpty;
+          const baseLimit = Math.max(0, MAX_ITEMS - specials.length);
+          const base = entries.slice(0, baseLimit).map((e) => ({
             teacher: e.teacher,
             period: e.period,
             room: e.room,
             label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
           }));
-          return specialItems.length ? specialItems.concat(base) : base;
+          return base.concat(specials).slice(0, MAX_ITEMS);
         }
 
-        const baseMatches = schedule.allEntries
-          .filter((e) => {
-            const teacherLower = String(e.teacher || "").toLowerCase();
-            const roomLower = String(e.room || "").toLowerCase();
-            return teacherLower.includes(qLower) || roomLower.includes(qLower);
-          })
-          .slice(0, 40)
-          .map((e) => ({
-            teacher: e.teacher,
-            period: e.period,
-            room: e.room,
-            label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
-          }));
+        const baseMatches = [];
+        for (let i = 0; i < entries.length && baseMatches.length < MAX_ITEMS; i++) {
+          const e = entries[i];
+          const teacherLower = String(e.teacher || "").toLowerCase();
+          const roomLower = String(e.room || "").toLowerCase();
+          if (teacherLower.includes(qLower) || roomLower.includes(qLower)) {
+            baseMatches.push({
+              teacher: e.teacher,
+              period: e.period,
+              room: e.room,
+              label: `${e.teacher} — ${String(e.room).startsWith("Room") ? e.room : `Room ${e.room}`}`
+            });
+          }
+        }
 
-        return specialItems.length ? specialItems.concat(baseMatches) : baseMatches;
+        const specials = baseMatches.length === 0 ? buildSpecialSection(true) : buildSpecialSection(false);
+        const baseLimit = Math.max(0, MAX_ITEMS - specials.length);
+        return baseMatches.slice(0, baseLimit).concat(specials).slice(0, MAX_ITEMS);
       }
 
       function renderSuggestions(items) {
@@ -1688,19 +1759,23 @@
             return;
           }
 
-          if (kind === "toggle") {
+          if (kind === "alphaGroup") {
             el.style.cssText =
               "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-weight:600;";
-            el.textContent = `${item.open ? "▼" : "▶"} ${String(item.label || "Group")}`;
+            const arrow = document.createElement("span");
+            arrow.textContent = "▶";
+            arrow.style.display = "inline-block";
+            arrow.style.width = "16px";
+            arrow.style.transition = "transform 0.15s ease";
+            arrow.style.transform = item.open ? "rotate(90deg)" : "rotate(0deg)";
+            const labelNode = document.createElement("span");
+            labelNode.textContent = String(item.label || "Group");
+            el.appendChild(arrow);
+            el.appendChild(labelNode);
             el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
             el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
-            el.addEventListener("click", () => {
-              if (item.id === "alphaOffice") {
-                rrhsSpecialUiState.alphaOfficeOpen = !rrhsSpecialUiState.alphaOfficeOpen;
-                lastRenderedQuery = null;
-                handleQueryChange();
-              }
-            });
+            el.addEventListener("mouseenter", () => rrhsOpenAlphaOffice());
+            el.addEventListener("mouseleave", () => rrhsScheduleCloseAlphaOffice());
             dropdown.appendChild(el);
             return;
           }
@@ -1709,8 +1784,13 @@
             el.style.cssText =
               "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;";
             el.textContent = String(item.label || item.roomValue || "");
+            el.style.animation = "rrhsFadeIn 0.12s ease";
             el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
             el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
+            if (String(item.id || "").startsWith("alpha_office_")) {
+              el.addEventListener("mouseenter", () => rrhsOpenAlphaOffice());
+              el.addEventListener("mouseleave", () => rrhsScheduleCloseAlphaOffice());
+            }
             el.addEventListener("click", () => {
               selectSpecial(item);
             });
