@@ -51,7 +51,7 @@
   // These are string values that will be written into the room input when selected.
   const RRHS_SPECIAL_DELIVERY = Object.freeze({
     enabled: true,
-    headerLabel: "Special Locations",
+    headerLabel: "Special Locations (Delivered to front counter)",
     alphaOffice: Object.freeze({
       enabled: true,
       groupLabel: "Alpha Office",
@@ -63,12 +63,12 @@
         id: "front_desk",
         label: "Front Desk",
         roomValue:
-          "Front Desk (Pickup required — we leave it with the front desk staff)"
+          "Front Desk"
       }),
       Object.freeze({
         id: "library",
         label: "Library",
-        roomValue: "Library (Pickup required — we leave it at the front counter)"
+        roomValue: "Library"
       })
     ])
   });
@@ -1519,32 +1519,6 @@
         rrhsDeliverySelection.specialId = null;
       }
 
-      const rrhsSpecialUiState = { alphaOfficeOpen: false, alphaCloseTimer: null };
-
-      function rrhsOpenAlphaOffice() {
-        if (rrhsSpecialUiState.alphaCloseTimer) {
-          clearTimeout(rrhsSpecialUiState.alphaCloseTimer);
-          rrhsSpecialUiState.alphaCloseTimer = null;
-        }
-        if (rrhsSpecialUiState.alphaOfficeOpen) return;
-        rrhsSpecialUiState.alphaOfficeOpen = true;
-        lastRenderedQuery = null;
-        handleQueryChange();
-      }
-
-      function rrhsScheduleCloseAlphaOffice(delayMs = 150) {
-        if (rrhsSpecialUiState.alphaCloseTimer) {
-          clearTimeout(rrhsSpecialUiState.alphaCloseTimer);
-        }
-        rrhsSpecialUiState.alphaCloseTimer = setTimeout(() => {
-          rrhsSpecialUiState.alphaCloseTimer = null;
-          if (!rrhsSpecialUiState.alphaOfficeOpen) return;
-          rrhsSpecialUiState.alphaOfficeOpen = false;
-          lastRenderedQuery = null;
-          handleQueryChange();
-        }, Math.max(0, Number(delayMs) || 0));
-      }
-
       function setSelectionFromSpecial(option) {
         if (!option || !option.roomValue) return;
         rrhsDeliverySelection.dayType = getTodayDayType();
@@ -1629,19 +1603,11 @@
           const section = [];
           section.push({ kind: "header", label: specialCfg.headerLabel || "Special Locations" });
 
-          if (alphaEnabled && (alphaGroupMatches || forceShowAll)) {
-            section.push({
-              kind: "alphaGroup",
-              id: "alphaOffice",
-              label: alphaGroupLabel,
-              open: Boolean(rrhsSpecialUiState.alphaOfficeOpen)
-            });
-          }
-
-          const showAlphaChildren =
-            Boolean(rrhsSpecialUiState.alphaOfficeOpen) || (q && alphaChildMatches.length > 0);
-          if (alphaEnabled && showAlphaChildren) {
-            const children = rrhsSpecialUiState.alphaOfficeOpen ? alphaChildren : alphaChildMatches;
+          const showAlphaSection =
+            alphaEnabled && (forceShowAll || !q || alphaChildMatches.length > 0);
+          if (showAlphaSection) {
+            section.push({ kind: "subheader", label: alphaGroupLabel || "Alpha Office" });
+            const children = forceShowAll || !q ? alphaChildren : alphaChildMatches;
             children.forEach((c) => {
               section.push({
                 kind: "special",
@@ -1759,23 +1725,10 @@
             return;
           }
 
-          if (kind === "alphaGroup") {
+          if (kind === "subheader") {
             el.style.cssText =
-              "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-weight:600;";
-            const arrow = document.createElement("span");
-            arrow.textContent = "▶";
-            arrow.style.display = "inline-block";
-            arrow.style.width = "16px";
-            arrow.style.transition = "transform 0.15s ease";
-            arrow.style.transform = item.open ? "rotate(90deg)" : "rotate(0deg)";
-            const labelNode = document.createElement("span");
-            labelNode.textContent = String(item.label || "Group");
-            el.appendChild(arrow);
-            el.appendChild(labelNode);
-            el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
-            el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
-            el.addEventListener("mouseenter", () => rrhsOpenAlphaOffice());
-            el.addEventListener("mouseleave", () => rrhsScheduleCloseAlphaOffice());
+              "padding:10px 16px;background:#fbfbfb;color:#444;font-weight:600;border-bottom:1px solid #f0f0f0;cursor:default;";
+            el.textContent = String(item.label || "");
             dropdown.appendChild(el);
             return;
           }
@@ -1787,10 +1740,6 @@
             el.style.animation = "rrhsFadeIn 0.12s ease";
             el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
             el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
-            if (String(item.id || "").startsWith("alpha_office_")) {
-              el.addEventListener("mouseenter", () => rrhsOpenAlphaOffice());
-              el.addEventListener("mouseleave", () => rrhsScheduleCloseAlphaOffice());
-            }
             el.addEventListener("click", () => {
               selectSpecial(item);
             });
@@ -1907,7 +1856,7 @@
       }
 
       // VALIDATION DISABLED - uncomment to re-enable
-      /*
+      
       const validation = getSelectionValidation();
       if (!validation.ok) {
         e.preventDefault();
@@ -1916,7 +1865,7 @@
 
         createModal(validation.message || "Please select a room from the list.");
       }
-      */
+  
     });
   }
 
