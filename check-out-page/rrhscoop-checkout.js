@@ -114,7 +114,7 @@
   const RRHS_FLOWERS_PREORDER_URL_FULL = `${RRHS_SITE_ORIGIN}/products/Valentines-Day-Flowers-p813923050`;
 
   // Message shown when all delivery windows are disabled (matrix empty).
-  const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. We are still accepting pre-orders for <a href="${RRHS_FLOWERS_PREORDER_URL_FULL}" target="_blank" rel="noopener" style="color:#FFD6D6;text-decoration:underline;font-weight:600;">Valentine’s Roses</a>. Thank you for your patience — service will resume on February 18th.`;
+  const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. Thank you for your patience — service will resume on February 18th.`;
 
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
