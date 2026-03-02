@@ -48,6 +48,12 @@
       // { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([7]) }
     ])
   });
+  const RRHS_STUDENT_ROOM_FILTER = Object.freeze({
+    enabled: true,
+    rules: Object.freeze([
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) }
+    ])
+  });
 
   // Special delivery locations (appear in the room dropdown even if not in the schedule CSV).
   // These are string values that will be written into the room input when selected.
@@ -57,7 +63,7 @@
     alphaOffice: Object.freeze({
       enabled: true,
       groupLabel: "Alpha Office",
-      rooms: Object.freeze([1300, 1400, 1500]),
+      rooms: Object.freeze([140, 200, 1300, 1400, 1500]),
       roomLabelSuffix: "Alpha Office"
     }),
     locations: Object.freeze([
@@ -339,6 +345,46 @@
     } catch (_) {}
   }
 
+  function rrhsGetEmployeeIdForAccess() {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return "";
+      return String(window.localStorage.getItem(RRHS_EMPLOYEE_STORAGE_KEY) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function rrhsGetRoomAccessMode() {
+    const employeeId = rrhsGetEmployeeIdForAccess();
+    if (!employeeId) return "limited";
+    const first = employeeId.charAt(0).toLowerCase();
+    if (first === "e") return "all";
+    return "limited";
+  }
+
+  function rrhsRefreshRoomAccessIfNeeded() {
+    const mode = rrhsGetRoomAccessMode();
+    if (mode === rrhsLastRoomAccessMode) return;
+    rrhsLastRoomAccessMode = mode;
+
+    rrhsRoomSchedulePromise = null;
+    ROOM_DATA = Object.create(null);
+    rrhsRoomSchedule.ready = false;
+    rrhsRoomSchedule.teachers = [];
+    rrhsRoomSchedule.error = null;
+    rrhsInvalidateDerivedSchedule();
+
+    loadRoomSchedule()
+      .then(() => {
+        buildDerivedScheduleForToday();
+        const roomInput = document.querySelector('input[name="z7rty2b"]');
+        if (roomInput && document.activeElement === roomInput) {
+          roomInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      })
+      .catch(() => {});
+  }
+
   function rrhsShowEmployeeInputError(input, show) {
     if (!input) return;
     const container = input.closest(".form-control") || input.parentElement;
@@ -374,6 +420,7 @@
         const v = String(input.value || "").trim();
         if (v) rrhsPersistEmployeeId(v);
         if (rrhsEmployeeIdIsValid(v)) rrhsShowEmployeeInputError(input, false);
+        rrhsRefreshRoomAccessIfNeeded();
       };
       input.addEventListener("input", onEmployeeInput);
       input.addEventListener("change", onEmployeeInput);
@@ -408,6 +455,7 @@
 
   /* Room schedule (CSV) + delivery selection */
   let ROOM_DATA = Object.create(null);
+  let rrhsLastRoomAccessMode = null;
   const rrhsRoomSchedule = {
     ready: false,
     teachers: [],
@@ -542,6 +590,12 @@
   }
 
   function rrhsGetRoomFilter() {
+    const mode = rrhsGetRoomAccessMode();
+    if (mode === "all") {
+      // E-number staff can access all rooms/buildings.
+      return { enabled: false, rules: Object.freeze([]) };
+    }
+
     try {
       if (typeof window !== "undefined" && window.RRHS_ROOM_FILTER) {
         const w = window.RRHS_ROOM_FILTER;
@@ -595,7 +649,7 @@
         }
       }
     } catch (e) {}
-    return RRHS_ROOM_FILTER;
+    return RRHS_STUDENT_ROOM_FILTER;
   }
 
   function rrhsIsAllowedRoomValue(roomValue, filter = null) {
@@ -2375,6 +2429,7 @@
 
   function initEmployeeCheckoutValidation() {
     rrhsEnsureEmployeeValidation();
+    rrhsRefreshRoomAccessIfNeeded();
 
     const button = document.querySelector('.ec-cart__button--checkout button');
     if (!button || button.dataset.rrhsEmployeeValidation === "1") return;
@@ -2401,8 +2456,8 @@
       ecwid.OnCartChanged.add(function(cart) {
         computeCartFlags(cart);
         rrhsSyncAllDayOnlyRoomField();
-        initRoomAutocomplete();
         initEmployeeCheckoutValidation();
+        initRoomAutocomplete();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
@@ -2414,9 +2469,9 @@
     try {
       log('RRHS checkout boot');
       initCartChangedListener();
+      initEmployeeCheckoutValidation();
       initRoomAutocomplete();
       initRoomContinueButton();
-      initEmployeeCheckoutValidation();
       wrapCheckoutButton();
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
       if (checkoutButton) {
