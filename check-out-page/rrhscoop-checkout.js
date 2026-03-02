@@ -163,7 +163,57 @@
     rrhsDerivedSchedule.allEntries = [];
     rrhsDerivedSchedule.allEntriesByRoom = [];
   }
+/**
+   * Automatically fills and hides the school's shipping address:
+   * 201 Deep Wood Drive, Round Rock, TX 78681, USA
+   */
+  function rrhsHandleStaticAddress() {
+    const addressData = {
+      "address-line1": "201 Deep Wood Drive",
+      "city": "Round Rock",
+      "zip": "78681",
+      "province": "TX",      // Functional value for State
+      "country-list": "US"   // Functional value for Country
+    };
 
+    Object.entries(addressData).forEach(([name, value]) => {
+      const field = document.querySelector(`[name="${name}"]`);
+      if (field) {
+        // 1. Fill the functional value if not already set correctly
+        if (field.value !== value) {
+          field.value = value;
+          // Trigger events so the website's logic (tax/shipping) updates
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        // --- FIX FOR DISPLAY FIELDS ---
+        // These updates ensure the "readonly" text boxes show the right names
+        if (name === "province") {
+          const stateDisplay = document.querySelector('input[name="State"]');
+          if (stateDisplay && stateDisplay.value !== "Texas") stateDisplay.value = "Texas";
+        }
+        
+        if (name === "country-list") {
+          const countryDisplay = document.querySelector('input[name="Country"]');
+          if (countryDisplay && countryDisplay.value !== "United States") countryDisplay.value = "United States";
+        }
+        // ------------------------------
+
+        // 2. Hide the field container so users don't see it
+        // Closest row or cell ensures the labels and spacing are also removed
+        const container = field.closest('.ec-form__row') || field.closest('.ec-form__cell');
+        if (container && container.style.display !== 'none') {
+          container.style.display = 'none';
+        }
+      }
+    });
+
+    // 3. Specifically hide the "Address" header if it exists
+    const addressHeader = document.querySelector('.ec-form__cell--street .ec-form__title');
+    if (addressHeader) addressHeader.style.display = 'none';
+  }
+  
   function rrhsRefreshEverything(reason = "") {
     try {
       const todayDay = getTodayDayType();
