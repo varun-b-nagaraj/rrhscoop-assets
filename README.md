@@ -4,7 +4,7 @@ Static assets + client-side scripts used by the RRHS COOP Ecwid storefront embed
 
 ## Runtime (Performance)
 
-File: `rrhs-runtime.js`
+File: `rrhs-runtime.js` 
 
 When you embed `index.js`, it loads `rrhs-runtime.js` first. This provides a shared DOM-change observer + shared interval scheduler so multiple RRHS scripts don’t each create their own `MutationObserver`/timers.
 
