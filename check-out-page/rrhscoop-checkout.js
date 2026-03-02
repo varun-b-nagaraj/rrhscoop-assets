@@ -109,6 +109,8 @@
       roomSentinel: RRHS_LOCKED_ROOM_SENTINEL
     }
   ]);
+  const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
+  const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
 
   // Link used in the "site closed" message when RRHS_ORDERING_PERIOD_MATRIX disables all windows.
   const RRHS_FLOWERS_PREORDER_URL_FULL = `${RRHS_SITE_ORIGIN}/products/Valentines-Day-Flowers-p813923050`;
@@ -305,6 +307,103 @@
     setTimeout(() => {
       element.style.animation = '';
     }, 500);
+  }
+
+  function rrhsGetEmployeeInput() {
+    return document.querySelector(`input[name="${RRHS_EMPLOYEE_FIELD_NAME}"]`);
+  }
+
+  function rrhsEmployeeIdIsValid(value) {
+    return /^[sSeE]\d+$/.test(String(value || "").trim());
+  }
+
+  function rrhsPersistEmployeeId(value) {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      const v = String(value || "").trim();
+      if (!v) return;
+      window.localStorage.setItem(RRHS_EMPLOYEE_STORAGE_KEY, v);
+    } catch (_) {}
+  }
+
+  function rrhsMaybeAutofillEmployeeId(input) {
+    if (!input) return;
+    try {
+      if (String(input.value || "").trim()) return;
+      if (typeof window === "undefined" || !window.localStorage) return;
+      const stored = String(window.localStorage.getItem(RRHS_EMPLOYEE_STORAGE_KEY) || "").trim();
+      if (!stored) return;
+      input.value = stored;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (_) {}
+  }
+
+  function rrhsShowEmployeeInputError(input, show) {
+    if (!input) return;
+    const container = input.closest(".form-control") || input.parentElement;
+    const errorMsg = container ? container.querySelector('[data-rrhs-employee-error="true"]') : null;
+    if (show) {
+      input.style.border = "2px solid #d32f2f";
+      input.style.backgroundColor = "#ffebee";
+      if (errorMsg) errorMsg.style.display = "block";
+      return;
+    }
+    input.style.border = "1px solid #ddd";
+    input.style.backgroundColor = "";
+    if (errorMsg) errorMsg.style.display = "none";
+  }
+
+  function rrhsEnsureEmployeeValidation() {
+    const input = rrhsGetEmployeeInput();
+    if (!input) return;
+    rrhsMaybeAutofillEmployeeId(input);
+
+    const container = input.closest(".form-control") || input.parentElement;
+    if (container && !container.querySelector('[data-rrhs-employee-error="true"]')) {
+      const errorMsg = document.createElement("div");
+      errorMsg.dataset.rrhsEmployeeError = "true";
+      errorMsg.style.cssText = "display:none;color:#d32f2f;font-size:12px;margin-top:6px;font-weight:500;";
+      errorMsg.textContent = "Please enter your full S-number or E-number (starting with S or E).";
+      container.appendChild(errorMsg);
+    }
+
+    if (input.dataset.rrhsEmployeeValidationBound !== "1") {
+      input.dataset.rrhsEmployeeValidationBound = "1";
+      const onEmployeeInput = () => {
+        const v = String(input.value || "").trim();
+        if (v) rrhsPersistEmployeeId(v);
+        if (rrhsEmployeeIdIsValid(v)) rrhsShowEmployeeInputError(input, false);
+      };
+      input.addEventListener("input", onEmployeeInput);
+      input.addEventListener("change", onEmployeeInput);
+    }
+  }
+
+  function rrhsBlockCheckoutForInvalidEmployeeId(event) {
+    const input = rrhsGetEmployeeInput();
+    if (!input) return false;
+    const value = String(input.value || "").trim();
+    rrhsPersistEmployeeId(value);
+    if (rrhsEmployeeIdIsValid(value)) {
+      rrhsShowEmployeeInputError(input, false);
+      return false;
+    }
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    rrhsShowEmployeeInputError(input, true);
+    if (typeof input.focus === "function") input.focus();
+    const checkoutShell =
+      document.querySelector(".ec-cart__button--checkout") ||
+      document.querySelector(".ec-cart__button--checkout button");
+    if (checkoutShell) shakeElement(checkoutShell);
+    createModal("Please input your entire number with S or E (example: S123456 or E123456).", { autoCloseMs: 6000 });
+    return true;
   }
 
   /* Room schedule (CSV) + delivery selection */
@@ -2253,6 +2352,7 @@
     wrapper.appendChild(overlay);
 
     overlay.addEventListener('click', (e) => {
+      if (rrhsBlockCheckoutForInvalidEmployeeId(e)) return;
       e.preventDefault();
       e.stopPropagation();
       shakeElement(button);
@@ -2273,6 +2373,21 @@
     }
   }
 
+  function initEmployeeCheckoutValidation() {
+    rrhsEnsureEmployeeValidation();
+
+    const button = document.querySelector('.ec-cart__button--checkout button');
+    if (!button || button.dataset.rrhsEmployeeValidation === "1") return;
+    button.dataset.rrhsEmployeeValidation = "1";
+    button.addEventListener(
+      "click",
+      (e) => {
+        rrhsBlockCheckoutForInvalidEmployeeId(e);
+      },
+      true
+    );
+  }
+
   let rrhsCartChangedListenerAdded = false;
   function initCartChangedListener() {
     if (rrhsCartChangedListenerAdded) return;
@@ -2287,6 +2402,7 @@
         computeCartFlags(cart);
         rrhsSyncAllDayOnlyRoomField();
         initRoomAutocomplete();
+        initEmployeeCheckoutValidation();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
@@ -2300,6 +2416,7 @@
       initCartChangedListener();
       initRoomAutocomplete();
       initRoomContinueButton();
+      initEmployeeCheckoutValidation();
       wrapCheckoutButton();
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
       if (checkoutButton) {
