@@ -163,55 +163,147 @@
     rrhsDerivedSchedule.allEntries = [];
     rrhsDerivedSchedule.allEntriesByRoom = [];
   }
-/**
-   * Automatically fills and hides the school's shipping address:
-   * 201 Deep Wood Drive, Round Rock, TX 78681, USA
-   */
-  function rrhsHandleStaticAddress() {
-    const addressData = {
-      "address-line1": "201 Deep Wood Drive",
-      "city": "Round Rock",
-      "zip": "78681",
-      "province": "TX",      // Functional value for State
-      "country-list": "US"   // Functional value for Country
-    };
+// ---------------------------
+  // Auto-fill & hide address fields (backend only, never visible)
+  // ---------------------------
+  const RRHS_AUTOFILL_ADDRESS = Object.freeze({
+    "address-line1": "201 Deep Wood Drive",
+    "city":          "Round Rock",
+    "zip":           "78681",
+    "province":      "TX",
+    "country-list":  "US"
+  });
 
-    Object.entries(addressData).forEach(([name, value]) => {
-      const field = document.querySelector(`[name="${name}"]`);
-      if (field) {
-        // 1. Fill the functional value if not already set correctly
-        if (field.value !== value) {
-          field.value = value;
-          // Trigger events so the website's logic (tax/shipping) updates
-          field.dispatchEvent(new Event("input", { bubbles: true }));
-          field.dispatchEvent(new Event("change", { bubbles: true }));
-        }
+  // Inject a <style> tag so the rows are hidden via CSS before JS even runs
+  (function rrhsInjectAddressHideStyles() {
+    if (document.getElementById("rrhs-address-hide-styles")) return;
+    const style = document.createElement("style");
+    style.id = "rrhs-address-hide-styles";
+    style.textContent = `
+      /* Hide address rows — autofilled on backend, never shown to user */
+      .ec-form__cell--street,
+      .ec-form__cell--city,
+      .ec-form__cell--postalcode,
+      .ec-form__cell--state,
+      .ec-form__cell--country,
+      .ec-form__row:has(.ec-form__cell--street),
+      .ec-form__row:has(.ec-form__cell--city),
+      .ec-form__row:has(.ec-form__cell--postalcode),
+      .ec-form__row:has(.ec-form__cell--state) {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
+      }
+      /* Hide country field */
+      .ec-form__cell--country,
+      .ec-form__cell--country * {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  })();
 
-        // --- FIX FOR DISPLAY FIELDS ---
-        // These updates ensure the "readonly" text boxes show the right names
-        if (name === "province") {
-          const stateDisplay = document.querySelector('input[name="State"]');
-          if (stateDisplay && stateDisplay.value !== "Texas") stateDisplay.value = "Texas";
-        }
-        
-        if (name === "country-list") {
-          const countryDisplay = document.querySelector('input[name="Country"]');
-          if (countryDisplay && countryDisplay.value !== "United States") countryDisplay.value = "United States";
-        }
-        // ------------------------------
+  function rrhsFillAndHideAddressFields() {
+    // Street / city / zip / state
+    const fieldSelectors = [
+      'input[name="address-line1"]',
+      'input[name="city"]',
+      'input[name="zip"]',
+      'select[name="province"]',
+      'select[name="country-list"]'
+    ];
 
-        // 2. Hide the field container so users don't see it
-        // Closest row or cell ensures the labels and spacing are also removed
-        const container = field.closest('.ec-form__row') || field.closest('.ec-form__cell');
-        if (container && container.style.display !== 'none') {
-          container.style.display = 'none';
+    fieldSelectors.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+
+      const fieldName = el.name;
+      const fillValue = RRHS_AUTOFILL_ADDRESS[fieldName];
+      if (fillValue === undefined) return;
+
+      // Always force our value — override anything the user or Ecwid may have set
+      if (el.value !== fillValue) {
+        el.value = fillValue;
+        el.dispatchEvent(new Event("input",  { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      // Sync the paired read-only display input (Ecwid pattern for selects)
+      const container = el.closest(".form-control--select");
+      if (container) {
+        const readonlyInput = container.querySelector('input[readonly]');
+        if (readonlyInput) {
+          const chosen = el.options[el.selectedIndex];
+          if (chosen) readonlyInput.value = chosen.text;
         }
       }
+
+      // Belt-and-suspenders: also hide the nearest row/cell via inline style
+      const targets = [
+        el.closest(".ec-form__row"),
+        el.closest(".ec-form__cell--street"),
+        el.closest(".ec-form__cell--city"),
+        el.closest(".ec-form__cell--postalcode"),
+        el.closest(".ec-form__cell--state"),
+        el.closest(".ec-form__cell--country")
+      ].filter(Boolean);
+
+      targets.forEach((node) => {
+        node.style.setProperty("display",         "none",   "important");
+        node.style.setProperty("visibility",      "hidden", "important");
+        node.style.setProperty("height",          "0",      "important");
+        node.style.setProperty("min-height",      "0",      "important");
+        node.style.setProperty("overflow",        "hidden", "important");
+        node.style.setProperty("margin",          "0",      "important");
+        node.style.setProperty("padding",         "0",      "important");
+        node.style.setProperty("pointer-events",  "none",   "important");
+      });
     });
 
-    // 3. Specifically hide the "Address" header if it exists
-    const addressHeader = document.querySelector('.ec-form__cell--street .ec-form__title');
-    if (addressHeader) addressHeader.style.display = 'none';
+    // Extra: prevent user from ever changing these fields via direct manipulation
+    fieldSelectors.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (!el || el.dataset.rrhsAddressLocked === "1") return;
+      el.dataset.rrhsAddressLocked = "1";
+      el.addEventListener("change", (e) => {
+        const fn = el.name;
+        const locked = RRHS_AUTOFILL_ADDRESS[fn];
+        if (locked !== undefined && el.value !== locked) {
+          el.value = locked;
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        e.stopImmediatePropagation();
+      }, true);
+      el.addEventListener("input", (e) => {
+        const fn = el.name;
+        const locked = RRHS_AUTOFILL_ADDRESS[fn];
+        if (locked !== undefined && el.value !== locked) {
+          el.value = locked;
+        }
+        e.stopImmediatePropagation();
+      }, true);
+    });
+  }
+
+  // Run immediately, on every UI refresh, and on every DOM mutation
+  rrhsFillAndHideAddressFields();
+  rrhsUiRefreshers.push(rrhsFillAndHideAddressFields);
+
+  const _addrObserver = new MutationObserver(rrhsFillAndHideAddressFields);
+  if (document.body) {
+    _addrObserver.observe(document.body, { childList: true, subtree: true });
   }
   
   function rrhsRefreshEverything(reason = "") {
