@@ -63,7 +63,7 @@
     alphaOffice: Object.freeze({
       enabled: true,
       groupLabel: "Alpha Office",
-      rooms: Object.freeze([140, 200, 1300, 1400, 1500]),
+      rooms: Object.freeze([100, 200, 1300, 1400, 1500]),
       roomLabelSuffix: "Alpha Office"
     }),
     locations: Object.freeze([
@@ -753,12 +753,14 @@
     if (!cfg || cfg.enabled === false) return [];
 
     const out = [];
+    const accessMode = rrhsGetRoomAccessMode();
 
     const alpha = cfg.alphaOffice;
     if (alpha && alpha.enabled !== false && Array.isArray(alpha.rooms)) {
       alpha.rooms.forEach((roomNum) => {
         const room = Math.floor(Number(roomNum));
         if (!Number.isFinite(room) || room <= 0) return;
+        if (accessMode !== "all" && room === 200) return;
         const suffix = String(alpha.roomLabelSuffix || "").trim();
         const label = suffix ? `${room} ${suffix}` : String(room);
         out.push(Object.freeze({ id: `alpha_office_${room}`, label, roomValue: label }));
@@ -1753,6 +1755,7 @@
           if (!specialCfg || specialCfg.enabled === false) return [];
 
           const alpha = specialCfg.alphaOffice;
+          const accessMode = rrhsGetRoomAccessMode();
           const alphaEnabled = alpha && alpha.enabled !== false;
           const alphaGroupLabel = alphaEnabled ? String(alpha.groupLabel || "Alpha Office") : "";
           const alphaRooms = alphaEnabled && Array.isArray(alpha.rooms) ? alpha.rooms : [];
@@ -1761,6 +1764,7 @@
           const alphaChildren = alphaRooms
             .map((n) => Math.floor(Number(n)))
             .filter((n) => Number.isFinite(n) && n > 0)
+            .filter((n) => accessMode === "all" || n !== 200)
             .map((n) => {
               const label = alphaSuffix ? `${n} ${alphaSuffix}` : String(n);
               return { id: `alpha_office_${n}`, label, roomValue: label };
