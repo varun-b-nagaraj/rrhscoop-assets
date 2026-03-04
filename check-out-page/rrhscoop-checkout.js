@@ -117,6 +117,9 @@
   ]);
   const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
   const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
+  // Legacy behavior toggle: when true, E-number users can bypass delivery windows.
+  // Kept for future reuse, currently disabled.
+  const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
 
   // Link used in the "site closed" message when RRHS_ORDERING_PERIOD_MATRIX disables all windows.
   const RRHS_FLOWERS_PREORDER_URL_FULL = `${RRHS_SITE_ORIGIN}/products/Valentines-Day-Flowers-p813923050`;
@@ -502,6 +505,13 @@
     const first = employeeId.charAt(0).toLowerCase();
     if (first === "e") return "all";
     return "limited";
+  }
+
+  function rrhsCanBypassOrderingWindowByEmployeeId() {
+    if (!RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED) return false;
+    const employeeId = rrhsGetEmployeeIdForAccess();
+    if (!employeeId) return false;
+    return employeeId.charAt(0).toLowerCase() === "e";
   }
 
   function rrhsRefreshRoomAccessIfNeeded() {
@@ -2482,6 +2492,7 @@
     if (CHECKOUT_ALWAYS_ALLOW) return true;
     const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
     if (alwaysAllowOverride === true) return true;
+    if (rrhsCanBypassOrderingWindowByEmployeeId()) return true;
     const now = new Date();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
