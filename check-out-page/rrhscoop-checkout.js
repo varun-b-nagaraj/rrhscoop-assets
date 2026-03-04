@@ -2243,6 +2243,181 @@
     });
   }
 
+  function initSauceDropdown() {
+    const options = Object.freeze([
+      Object.freeze({ id: "no_sauce", label: "--no sauce--" }),
+      Object.freeze({ id: "cfa_sauce", label: "Chick-fil-A® Sauce" }),
+      Object.freeze({ id: "garden_herb_ranch", label: "Garden Herb Ranch Sauce" })
+    ]);
+    const noSauceId = "no_sauce";
+    const inputs = Array.from(
+      document.querySelectorAll('input[name="text"][aria-label="Sauce"]')
+    );
+    if (!inputs.length) return;
+
+    if (!document.getElementById("rrhs-sauce-dropdown-styles")) {
+      const style = document.createElement("style");
+      style.id = "rrhs-sauce-dropdown-styles";
+      style.textContent = `
+        @keyframes rrhsSauceFadeIn {
+          from { opacity: 0; transform: translateY(-2px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    inputs.forEach((input) => {
+      if (!input || input.dataset.rrhsSauceDropdownInit === "1") return;
+      input.dataset.rrhsSauceDropdownInit = "1";
+
+      const section = input.closest(".ec-cart-step__section");
+      if (section) section.style.transition = "padding-bottom 0.2s ease";
+
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "relative";
+      wrapper.style.width = "100%";
+      wrapper.dataset.rrhsSauceWrapper = "true";
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+
+      const dropdown = document.createElement("div");
+      dropdown.style.cssText =
+        "position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-top:none;max-height:250px;overflow-y:auto;z-index:999999;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+      dropdown.dataset.rrhsSauceDropdown = "true";
+      wrapper.appendChild(dropdown);
+
+      function updateWrapperPadding(show, itemCount) {
+        const sec = input.closest(".ec-cart-step__section");
+        if (!sec) return;
+        if (show) {
+          const count = Math.max(0, Number(itemCount || 0));
+          const dropdownHeight = Math.min(count * 48, 250);
+          sec.style.paddingBottom = dropdownHeight + "px";
+        } else {
+          sec.style.paddingBottom = "0px";
+        }
+      }
+
+      function showDropdown() {
+        dropdown.style.display = "block";
+        updateWrapperPadding(true, options.length);
+      }
+
+      function hideDropdown() {
+        dropdown.style.display = "none";
+        updateWrapperPadding(false, 0);
+      }
+
+      function setSauceValue(v) {
+        input.value = v;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function parseSelectedFromInputValue() {
+        const raw = String(input.value || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const selected = new Set();
+        raw.forEach((label) => {
+          const match = options.find((o) => o.label === label);
+          if (match) selected.add(match.id);
+        });
+        if (selected.size === 0) selected.add(noSauceId);
+        if (selected.has(noSauceId) && selected.size > 1) {
+          selected.delete(noSauceId);
+        }
+        return selected;
+      }
+
+      function normalizeSelected(selected) {
+        if (!(selected instanceof Set)) return new Set([noSauceId]);
+        if (selected.size === 0) return new Set([noSauceId]);
+        if (selected.has(noSauceId) && selected.size > 1) selected.delete(noSauceId);
+        if (selected.size === 0) selected.add(noSauceId);
+        return selected;
+      }
+
+      function commitSelected(selected) {
+        const normalized = normalizeSelected(new Set(selected));
+        const labels = options
+          .filter((o) => normalized.has(o.id))
+          .map((o) => o.label);
+        setSauceValue(labels.join(", "));
+        return normalized;
+      }
+
+      function renderOptions(selected) {
+        dropdown.innerHTML = "";
+        options.forEach((option) => {
+          const isSelected = selected.has(option.id);
+          const el = document.createElement("div");
+          el.style.cssText =
+            "padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;gap:12px;";
+          el.style.animation = "rrhsSauceFadeIn 0.12s ease";
+          const label = document.createElement("span");
+          label.textContent = option.label;
+          el.appendChild(label);
+          const check = document.createElement("span");
+          check.textContent = isSelected ? "✓" : "";
+          check.style.cssText = "font-weight:700;color:#2e7d32;min-width:14px;text-align:right;";
+          el.appendChild(check);
+          el.addEventListener("mouseenter", () => (el.style.backgroundColor = "#f5f5f5"));
+          el.addEventListener("mouseleave", () => (el.style.backgroundColor = "white"));
+          el.addEventListener("click", () => {
+            const next = new Set(selected);
+            if (option.id === noSauceId) {
+              next.clear();
+              next.add(noSauceId);
+            } else {
+              if (next.has(option.id)) next.delete(option.id);
+              else next.add(option.id);
+              next.delete(noSauceId);
+            }
+            const committed = commitSelected(next);
+            renderOptions(committed);
+          });
+          dropdown.appendChild(el);
+        });
+      }
+
+      input.readOnly = true;
+      input.autocomplete = "off";
+      input.style.cursor = "pointer";
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") return;
+        e.preventDefault();
+      });
+      input.addEventListener("beforeinput", (e) => e.preventDefault());
+      input.addEventListener("paste", (e) => e.preventDefault());
+      input.addEventListener("drop", (e) => e.preventDefault());
+      input.addEventListener("focus", () => {
+        renderOptions(parseSelectedFromInputValue());
+        showDropdown();
+      });
+      input.addEventListener("click", () => {
+        renderOptions(parseSelectedFromInputValue());
+        showDropdown();
+      });
+
+      let blurTimer = null;
+      input.addEventListener("blur", () => {
+        if (blurTimer) clearTimeout(blurTimer);
+        blurTimer = setTimeout(hideDropdown, 150);
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!wrapper.contains(e.target)) hideDropdown();
+      });
+
+      commitSelected(parseSelectedFromInputValue());
+      renderOptions(parseSelectedFromInputValue());
+    });
+  }
+
   /* Checkout time restriction and cart state */
   const rrhsCartState = {
     ready: false,
@@ -2615,6 +2790,7 @@
         rrhsSyncAllDayOnlyRoomField();
         initEmployeeCheckoutValidation();
         initRoomAutocomplete();
+        initSauceDropdown();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
@@ -2628,6 +2804,7 @@
       initCartChangedListener();
       initEmployeeCheckoutValidation();
       initRoomAutocomplete();
+      initSauceDropdown();
       initRoomContinueButton();
       wrapCheckoutButton();
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
