@@ -2313,6 +2313,7 @@
         input.value = v;
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.dispatchEvent(new Event("change", { bubbles: true }));
+        rrhsSyncSauceQtyFields();
       }
 
       function parseSelectedFromInputValue() {
@@ -2415,7 +2416,134 @@
 
       commitSelected(parseSelectedFromInputValue());
       renderOptions(parseSelectedFromInputValue());
+      rrhsSyncSauceQtyFields();
     });
+  }
+
+  function rrhsGetSelectedSauceNames() {
+    const sauceInput = document.querySelector(
+      '[data-rrhs-sauce-wrapper="true"] input[name="text"][aria-label="Sauce"]'
+    );
+    if (!sauceInput) return [];
+    const raw = String(sauceInput.value || "");
+    const allowed = Object.freeze(["Chick-fil-A® Sauce", "Garden Herb Ranch Sauce"]);
+    const parts = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const out = [];
+    const seen = new Set();
+    parts.forEach((p) => {
+      if (!allowed.includes(p)) return;
+      if (seen.has(p)) return;
+      seen.add(p);
+      out.push(p);
+    });
+    return out;
+  }
+
+  function rrhsNormalizeSauceQtyInput(input) {
+    if (!input) return;
+    const digits = String(input.value || "").replace(/\D+/g, "");
+    if (!digits) {
+      input.value = "";
+      return;
+    }
+    let n = Math.floor(Number(digits));
+    if (!Number.isFinite(n)) n = 1;
+    if (n < 1) n = 1;
+    if (n > 4) n = 4;
+    input.value = String(n);
+  }
+
+  function rrhsSyncSauceQtyFields() {
+    const selectedSauces = rrhsGetSelectedSauceNames();
+    const qtyDefs = [
+      { selector: ".details-product-option--SauceQty1", fallbackTitle: "SauceQty1" },
+      { selector: ".details-product-option--SauceQty2", fallbackTitle: "SauceQty2" }
+    ];
+
+    qtyDefs.forEach((def, idx) => {
+      const module = document.querySelector(def.selector);
+      if (!module) return;
+      module.dataset.rrhsSauceQtyModule = "1";
+
+      const title = module.querySelector(".details-product-option__title");
+      const input = module.querySelector('input[name="text"]');
+      if (!input) return;
+
+      if (!input.dataset.rrhsSauceQtyBound) {
+        input.dataset.rrhsSauceQtyBound = "1";
+        input.type = "number";
+        input.inputMode = "numeric";
+        input.step = "1";
+        input.min = "1";
+        input.max = "4";
+        input.pattern = "[0-9]*";
+        input.addEventListener("input", () => rrhsNormalizeSauceQtyInput(input));
+        input.addEventListener("change", () => rrhsNormalizeSauceQtyInput(input));
+      }
+
+      const sauceName = selectedSauces[idx] || "";
+      if (!sauceName) {
+        module.dataset.rrhsSauceQtyVisible = "0";
+        module.style.display = "none";
+        if (title) {
+          if (!title.dataset.rrhsOriginalTitle) {
+            title.dataset.rrhsOriginalTitle = String(title.textContent || def.fallbackTitle);
+          }
+          title.textContent = title.dataset.rrhsOriginalTitle || def.fallbackTitle;
+        }
+        input.value = "";
+        return;
+      }
+
+      module.dataset.rrhsSauceQtyVisible = "1";
+      module.style.display = "";
+      if (title) {
+        if (!title.dataset.rrhsOriginalTitle) {
+          title.dataset.rrhsOriginalTitle = String(title.textContent || def.fallbackTitle);
+        }
+        title.textContent = `${sauceName} Qty`;
+      }
+      if (!String(input.value || "").trim()) {
+        input.value = "1";
+      }
+      rrhsNormalizeSauceQtyInput(input);
+    });
+  }
+
+  function initSauceQtyFields() {
+    if (!document.getElementById("rrhs-sauce-qty-styles")) {
+      const style = document.createElement("style");
+      style.id = "rrhs-sauce-qty-styles";
+      style.textContent = `
+        [data-rrhs-sauce-qty-module="1"][data-rrhs-sauce-qty-visible="0"] {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const qtyInputs = Array.from(
+      document.querySelectorAll(
+        '.details-product-option--SauceQty1 input[name="text"], .details-product-option--SauceQty2 input[name="text"]'
+      )
+    );
+    qtyInputs.forEach((input) => {
+      if (!input || input.dataset.rrhsSauceQtyBound) return;
+      input.dataset.rrhsSauceQtyBound = "1";
+      input.type = "number";
+      input.inputMode = "numeric";
+      input.step = "1";
+      input.min = "1";
+      input.max = "4";
+      input.pattern = "[0-9]*";
+      input.addEventListener("input", () => rrhsNormalizeSauceQtyInput(input));
+      input.addEventListener("change", () => rrhsNormalizeSauceQtyInput(input));
+    });
+
+    rrhsSyncSauceQtyFields();
   }
 
   /* Checkout time restriction and cart state */
@@ -2791,6 +2919,7 @@
         initEmployeeCheckoutValidation();
         initRoomAutocomplete();
         initSauceDropdown();
+        initSauceQtyFields();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
@@ -2805,6 +2934,7 @@
       initEmployeeCheckoutValidation();
       initRoomAutocomplete();
       initSauceDropdown();
+      initSauceQtyFields();
       initRoomContinueButton();
       wrapCheckoutButton();
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
