@@ -2447,6 +2447,7 @@
     const digits = String(input.value || "").replace(/\D+/g, "");
     if (!digits) {
       input.value = "";
+      rrhsRefreshSauceQtyUiState(input);
       return;
     }
     let n = Math.floor(Number(digits));
@@ -2454,6 +2455,16 @@
     if (n < 1) n = 1;
     if (n > 4) n = 4;
     input.value = String(n);
+    rrhsRefreshSauceQtyUiState(input);
+  }
+
+  function rrhsRefreshSauceQtyUiState(input) {
+    if (!input) return;
+    const control = input.closest(".form-control");
+    if (!control) return;
+    const hasValue = String(input.value || "").trim().length > 0;
+    if (hasValue) control.classList.remove("form-control--empty");
+    else control.classList.add("form-control--empty");
   }
 
   function rrhsSyncSauceQtyFields() {
@@ -2514,6 +2525,9 @@
         input.value = "1";
       }
       rrhsNormalizeSauceQtyInput(input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      rrhsRefreshSauceQtyUiState(input);
     });
   }
 
@@ -2523,6 +2537,9 @@
       style.id = "rrhs-sauce-qty-styles";
       style.textContent = `
         [data-rrhs-sauce-qty-module="1"][data-rrhs-sauce-qty-visible="0"] {
+          display: none !important;
+        }
+        [data-rrhs-sauce-qty-module="1"] .form-control__placeholder {
           display: none !important;
         }
       `;
