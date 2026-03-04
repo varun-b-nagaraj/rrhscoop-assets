@@ -2422,7 +2422,7 @@
 
   function rrhsGetSelectedSauceNames() {
     const sauceInput = document.querySelector(
-      '[data-rrhs-sauce-wrapper="true"] input[name="text"][aria-label="Sauce"]'
+      '[data-rrhs-sauce-wrapper="true"] > input.form-control__text[name="text"][aria-label="Sauce"]'
     );
     if (!sauceInput) return [];
     const raw = String(sauceInput.value || "");
@@ -2459,18 +2459,22 @@
   function rrhsSyncSauceQtyFields() {
     const selectedSauces = rrhsGetSelectedSauceNames();
     const qtyDefs = [
-      { selector: ".details-product-option--SauceQty1", fallbackTitle: "SauceQty1" },
-      { selector: ".details-product-option--SauceQty2", fallbackTitle: "SauceQty2" }
+      { inputSelector: 'input.form-control__text[name="text"][aria-label="SauceQty1"]', fallbackTitle: "SauceQty1" },
+      { inputSelector: 'input.form-control__text[name="text"][aria-label="SauceQty2"]', fallbackTitle: "SauceQty2" }
     ];
 
     qtyDefs.forEach((def, idx) => {
-      const module = document.querySelector(def.selector);
+      const input = document.querySelector(def.inputSelector);
+      if (!input) return;
+      const module =
+        input.closest(".product-details-module") ||
+        input.closest(".details-product-option") ||
+        input.closest(".product-details-module__content") ||
+        input.parentElement;
       if (!module) return;
       module.dataset.rrhsSauceQtyModule = "1";
 
       const title = module.querySelector(".details-product-option__title");
-      const input = module.querySelector('input[name="text"]');
-      if (!input) return;
 
       if (!input.dataset.rrhsSauceQtyBound) {
         input.dataset.rrhsSauceQtyBound = "1";
@@ -2527,7 +2531,7 @@
 
     const qtyInputs = Array.from(
       document.querySelectorAll(
-        '.details-product-option--SauceQty1 input[name="text"], .details-product-option--SauceQty2 input[name="text"]'
+        'input.form-control__text[name="text"][aria-label="SauceQty1"], input.form-control__text[name="text"][aria-label="SauceQty2"]'
       )
     );
     qtyInputs.forEach((input) => {
