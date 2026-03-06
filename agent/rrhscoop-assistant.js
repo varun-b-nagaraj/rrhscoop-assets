@@ -1180,6 +1180,7 @@
       let streamingBubble = null;
       let streamingContent = null;
       let accumulatedText = "";
+      let finalizedAssistantText = "";
       let streamFinished = false;
 
       function handleCartActions(actions) {
@@ -1238,7 +1239,9 @@
         const products = Array.isArray(payload.products) ? payload.products : [];
         const finalText = (typeof payload.message === "string" && payload.message.trim())
           ? payload.message
-          : accumulatedText.trim();
+          : ((typeof payload.text === "string" && payload.text.trim())
+            ? payload.text
+            : (finalizedAssistantText.trim() || accumulatedText.trim()));
         const persistText = accumulatedText || finalText;
 
         if (finalText) {
@@ -1310,11 +1313,30 @@
           return;
         }
 
+        if (eventType === "assistant_delta") {
+          const token = typeof payload.token === "string"
+            ? payload.token
+            : (typeof payload.content === "string" ? payload.content : "");
+          appendAssistantText(token);
+          return;
+        }
+
         if (eventType === "assistant") {
-          const assistantText = typeof payload.content === "string"
-            ? payload.content
-            : (typeof payload.message === "string" ? payload.message : "");
-          appendAssistantText(assistantText);
+          const assistantText = typeof payload.text === "string"
+            ? payload.text
+            : (typeof payload.message === "string"
+              ? payload.message
+              : (typeof payload.content === "string" ? payload.content : ""));
+          if (assistantText) {
+            finalizedAssistantText = assistantText;
+            accumulatedText = assistantText;
+            ensureStreamingBubble();
+            if (streamingContent) {
+              const displayText = stripSkuTags(assistantText);
+              streamingContent.innerHTML = formatStreamingMessage(displayText);
+            }
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          }
           return;
         }
 
@@ -1328,6 +1350,20 @@
           console.log("[RRHS Assistant] ✅ Legacy stream complete", {
             products: Array.isArray(payload.products) ? payload.products.length : 0
           });
+          return;
+        }
+
+        if (eventType === "catalog") {
+          const maybeProductInfo = normalizeProductInfo(payload)
+            || normalizeProductInfo(payload.result)
+            || normalizeProductInfo(payload.output)
+            || normalizeProductInfo(payload.data);
+          if (maybeProductInfo) {
+            setProductInfoCache(maybeProductInfo);
+            console.log("[RRHS Assistant] Cached product_info from catalog:", {
+              count: maybeProductInfo.results.length
+            });
+          }
           return;
         }
 
