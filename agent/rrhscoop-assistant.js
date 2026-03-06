@@ -421,13 +421,10 @@
     let storageWarned = false;
     let lastUserMessage = "";
     let retryToastEl = null;
+    let isNewConversationCall = true;
 
     function getStorageTarget() {
       const candidates = [];
-      if (window.top && window.top !== window) {
-        candidates.push({ label: "top-local", get: () => window.top.localStorage });
-      }
-      candidates.push({ label: "self-local", get: () => window.localStorage });
       if (window.top && window.top !== window) {
         candidates.push({ label: "top-session", get: () => window.top.sessionStorage });
       }
@@ -1307,7 +1304,11 @@
 
       try {
         const messages = history.concat([{ role: "user", content: msg }]);
-        const payload = { messages };
+        const payload = {
+          messages,
+          new_convo: isNewConversationCall
+        };
+        isNewConversationCall = false;
         if (sessionId) {
           payload.session_id = sessionId;
         }
@@ -1322,6 +1323,7 @@
           historyCount: history.length,
           historyPreview: messages.slice(-historyPreviewCount),
           historyPreviewCount,
+          newConvo: payload.new_convo,
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
           pendingType: payload.pending ? payload.pending.type : null,
