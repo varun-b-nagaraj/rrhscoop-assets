@@ -734,39 +734,13 @@
     }
 
     function normalizePendingChoice(pending) {
-      if (!pending || typeof pending !== "object") return null;
-      if (pending.type !== "choose_for_cart") return null;
-      const options = Array.isArray(pending.options) ? pending.options : [];
-      const cleanedOptions = options
-        .map((option) => {
-          if (!option || typeof option !== "object") return null;
-          const id = Number(option.id || 0);
-          const combinationId = Number(option.combinationId || 0);
-          const price = Number(option.price);
-          const variantKey = String(option.variantKey || "").trim();
-          const name = String(option.name || "").trim();
-          if (!variantKey || !name) return null;
-          return {
-            id: Number.isFinite(id) ? id : 0,
-            name,
-            combinationId: Number.isFinite(combinationId) ? combinationId : 0,
-            variantKey,
-            variantLabel: String(option.variantLabel || "").trim(),
-            price: Number.isFinite(price) ? price : 0,
-            sku: option.sku || null,
-            url: option.url || null,
-            options: Array.isArray(option.options) ? option.options : [],
-            selectedOptions: Array.isArray(option.selectedOptions) ? option.selectedOptions : []
-          };
-        })
-        .filter(Boolean);
-      if (!cleanedOptions.length) return null;
-      const quantity = Math.max(1, Math.min(20, Number(pending.quantity || 1)));
-      return {
-        type: "choose_for_cart",
-        options: cleanedOptions,
-        quantity: Number.isFinite(quantity) ? quantity : 1
-      };
+      if (!pending || typeof pending !== "object" || Array.isArray(pending)) return null;
+      try {
+        // Keep backend-provided pending shape intact, but store a plain JSON-safe clone.
+        return JSON.parse(JSON.stringify(pending));
+      } catch (e) {
+        return null;
+      }
     }
 
     function loadPendingChoice() {
@@ -1063,16 +1037,27 @@
 
           idx += 1;
 
-          if (a.type === "cart.add" && a.productId) {
-            const quantity = Math.max(1, Number(a.quantity || 1));
-            const productId = Number(a.productId || 0);
+          if (a.type === "cart.add") {
+            const actionProduct = (a.product && typeof a.product === "object") ? a.product : null;
+            const quantity = Math.max(1, Number(
+              (actionProduct && actionProduct.quantity != null ? actionProduct.quantity : null)
+              || a.quantity
+              || 1
+            ));
+            const productId = Number(
+              (actionProduct && actionProduct.id != null ? actionProduct.id : null)
+              || a.productId
+              || 0
+            );
             if (!Number.isFinite(productId) || productId <= 0) {
               runNext();
               return;
             }
             const product = { id: productId, quantity };
             const options =
+              buildOptionsMap(actionProduct ? actionProduct.options : null) ||
               buildOptionsMap(a.options) ||
+              buildOptionsMap(actionProduct ? actionProduct.selectedOptions : null) ||
               buildOptionsMap(a.selectedOptions) ||
               (a.optionName && a.optionValue ? { [String(a.optionName)]: String(a.optionValue) } : null);
             if (options && Object.keys(options).length) {
@@ -1083,6 +1068,8 @@
               productId,
               quantity,
               options: product.options || null,
+              sku: actionProduct && actionProduct.sku ? actionProduct.sku : null,
+              name: actionProduct && actionProduct.name ? actionProduct.name : null,
               combinationId: a.combinationId || null
             });
 
@@ -1407,7 +1394,8 @@
         const payload = {
           messages,
           message_history: sessionHistory,
-          new_convo: isNewConversationCall
+          new_convo: isNewConversationCall,
+          pending: pendingChoice || null
         };
         if (productInfoCache) {
           payload.product_info = productInfoCache;
@@ -1416,10 +1404,6 @@
         if (sessionId) {
           payload.session_id = sessionId;
         }
-        if (pendingChoice) {
-          payload.pending = pendingChoice;
-        }
-
         const historyPreviewCount = Math.min(sessionHistory.length, 10);
         console.log("[RRHS Assistant] Sending payload:", {
           url: API_URL,
@@ -1434,8 +1418,8 @@
             : 0,
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
-          pendingType: payload.pending ? payload.pending.type : null,
-          pendingCount: payload.pending && payload.pending.options ? payload.pending.options.length : 0
+          pendingType: payload.pending && payload.pending.type ? payload.pending.type : null,
+          pendingCount: payload.pending && Array.isArray(payload.pending.options) ? payload.pending.options.length : 0
         });
 
         const headers = {
