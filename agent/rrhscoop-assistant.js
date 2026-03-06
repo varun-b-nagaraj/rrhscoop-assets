@@ -415,9 +415,10 @@
     const STORAGE_KEY = "rrhs_assistant_chat_log_v1";
     const SESSION_ID_KEY = "rrhs_assistant_session_id_v1";
     const PENDING_KEY = "rrhs_assistant_pending_v1";
-    const HISTORY_TURNS = 15;
+    const PRODUCT_INFO_KEY = "rrhs_assistant_product_info_v1";
     let sessionLog = [];
     let pendingChoice = null;
+    let productInfoCache = null;
     let storageWarned = false;
     let lastUserMessage = "";
     let retryToastEl = null;
@@ -802,6 +803,53 @@
       savePendingChoice(pendingChoice);
     }
 
+    function normalizeProductInfo(payload) {
+      if (!payload || typeof payload !== "object") return null;
+      if (!Array.isArray(payload.results)) return null;
+      const normalized = {
+        results: payload.results
+      };
+      if (typeof payload.feedbackUrl === "string") normalized.feedbackUrl = payload.feedbackUrl;
+      if (payload.execution && typeof payload.execution === "object") normalized.execution = payload.execution;
+      if (typeof payload.isPreview === "boolean") normalized.isPreview = payload.isPreview;
+      if (typeof payload.generatedJqFilter === "string") normalized.generatedJqFilter = payload.generatedJqFilter;
+      return normalized;
+    }
+
+    function loadProductInfoCache() {
+      try {
+        if (!storageRef) return null;
+        const raw = storageRef.getItem(PRODUCT_INFO_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return normalizeProductInfo(parsed);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveProductInfoCache(payload) {
+      if (!storageRef) return;
+      if (!payload) {
+        try {
+          storageRef.removeItem(PRODUCT_INFO_KEY);
+        } catch (e) {
+          // Ignore storage failures
+        }
+        return;
+      }
+      try {
+        storageRef.setItem(PRODUCT_INFO_KEY, JSON.stringify(payload));
+      } catch (e) {
+        // Ignore storage failures
+      }
+    }
+
+    function setProductInfoCache(payload) {
+      productInfoCache = normalizeProductInfo(payload);
+      saveProductInfoCache(productInfoCache);
+    }
+
     function hydrateSessionMessages() {
       if (!messagesEl) return false;
       if (messagesEl.childElementCount > 0) return true;
@@ -1093,6 +1141,7 @@
     // ---------- SSE STREAMING CHAT ----------
     sessionLog = loadSessionLog();
     pendingChoice = loadPendingChoice();
+    productInfoCache = loadProductInfoCache();
     const restored = hydrateSessionMessages();
     if (!restored) {
       addIntroMessage();
@@ -1104,9 +1153,11 @@
 
       let cartActionsHandled = false;
       let lastActionsHadCartAdd = false;
-      const history = sessionLog
-        .slice(-HISTORY_TURNS)
-        .map((entry) => ({ role: entry.role, content: entry.text }));
+      const sessionHistory = sessionLog.map((entry, index) => ({
+        role: entry.role,
+        content: entry.text,
+        order: index + 1
+      }));
       const isVisible = panel.classList.contains("rrhs-expanded");
       if (!isVisible) openPanel();
 
@@ -1281,6 +1332,18 @@
         }
 
         if (eventType === "meta" || eventType === "tool_call" || eventType === "tool_result") {
+          if (eventType === "tool_result") {
+            const maybeProductInfo = normalizeProductInfo(payload)
+              || normalizeProductInfo(payload.result)
+              || normalizeProductInfo(payload.output)
+              || normalizeProductInfo(payload.data);
+            if (maybeProductInfo) {
+              setProductInfoCache(maybeProductInfo);
+              console.log("[RRHS Assistant] Cached product_info from tool_result:", {
+                count: maybeProductInfo.results.length
+              });
+            }
+          }
           console.log(`[RRHS Assistant] ${eventType}:`, payload);
           return;
         }
@@ -1303,11 +1366,16 @@
       }
 
       try {
-        const messages = history.concat([{ role: "user", content: msg }]);
+        const currentOrder = sessionHistory.length + 1;
+        const messages = [{ role: "user", content: msg, order: currentOrder }];
         const payload = {
           messages,
+          message_history: sessionHistory,
           new_convo: isNewConversationCall
         };
+        if (productInfoCache) {
+          payload.product_info = productInfoCache;
+        }
         isNewConversationCall = false;
         if (sessionId) {
           payload.session_id = sessionId;
@@ -1316,14 +1384,18 @@
           payload.pending = pendingChoice;
         }
 
-        const historyPreviewCount = Math.min(history.length, 10);
+        const historyPreviewCount = Math.min(sessionHistory.length, 10);
         console.log("[RRHS Assistant] Sending payload:", {
           url: API_URL,
           messageCount: messages.length,
-          historyCount: history.length,
-          historyPreview: messages.slice(-historyPreviewCount),
+          historyCount: sessionHistory.length,
+          historyPreview: sessionHistory.slice(-historyPreviewCount),
           historyPreviewCount,
           newConvo: payload.new_convo,
+          hasProductInfo: Boolean(payload.product_info),
+          productInfoCount: payload.product_info && Array.isArray(payload.product_info.results)
+            ? payload.product_info.results.length
+            : 0,
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
           pendingType: payload.pending ? payload.pending.type : null,
