@@ -81,7 +81,7 @@
     ])
   });
 
-  // Period bell schedule (base periods 1–4). B-day periods map to 5–8 automatically.
+  // Period-by-period bell schedule (base periods 1–4). B-day periods map to 5–8 automatically.
   const BASE_PERIOD_WINDOWS = Object.freeze({
     1: { start: "09:00", end: "10:32" },
     2: { start: "10:40", end: "12:12" },
