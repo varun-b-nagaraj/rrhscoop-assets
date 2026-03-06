@@ -4,18 +4,21 @@
   window.__RRHS_ASSISTANT__ = true;
 
   const DEFAULT_CONFIG = {
-    apiUrl: "https://orchestrator-j8dq.onrender.com/chat",
-    apiKey: "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a"
+    apiUrl: "https://official-mcp-chatbot.vercel.app/api/chat",
+    apiKey: "",
+    apiKeyHeader: "Authorization",
+    apiKeyPrefix: "Bearer "
   };
   const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.RRHS_ASSISTANT_CONFIG || {});
   const API_URL = CONFIG.apiUrl;
   const API_KEY = CONFIG.apiKey;
+  const API_KEY_HEADER = CONFIG.apiKeyHeader || "Authorization";
+  const API_KEY_PREFIX = CONFIG.apiKeyPrefix == null ? "Bearer " : String(CONFIG.apiKeyPrefix);
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
   const Z = 2147483647;
-  const PING_URLS = [
-    "https://orchestrator-j8dq.onrender.com/health",
-    "https://mcp-lightspeedbackend.onrender.com/health"
-  ];
+  const PING_URLS = Array.isArray(CONFIG.pingUrls)
+    ? CONFIG.pingUrls.filter(Boolean)
+    : [];
   const PING_INTERVAL_MS = 5 * 60 * 1000;
 
   function init() {
@@ -1129,6 +1132,7 @@
       let streamingBubble = null;
       let streamingContent = null;
       let accumulatedText = "";
+      let streamFinished = false;
 
       function handleCartActions(actions) {
         if (cartActionsHandled || !Array.isArray(actions) || actions.length === 0) return;
@@ -1149,12 +1153,161 @@
         executeCartActions(actions);
       }
 
-      try {
-        const payload = {
-          message: msg,
-          history,
-          stream: true
+      function ensureStreamingBubble() {
+        if (typingIndicator) {
+          removeTypingIndicator(typingIndicator);
+        }
+        if (streamingBubble) return;
+        streamingBubble = document.createElement("div");
+        streamingBubble.className = "rrhs-msg rrhs-bot rrhs-streaming";
+        streamingContent = document.createElement("div");
+        streamingContent.className = "rrhs-msg-content";
+        streamingBubble.appendChild(streamingContent);
+        messagesEl.appendChild(streamingBubble);
+      }
+
+      function appendAssistantText(text) {
+        if (typeof text !== "string" || !text) return;
+        ensureStreamingBubble();
+        accumulatedText += text;
+        if (streamingContent) {
+          const displayText = stripSkuTags(accumulatedText);
+          streamingContent.innerHTML = formatStreamingMessage(displayText);
+        }
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function finalizeAssistantMessage(payload = {}) {
+        if (streamFinished) return;
+        streamFinished = true;
+
+        removeTypingIndicator(typingIndicator);
+        if (streamingBubble) {
+          streamingBubble.remove();
+          streamingBubble = null;
+        }
+
+        const products = Array.isArray(payload.products) ? payload.products : [];
+        const finalText = (typeof payload.message === "string" && payload.message.trim())
+          ? payload.message
+          : accumulatedText.trim();
+        const persistText = accumulatedText || finalText;
+
+        if (finalText) {
+          addMessage("assistant", finalText, products, { persistText });
+        } else {
+          addMessage("assistant", "I couldn't generate a response. Please try again.");
+        }
+
+        const actions = Array.isArray(payload.actions) ? payload.actions : [];
+        const hasCartAdd = actions.some((action) => action && action.type === "cart.add") || lastActionsHadCartAdd;
+        if (hasCartAdd) {
+          setPendingChoice(null);
+        } else if (Object.prototype.hasOwnProperty.call(payload, "pending")) {
+          setPendingChoice(payload.pending || null);
+        }
+
+        if (!hasCartAdd && isAddConfirmation(finalText)) {
+          showRetryToast();
+        }
+      }
+
+      function parseSseBlock(block) {
+        const lines = String(block || "").split("\n");
+        let eventType = "";
+        const dataLines = [];
+
+        lines.forEach((line) => {
+          if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        });
+
+        if (!dataLines.length) return null;
+        const dataText = dataLines.join("\n").trim();
+        if (!dataText) return null;
+        if (dataText === "[DONE]") return { eventType: "done", data: null };
+
+        let parsed = dataText;
+        try {
+          parsed = JSON.parse(dataText);
+        } catch (e) {
+          // Keep text payloads as-is
+        }
+
+        if (!eventType && parsed && typeof parsed === "object" && typeof parsed.event === "string") {
+          eventType = parsed.event;
+        }
+
+        return {
+          eventType: eventType || "message",
+          data: parsed
         };
+      }
+
+      function handleStreamEvent(eventType, data) {
+        if (streamFinished) return;
+
+        const payload = (data && typeof data === "object") ? data : {};
+        const eventActions = payload ? (payload.cart_actions || payload.cartActions || []) : [];
+        if (payload && Object.prototype.hasOwnProperty.call(payload, "pending") && eventType !== "final") {
+          setPendingChoice(payload.pending || null);
+        }
+        handleCartActions(eventActions);
+
+        if (eventType === "delta") {
+          appendAssistantText(typeof payload.content === "string" ? payload.content : "");
+          return;
+        }
+
+        if (eventType === "assistant") {
+          const assistantText = typeof payload.content === "string"
+            ? payload.content
+            : (typeof payload.message === "string" ? payload.message : "");
+          appendAssistantText(assistantText);
+          return;
+        }
+
+        if (eventType === "final") {
+          finalizeAssistantMessage({
+            message: payload.message,
+            products: payload.products,
+            pending: payload.pending,
+            actions: eventActions
+          });
+          console.log("[RRHS Assistant] ✅ Legacy stream complete", {
+            products: Array.isArray(payload.products) ? payload.products.length : 0
+          });
+          return;
+        }
+
+        if (eventType === "meta" || eventType === "tool_call" || eventType === "tool_result") {
+          console.log(`[RRHS Assistant] ${eventType}:`, payload);
+          return;
+        }
+
+        if (eventType === "error") {
+          const message = typeof payload.error === "string"
+            ? payload.error
+            : (typeof payload.message === "string" ? payload.message : "Unknown stream error");
+          throw new Error(message);
+        }
+
+        if (eventType === "done") {
+          finalizeAssistantMessage({
+            message: typeof payload.message === "string" ? payload.message : "",
+            products: payload.products,
+            pending: payload.pending,
+            actions: eventActions
+          });
+        }
+      }
+
+      try {
+        const messages = history.concat([{ role: "user", content: msg }]);
+        const payload = { messages };
         if (sessionId) {
           payload.session_id = sessionId;
         }
@@ -1165,9 +1318,9 @@
         const historyPreviewCount = Math.min(history.length, 10);
         console.log("[RRHS Assistant] Sending payload:", {
           url: API_URL,
-          message: msg,
+          messageCount: messages.length,
           historyCount: history.length,
-          historyPreview: history.slice(-historyPreviewCount),
+          historyPreview: messages.slice(-historyPreviewCount),
           historyPreviewCount,
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
@@ -1175,12 +1328,16 @@
           pendingCount: payload.pending && payload.pending.options ? payload.pending.options.length : 0
         });
 
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        if (API_KEY) {
+          headers[API_KEY_HEADER] = `${API_KEY_PREFIX}${API_KEY}`;
+        }
+
         const res = await fetch(API_URL, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${API_KEY}`,
-          },
+          headers,
           body: JSON.stringify(payload),
         });
 
@@ -1197,91 +1354,24 @@
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
 
-          for (const line of lines) {
-            if (!line.trim() || !line.startsWith("data: ")) continue;
-            
-            const jsonStr = line.slice(6); // Remove "data: " prefix
-            if (jsonStr === "[DONE]") continue;
-
-            try {
-              const event = JSON.parse(jsonStr);
-              const eventActions = event ? (event.cart_actions || event.cartActions || []) : [];
-              if (event && Object.prototype.hasOwnProperty.call(event, "pending") && event.event !== "final") {
-                setPendingChoice(event.pending || null);
-              }
-              handleCartActions(eventActions);
-              
-              if (event.event === "delta") {
-                // Remove typing indicator on first delta
-                if (typingIndicator) {
-                  removeTypingIndicator(typingIndicator);
-                }
-                
-                // Create streaming bubble on first delta
-                if (!streamingBubble) {
-                  streamingBubble = document.createElement("div");
-                  streamingBubble.className = "rrhs-msg rrhs-bot rrhs-streaming";
-                  streamingContent = document.createElement("div");
-                  streamingContent.className = "rrhs-msg-content";
-                  streamingBubble.appendChild(streamingContent);
-                  messagesEl.appendChild(streamingBubble);
-                }
-                
-                // Append delta content
-                accumulatedText += event.content;
-                if (streamingContent) {
-                  const displayText = stripSkuTags(accumulatedText);
-                  streamingContent.innerHTML = formatStreamingMessage(displayText);
-                }
-                messagesEl.scrollTop = messagesEl.scrollHeight;
-                
-              } else if (event.event === "final") {
-                // Remove streaming bubble
-                if (streamingBubble) {
-                  streamingBubble.remove();
-                  streamingBubble = null;
-                }
-                
-                // Add final message with product links
-                const products = event.products || [];
-                const finalText = (typeof event.message === "string" && event.message.trim())
-                  ? event.message
-                  : accumulatedText;
-                const persistText = accumulatedText || finalText;
-                console.log("[RRHS Assistant] Final event received:", {
-                  message: event.message,
-                  products: products,
-                  validated: event.validated,
-                  inStock: event.in_stock_products
-                });
-                
-                addMessage("assistant", finalText, products, { persistText });
-
-                const actions = eventActions;
-                const hasCartAdd = actions.some((action) => action && action.type === "cart.add") || lastActionsHadCartAdd;
-                if (hasCartAdd) {
-                  setPendingChoice(null);
-                } else {
-                  setPendingChoice(event.pending || null);
-                }
-
-                if (!hasCartAdd && isAddConfirmation(finalText)) {
-                  showRetryToast();
-                }
-                
-                console.log("[RRHS Assistant] ✅ Stream complete", {
-                  validated: event.validated,
-                  products: products.length,
-                  inStock: event.in_stock_products
-                });
-              }
-            } catch (e) {
-              console.warn("[RRHS Assistant] Failed to parse SSE event:", e);
-            }
+          for (const block of blocks) {
+            const parsed = parseSseBlock(block);
+            if (!parsed) continue;
+            handleStreamEvent(parsed.eventType, parsed.data);
           }
+        }
+
+        if (!streamFinished) {
+          const trailing = parseSseBlock(buffer);
+          if (trailing) {
+            handleStreamEvent(trailing.eventType, trailing.data);
+          }
+        }
+        if (!streamFinished) {
+          finalizeAssistantMessage();
         }
 
       } catch (err) {
