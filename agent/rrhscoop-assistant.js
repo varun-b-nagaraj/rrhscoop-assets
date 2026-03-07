@@ -779,14 +779,28 @@
 
     function normalizeProductInfo(payload) {
       if (!payload || typeof payload !== "object") return null;
-      if (!Array.isArray(payload.results)) return null;
+      const products = Array.isArray(payload.products)
+        ? payload.products
+        : (Array.isArray(payload.results) ? payload.results : null);
+      if (!products) return null;
+
       const normalized = {
-        results: payload.results
+        products,
+        totalProducts: Number.isFinite(Number(payload.totalProducts))
+          ? Number(payload.totalProducts)
+          : products.length
       };
-      if (typeof payload.feedbackUrl === "string") normalized.feedbackUrl = payload.feedbackUrl;
-      if (payload.execution && typeof payload.execution === "object") normalized.execution = payload.execution;
-      if (typeof payload.isPreview === "boolean") normalized.isPreview = payload.isPreview;
-      if (typeof payload.generatedJqFilter === "string") normalized.generatedJqFilter = payload.generatedJqFilter;
+
+      if (typeof payload.sourceTool === "string") normalized.sourceTool = payload.sourceTool;
+      if (typeof payload.fetchedAt === "string") normalized.fetchedAt = payload.fetchedAt;
+
+      const meta = (payload.meta && typeof payload.meta === "object") ? Object.assign({}, payload.meta) : {};
+      if (typeof payload.feedbackUrl === "string") meta.feedbackUrl = payload.feedbackUrl;
+      if (payload.execution && typeof payload.execution === "object") meta.execution = payload.execution;
+      if (typeof payload.isPreview === "boolean") meta.isPreview = payload.isPreview;
+      if (typeof payload.generatedJqFilter === "string") meta.generatedJqFilter = payload.generatedJqFilter;
+      if (Object.keys(meta).length) normalized.meta = meta;
+
       return normalized;
     }
 
@@ -901,7 +915,8 @@
       return /\b(add|put|throw)\b/.test(t) && /\b(cart|bag)\b/.test(t);
     }
 
-    function shouldAllowCartActions(userText) {
+    function shouldAllowCartActions(userText, options = {}) {
+      if (options && options.hadPendingChoice) return true;
       if (pendingChoice) return true;
       return userHasAddIntent(userText);
     }
@@ -1054,6 +1069,14 @@
               return;
             }
             const product = { id: productId, quantity };
+            const combinationId = Number(
+              a.combinationId != null
+                ? a.combinationId
+                : (actionProduct && actionProduct.combinationId != null ? actionProduct.combinationId : 0)
+            );
+            if (Number.isFinite(combinationId) && combinationId > 0) {
+              product.combinationId = combinationId;
+            }
             const options =
               buildOptionsMap(actionProduct ? actionProduct.options : null) ||
               buildOptionsMap(a.options) ||
@@ -1170,10 +1193,10 @@
       let finalizedAssistantText = "";
       let streamFinished = false;
 
-      function handleCartActions(actions) {
+      function handleCartActions(actions, options = {}) {
         if (cartActionsHandled || !Array.isArray(actions) || actions.length === 0) return;
         cartActionsHandled = true;
-        if (!shouldAllowCartActions(lastUserMessage)) {
+        if (!shouldAllowCartActions(lastUserMessage, options)) {
           console.warn("[RRHS Assistant] Cart actions blocked (no user add intent/pending).", {
             lastUserMessage,
             hasPending: Boolean(pendingChoice),
@@ -1245,6 +1268,16 @@
           setPendingChoice(payload.pending || null);
         }
 
+        const maybeCatalogData = normalizeProductInfo(
+          payload.catalogData || payload.catalog_data || payload.product_info || payload.catalogDataJson
+        );
+        if (maybeCatalogData) {
+          setProductInfoCache(maybeCatalogData);
+          console.log("[RRHS Assistant] Cached catalog data from final payload:", {
+            count: maybeCatalogData.products.length
+          });
+        }
+
         if (!hasCartAdd && isAddConfirmation(finalText)) {
           showRetryToast();
         }
@@ -1289,11 +1322,13 @@
         if (streamFinished) return;
 
         const payload = (data && typeof data === "object") ? data : {};
-        const eventActions = payload ? (payload.cart_actions || payload.cartActions || []) : [];
-        if (payload && Object.prototype.hasOwnProperty.call(payload, "pending") && eventType !== "final") {
+        const hadPendingChoice = Boolean(pendingChoice);
+        const rawActions = payload ? (payload.cart_actions || payload.cartActions || []) : [];
+        const eventActions = Array.isArray(rawActions) ? rawActions : [];
+        handleCartActions(eventActions, { hadPendingChoice });
+        if (payload && Object.prototype.hasOwnProperty.call(payload, "pending") && eventType !== "final" && eventType !== "done") {
           setPendingChoice(payload.pending || null);
         }
-        handleCartActions(eventActions);
 
         if (eventType === "delta") {
           appendAssistantText(typeof payload.content === "string" ? payload.content : "");
@@ -1348,7 +1383,7 @@
           if (maybeProductInfo) {
             setProductInfoCache(maybeProductInfo);
             console.log("[RRHS Assistant] Cached product_info from catalog:", {
-              count: maybeProductInfo.results.length
+              count: maybeProductInfo.products.length
             });
           }
           return;
@@ -1363,7 +1398,7 @@
             if (maybeProductInfo) {
               setProductInfoCache(maybeProductInfo);
               console.log("[RRHS Assistant] Cached product_info from tool_result:", {
-                count: maybeProductInfo.results.length
+                count: maybeProductInfo.products.length
               });
             }
           }
@@ -1398,6 +1433,7 @@
           pending: pendingChoice || null
         };
         if (productInfoCache) {
+          payload.catalogData = productInfoCache;
           payload.product_info = productInfoCache;
         }
         isNewConversationCall = false;
@@ -1413,8 +1449,14 @@
           historyPreviewCount,
           newConvo: payload.new_convo,
           hasProductInfo: Boolean(payload.product_info),
-          productInfoCount: payload.product_info && Array.isArray(payload.product_info.results)
-            ? payload.product_info.results.length
+          productInfoCount: payload.product_info && Array.isArray(payload.product_info.products)
+            ? payload.product_info.products.length
+            : (payload.product_info && Array.isArray(payload.product_info.results)
+              ? payload.product_info.results.length
+              : 0),
+          hasCatalogData: Boolean(payload.catalogData),
+          catalogDataCount: payload.catalogData && Array.isArray(payload.catalogData.products)
+            ? payload.catalogData.products.length
             : 0,
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
