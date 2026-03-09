@@ -117,8 +117,7 @@
   ]);
   const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
   const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
-  // Legacy behavior toggle: when true, E-number users can bypass delivery windows.
-  // Kept for future reuse, currently disabled.
+  // Legacy toggle kept for compatibility. Employee-id prefix is no longer used for access decisions.
   const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
 
   // Link used in the "site closed" message when RRHS_ORDERING_PERIOD_MATRIX disables all windows.
@@ -465,7 +464,8 @@
   }
 
   function rrhsEmployeeIdIsValid(value) {
-    return /^[sSeE]\d+$/.test(String(value || "").trim());
+    // Accept numeric IDs with optional leading letter; do not enforce S/E prefixes.
+    return /^[a-zA-Z]?\d+$/.test(String(value || "").trim());
   }
 
   function rrhsPersistEmployeeId(value) {
@@ -500,18 +500,14 @@
   }
 
   function rrhsGetRoomAccessMode() {
-    const employeeId = rrhsGetEmployeeIdForAccess();
-    if (!employeeId) return "limited";
-    const first = employeeId.charAt(0).toLowerCase();
-    if (first === "e") return "all";
+    // Prefix-based room access is disabled; room filtering rules always apply.
     return "limited";
   }
 
   function rrhsCanBypassOrderingWindowByEmployeeId() {
+    // Prefix-based ordering-window bypass is disabled.
     if (!RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED) return false;
-    const employeeId = rrhsGetEmployeeIdForAccess();
-    if (!employeeId) return false;
-    return employeeId.charAt(0).toLowerCase() === "e";
+    return false;
   }
 
   function rrhsRefreshRoomAccessIfNeeded() {
@@ -562,7 +558,7 @@
       const errorMsg = document.createElement("div");
       errorMsg.dataset.rrhsEmployeeError = "true";
       errorMsg.style.cssText = "display:none;color:#d32f2f;font-size:12px;margin-top:6px;font-weight:500;";
-      errorMsg.textContent = "Please enter your full S-number or E-number (starting with S or E).";
+      errorMsg.textContent = "Please enter your full employee number.";
       container.appendChild(errorMsg);
     }
 
@@ -601,7 +597,7 @@
       document.querySelector(".ec-cart__button--checkout") ||
       document.querySelector(".ec-cart__button--checkout button");
     if (checkoutShell) shakeElement(checkoutShell);
-    createModal("Please input your entire number with S or E (example: S123456 or E123456).", { autoCloseMs: 6000 });
+    createModal("Please input your full employee number (example: 123456).", { autoCloseMs: 6000 });
     return true;
   }
 
@@ -742,12 +738,6 @@
   }
 
   function rrhsGetRoomFilter() {
-    const mode = rrhsGetRoomAccessMode();
-    if (mode === "all") {
-      // E-number staff can access all rooms/buildings.
-      return { enabled: false, rules: Object.freeze([]) };
-    }
-
     try {
       if (typeof window !== "undefined" && window.RRHS_ROOM_FILTER) {
         const w = window.RRHS_ROOM_FILTER;
