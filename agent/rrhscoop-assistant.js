@@ -5,13 +5,49 @@
 
   const DEFAULT_CONFIG = {
     apiUrl: "https://v2-chatbot.vercel.app/chat",
-    apiKey: "",
+    apiKey: "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a",
     apiKeyHeader: "Authorization",
     apiKeyPrefix: "Bearer "
   };
   const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.RRHS_ASSISTANT_CONFIG || {});
   const API_URL = CONFIG.apiUrl;
-  const API_KEY = CONFIG.apiKey;
+  const API_KEY = (function resolveApiKey() {
+    const direct = CONFIG.apiKey;
+    if (direct != null && String(direct).trim()) return String(direct).trim();
+
+    const globalCandidates = [
+      window.RRHS_ASSISTANT_API_KEY,
+      window.RRHS_ASSISTANT_TOKEN,
+      window.RRHS_API_KEY
+    ];
+    for (let i = 0; i < globalCandidates.length; i += 1) {
+      const candidate = globalCandidates[i];
+      if (candidate != null && String(candidate).trim()) return String(candidate).trim();
+    }
+
+    const storageKeys = [
+      "RRHS_ASSISTANT_API_KEY",
+      "RRHS_ASSISTANT_TOKEN",
+      "rrhs_assistant_api_key",
+      "rrhs_assistant_token",
+      "API_KEY"
+    ];
+    const stores = [window.localStorage, window.sessionStorage];
+    for (let s = 0; s < stores.length; s += 1) {
+      const store = stores[s];
+      if (!store) continue;
+      for (let k = 0; k < storageKeys.length; k += 1) {
+        const key = storageKeys[k];
+        try {
+          const value = store.getItem(key);
+          if (value != null && String(value).trim()) return String(value).trim();
+        } catch (e) {
+          // Ignore storage access errors
+        }
+      }
+    }
+    return "";
+  })();
   const API_KEY_HEADER = CONFIG.apiKeyHeader || "Authorization";
   const API_KEY_PREFIX = CONFIG.apiKeyPrefix == null ? "Bearer " : String(CONFIG.apiKeyPrefix);
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
@@ -1835,7 +1871,16 @@
         console.error("[RRHS Assistant] Stream error:", err);
         removeTypingIndicator(typingIndicator);
         if (streamingBubble) streamingBubble.remove();
-        addMessage("assistant", `Sorry – couldn't reach the assistant.\n${err.message}`);
+        const errorText = String(err && err.message ? err.message : "");
+        const isAuthError = errorText.includes("HTTP 401") || errorText.includes("HTTP 403");
+        if (isAuthError) {
+          addMessage(
+            "assistant",
+            "Assistant auth failed (401/403). Set `RRHS_ASSISTANT_CONFIG.apiKey` (or `window.RRHS_ASSISTANT_API_KEY`) to your Bearer token and retry."
+          );
+        } else {
+          addMessage("assistant", `Sorry – couldn't reach the assistant.\n${errorText || "Unknown error"}`);
+        }
       } finally {
         setSending(false);
         inputEl.focus();
