@@ -52,7 +52,8 @@
   const API_KEY_PREFIX = CONFIG.apiKeyPrefix == null ? "Bearer " : String(CONFIG.apiKeyPrefix);
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
   const CART_ACTIONS_ENABLED = CONFIG.cartActionsEnabled !== false;
-  const REQUEST_STREAM = CONFIG.stream !== false && !/\/chat-tools(?:\/)?$/i.test(API_URL);
+  const REQUEST_STREAM = false;
+  const ASSISTANT_UNDER_CONSTRUCTION = CONFIG.underConstruction !== false;
   const Z = 2147483647;
   const PING_URLS = Array.isArray(CONFIG.pingUrls)
     ? CONFIG.pingUrls.filter(Boolean)
@@ -468,16 +469,16 @@
     panel.className = "";
     
     panel.innerHTML = `
-      <div id="rrhs-pill-label"><span id="rrhs-pill-text">Ask the Store</span></div>
+      <div id="rrhs-pill-label"><span id="rrhs-pill-text">${ASSISTANT_UNDER_CONSTRUCTION ? "Under Construction" : "Ask the Store"}</span></div>
       <div id="rrhs-panel-body">
         <div id="rrhs-assistant-header">
-          <div>Store Assistant</div>
+          <div>${ASSISTANT_UNDER_CONSTRUCTION ? "Under Construction" : "Store Assistant"}</div>
           <button id="rrhs-close" type="button">×</button>
         </div>
         <div id="rrhs-messages"></div>
         <div id="rrhs-input-row">
-          <input id="rrhs-input" type="text" placeholder="What should I buy?" autocomplete="off" />
-          <button id="rrhs-send" type="button">Send</button>
+          <input id="rrhs-input" type="text" placeholder="${ASSISTANT_UNDER_CONSTRUCTION ? "Assistant temporarily unavailable" : "What should I buy?"}" autocomplete="off" />
+          <button id="rrhs-send" type="button">${ASSISTANT_UNDER_CONSTRUCTION ? "Closed" : "Send"}</button>
         </div>
       </div>
     `;
@@ -504,6 +505,11 @@
     let nudgeEl = null;
     let nudgeHideTimer = null;
     let isNewConversationCall = true;
+
+    if (ASSISTANT_UNDER_CONSTRUCTION) {
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+    }
 
     function getStorageTarget() {
       const candidates = [];
@@ -616,7 +622,7 @@
       nudgeEl = document.createElement("button");
       nudgeEl.id = "rrhs-assistant-nudge";
       nudgeEl.type = "button";
-      nudgeEl.textContent = "Check me out";
+      nudgeEl.textContent = ASSISTANT_UNDER_CONSTRUCTION ? "Under Construction" : "Check me out";
       nudgeEl.setAttribute("aria-label", "Open store assistant");
       nudgeEl.addEventListener("click", () => {
         markNudgeSeen();
@@ -1145,6 +1151,15 @@
     function addIntroMessage() {
       if (!messagesEl || messagesEl.dataset.rrhsIntroShown === "1") return;
       messagesEl.dataset.rrhsIntroShown = "1";
+      if (ASSISTANT_UNDER_CONSTRUCTION) {
+        addMessage(
+          "assistant",
+          "Store assistant is under construction right now. Please check back later.",
+          [],
+          { persist: false }
+        );
+        return;
+      }
       addMessage(
         "assistant",
         "Hello! I’m the RRHS COOP Bot. You can ask me anything about products, sizes, or recommendations.",
@@ -1467,6 +1482,7 @@
     }
 
     async function sendMessage() {
+      if (ASSISTANT_UNDER_CONSTRUCTION) return;
       const msg = (inputEl.value || "").trim();
       if (!msg) return;
 
@@ -1737,48 +1753,34 @@
       }
 
       try {
-        const currentOrder = sessionHistory.length + 1;
-        const messages = [{ role: "user", content: msg, order: currentOrder }];
-        const simpleHistory = sessionHistory.map((entry) => ({
-          role: entry.role,
-          content: entry.content
-        }));
+        const simpleHistory = sessionHistory
+          .filter((entry) => {
+            const text = String(entry && entry.content ? entry.content : "");
+            if (!text.trim()) return false;
+            if (text.includes("Sorry – couldn't reach the assistant")) return false;
+            if (text.includes("HTTP 500")) return false;
+            if (text.includes("HTTP 502")) return false;
+            return true;
+          })
+          .map((entry) => ({
+            role: entry.role,
+            content: entry.content
+          }));
         const payload = {
           message: msg,
           history: simpleHistory,
-          stream: REQUEST_STREAM,
-          messages,
-          message_history: sessionHistory,
-          new_convo: isNewConversationCall,
+          stream: false,
           pending: pendingChoice || null
         };
-        if (productInfoCache) {
-          payload.catalogData = productInfoCache;
-          payload.product_info = productInfoCache;
-        }
         isNewConversationCall = false;
-        if (sessionId) {
-          payload.session_id = sessionId;
-        }
         const historyPreviewCount = Math.min(sessionHistory.length, 10);
         console.log("[RRHS Assistant] Sending payload:", {
           url: API_URL,
-          messageCount: messages.length,
+          messageCount: 1,
           historyCount: sessionHistory.length,
           historyPreview: sessionHistory.slice(-historyPreviewCount),
           historyPreviewCount,
-          newConvo: payload.new_convo,
-          hasProductInfo: Boolean(payload.product_info),
-          productInfoCount: payload.product_info && Array.isArray(payload.product_info.products)
-            ? payload.product_info.products.length
-            : (payload.product_info && Array.isArray(payload.product_info.results)
-              ? payload.product_info.results.length
-              : 0),
-          hasCatalogData: Boolean(payload.catalogData),
-          catalogDataCount: payload.catalogData && Array.isArray(payload.catalogData.products)
-            ? payload.catalogData.products.length
-            : 0,
-          sessionId: sessionId || null,
+          filteredHistoryCount: simpleHistory.length,
           hasPending: Boolean(payload.pending),
           pendingType: payload.pending && payload.pending.type ? payload.pending.type : null,
           pendingCount: payload.pending && Array.isArray(payload.pending.options) ? payload.pending.options.length : 0,
@@ -1799,7 +1801,13 @@
         });
 
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          let detail = "";
+          try {
+            detail = await res.text();
+          } catch (e) {
+            detail = "";
+          }
+          throw new Error(`HTTP ${res.status}${detail ? ` - ${detail}` : ""}`);
         }
 
         const contentType = String(res.headers.get("content-type") || "").toLowerCase();
