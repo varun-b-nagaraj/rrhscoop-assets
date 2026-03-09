@@ -1429,6 +1429,7 @@
         if (streamFinished) return;
 
         const payload = (data && typeof data === "object") ? data : {};
+        const rawText = typeof data === "string" ? data : "";
         const hadPendingChoice = Boolean(pendingChoice);
         const rawActions = payload ? (payload.cart_actions || payload.cartActions || []) : [];
         const eventActions = Array.isArray(rawActions) ? rawActions : [];
@@ -1445,7 +1446,7 @@
         if (eventType === "assistant_delta") {
           const token = typeof payload.token === "string"
             ? payload.token
-            : (typeof payload.content === "string" ? payload.content : "");
+            : (typeof payload.content === "string" ? payload.content : rawText);
           appendAssistantText(token);
           return;
         }
@@ -1455,7 +1456,7 @@
             ? payload.text
             : (typeof payload.message === "string"
               ? payload.message
-              : (typeof payload.content === "string" ? payload.content : ""));
+              : (typeof payload.content === "string" ? payload.content : rawText));
           if (assistantText) {
             finalizedAssistantText = assistantText;
             accumulatedText = assistantText;
@@ -1516,7 +1517,7 @@
         if (eventType === "error") {
           const message = typeof payload.error === "string"
             ? payload.error
-            : (typeof payload.message === "string" ? payload.message : "Unknown stream error");
+            : (typeof payload.message === "string" ? payload.message : (rawText || "Unknown stream error"));
           throw new Error(message);
         }
 
