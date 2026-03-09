@@ -4,7 +4,7 @@
   window.__RRHS_ASSISTANT__ = true;
 
   const DEFAULT_CONFIG = {
-    apiUrl: "https://official-mcp-chatbot.vercel.app/api/chat",
+    apiUrl: "https://v2-chatbot.vercel.app/chat",
     apiKey: "",
     apiKeyHeader: "Authorization",
     apiKeyPrefix: "Bearer "
@@ -15,8 +15,8 @@
   const API_KEY_HEADER = CONFIG.apiKeyHeader || "Authorization";
   const API_KEY_PREFIX = CONFIG.apiKeyPrefix == null ? "Bearer " : String(CONFIG.apiKeyPrefix);
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
-  // Temporary kill switch: keep add-to-cart tool outputs from executing on the client.
-  const CART_ACTIONS_ENABLED = false;
+  const CART_ACTIONS_ENABLED = CONFIG.cartActionsEnabled !== false;
+  const REQUEST_STREAM = CONFIG.stream !== false && !/\/chat-tools(?:\/)?$/i.test(API_URL);
   const Z = 2147483647;
   const PING_URLS = Array.isArray(CONFIG.pingUrls)
     ? CONFIG.pingUrls.filter(Boolean)
@@ -726,6 +726,47 @@
         .filter((product) => product.name);
     }
 
+    function uniqueProducts(products) {
+      const normalized = normalizeProducts(products);
+      const seen = new Set();
+      return normalized.filter((product) => {
+        const key = `${product.id}:${product.combinationId}:${product.name.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function extractProductsFromToolCalls(toolCalls) {
+      if (!Array.isArray(toolCalls)) return [];
+      const extracted = [];
+      toolCalls.forEach((call) => {
+        if (!call || typeof call !== "object") return;
+        const result = call.result && typeof call.result === "object" ? call.result : null;
+        const items = result && Array.isArray(result.items) ? result.items : [];
+        items.forEach((item) => {
+          if (!item || typeof item !== "object") return;
+          extracted.push({
+            id: Number(item.id || 0),
+            name: item.name || "",
+            combinationId: 0,
+            variantKey: "",
+            variantLabel: "",
+            price: Number(item.price),
+            sku: item.sku || "",
+            url: item.url || ""
+          });
+        });
+      });
+      return uniqueProducts(extracted);
+    }
+
+    function normalizeActionList(payload) {
+      if (!payload || typeof payload !== "object") return [];
+      const direct = payload.cart_actions || payload.cartActions || payload.actions;
+      return Array.isArray(direct) ? direct : [];
+    }
+
     function linkifyProducts(escapedText, products = []) {
       if (!products || products.length === 0) return escapedText;
 
@@ -1018,10 +1059,18 @@
       return /\b(add|put|throw)\b/.test(t) && /\b(cart|bag)\b/.test(t);
     }
 
+    function userHasRemoveIntent(text) {
+      if (!text) return false;
+      const t = String(text).toLowerCase().trim();
+      if (!t) return false;
+      if (t.startsWith("remove ") || t.startsWith("delete ")) return true;
+      return /\b(remove|delete|take)\b/.test(t) && /\b(cart|bag)\b/.test(t);
+    }
+
     function shouldAllowCartActions(userText, options = {}) {
       if (options && options.hadPendingChoice) return true;
       if (pendingChoice) return true;
-      return userHasAddIntent(userText);
+      return userHasAddIntent(userText) || userHasRemoveIntent(userText);
     }
 
     function dismissRetryToast() {
@@ -1134,6 +1183,147 @@
       return Object.keys(map).length ? map : null;
     }
 
+    function ecwidGetCart() {
+      return new Promise((resolve, reject) => {
+        if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.get !== "function") {
+          reject(new Error("Ecwid Cart.get unavailable"));
+          return;
+        }
+        let done = false;
+        const timeout = setTimeout(() => {
+          if (done) return;
+          done = true;
+          reject(new Error("Ecwid Cart.get timeout"));
+        }, 6000);
+        Ecwid.Cart.get((cart) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timeout);
+          resolve(cart || {});
+        });
+      });
+    }
+
+    function ecwidAddProduct(product) {
+      return new Promise((resolve, reject) => {
+        if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.addProduct !== "function") {
+          reject(new Error("Ecwid Cart.addProduct unavailable"));
+          return;
+        }
+        let done = false;
+        const timeout = setTimeout(() => {
+          if (done) return;
+          done = true;
+          reject(new Error("Ecwid Cart.addProduct timeout"));
+        }, 6000);
+        const payload = Object.assign({}, product, {
+          callback: function (success, productResult, cart, error) {
+            if (done) return;
+            done = true;
+            clearTimeout(timeout);
+            if (!success) {
+              reject(new Error(error || "addProduct failed"));
+              return;
+            }
+            resolve({ success, productResult, cart, error });
+          }
+        });
+        Ecwid.Cart.addProduct(payload);
+      });
+    }
+
+    function ecwidRemoveProduct(index) {
+      return new Promise((resolve, reject) => {
+        if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.removeProduct !== "function") {
+          reject(new Error("Ecwid Cart.removeProduct unavailable"));
+          return;
+        }
+        let done = false;
+        const timeout = setTimeout(() => {
+          if (done) return;
+          done = true;
+          reject(new Error("Ecwid Cart.removeProduct timeout"));
+        }, 6000);
+        Ecwid.Cart.removeProduct(index, function (success, itemsRemovedQuantity, product, cart, error) {
+          if (done) return;
+          done = true;
+          clearTimeout(timeout);
+          if (!success) {
+            reject(new Error(error || "removeProduct failed"));
+            return;
+          }
+          resolve({ success, itemsRemovedQuantity, product, cart, error });
+        });
+      });
+    }
+
+    function optionsMatch(itemOptions, targetOptions) {
+      if (!targetOptions || !Object.keys(targetOptions).length) return true;
+      const item = itemOptions && typeof itemOptions === "object" ? itemOptions : {};
+      const targetKeys = Object.keys(targetOptions);
+      return targetKeys.every((key) => String(item[key] || "") === String(targetOptions[key] || ""));
+    }
+
+    async function decrementCartItem(action) {
+      const actionProduct = (action.product && typeof action.product === "object") ? action.product : null;
+      const productId = Number(
+        (actionProduct && actionProduct.id != null ? actionProduct.id : null)
+        || action.productId
+        || 0
+      );
+      if (!Number.isFinite(productId) || productId <= 0) return;
+
+      let removeQty = Math.max(1, Math.abs(Number(
+        (actionProduct && actionProduct.quantity != null ? actionProduct.quantity : null)
+        || action.quantity
+        || 1
+      )));
+      const combinationId = Number(
+        action.combinationId != null
+          ? action.combinationId
+          : (actionProduct && actionProduct.combinationId != null ? actionProduct.combinationId : 0)
+      );
+      const targetOptions =
+        buildOptionsMap(actionProduct ? actionProduct.options : null) ||
+        buildOptionsMap(action.options) ||
+        buildOptionsMap(actionProduct ? actionProduct.selectedOptions : null) ||
+        buildOptionsMap(action.selectedOptions) ||
+        null;
+
+      const cart = await ecwidGetCart();
+      const items = Array.isArray(cart.items) ? cart.items : [];
+      const matches = items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => {
+          const product = item && item.product ? item.product : {};
+          const itemProductId = Number(product.id || 0);
+          if (itemProductId !== productId) return false;
+          if (Number.isFinite(combinationId) && combinationId > 0) {
+            const variationId = Number(product.variation || 0);
+            if (variationId !== combinationId) return false;
+          }
+          return optionsMatch(item.options, targetOptions);
+        });
+
+      for (const match of matches) {
+        if (removeQty <= 0) break;
+        const currentQty = Math.max(0, Number(match.item && match.item.quantity) || 0);
+        if (currentQty <= 0) continue;
+        const nextQty = currentQty - removeQty;
+        removeQty -= Math.min(currentQty, removeQty);
+
+        await ecwidRemoveProduct(match.index);
+        if (nextQty > 0) {
+          const replacement = { id: productId, quantity: nextQty };
+          if (Number.isFinite(combinationId) && combinationId > 0) {
+            replacement.combinationId = combinationId;
+          }
+          if (targetOptions) replacement.options = targetOptions;
+          await ecwidAddProduct(replacement);
+        }
+      }
+    }
+
     function executeCartActions(actions) {
       if (!Array.isArray(actions) || actions.length === 0) return;
       if (!CART_ACTIONS_ENABLED) {
@@ -1142,116 +1332,92 @@
       }
 
       whenEcwidReady(() => {
-        const queue = actions.slice();
-        let idx = 0;
+        (async () => {
+          console.log("[RRHS Assistant] ➕ Cart action queue start", { count: actions.length });
+          for (let idx = 0; idx < actions.length; idx += 1) {
+            const a = actions[idx];
+            if (!a || !a.type) continue;
+            try {
+              if (a.type === "cart.add") {
+                const actionProduct = (a.product && typeof a.product === "object") ? a.product : null;
+                const rawQuantity = Number(
+                  (actionProduct && actionProduct.quantity != null ? actionProduct.quantity : null)
+                  || a.quantity
+                  || 1
+                );
+                const productId = Number(
+                  (actionProduct && actionProduct.id != null ? actionProduct.id : null)
+                  || a.productId
+                  || 0
+                );
+                if (!Number.isFinite(productId) || productId <= 0) continue;
+                const combinationId = Number(
+                  a.combinationId != null
+                    ? a.combinationId
+                    : (actionProduct && actionProduct.combinationId != null ? actionProduct.combinationId : 0)
+                );
+                const options =
+                  buildOptionsMap(actionProduct ? actionProduct.options : null) ||
+                  buildOptionsMap(a.options) ||
+                  buildOptionsMap(actionProduct ? actionProduct.selectedOptions : null) ||
+                  buildOptionsMap(a.selectedOptions) ||
+                  (a.optionName && a.optionValue ? { [String(a.optionName)]: String(a.optionValue) } : null);
 
-        const runNext = () => {
-          if (!queue.length) {
-            console.log("[RRHS Assistant] ✅ Cart action queue complete");
-            return;
-          }
-
-          const a = queue.shift();
-          if (!a || !a.type) {
-            runNext();
-            return;
-          }
-
-          idx += 1;
-
-          if (a.type === "cart.add") {
-            const actionProduct = (a.product && typeof a.product === "object") ? a.product : null;
-            const quantity = Math.max(1, Number(
-              (actionProduct && actionProduct.quantity != null ? actionProduct.quantity : null)
-              || a.quantity
-              || 1
-            ));
-            const productId = Number(
-              (actionProduct && actionProduct.id != null ? actionProduct.id : null)
-              || a.productId
-              || 0
-            );
-            if (!Number.isFinite(productId) || productId <= 0) {
-              runNext();
-              return;
-            }
-            const product = { id: productId, quantity };
-            const combinationId = Number(
-              a.combinationId != null
-                ? a.combinationId
-                : (actionProduct && actionProduct.combinationId != null ? actionProduct.combinationId : 0)
-            );
-            if (Number.isFinite(combinationId) && combinationId > 0) {
-              product.combinationId = combinationId;
-            }
-            const options =
-              buildOptionsMap(actionProduct ? actionProduct.options : null) ||
-              buildOptionsMap(a.options) ||
-              buildOptionsMap(actionProduct ? actionProduct.selectedOptions : null) ||
-              buildOptionsMap(a.selectedOptions) ||
-              (a.optionName && a.optionValue ? { [String(a.optionName)]: String(a.optionValue) } : null);
-            if (options && Object.keys(options).length) {
-              product.options = options;
-            }
-
-            console.log(`[RRHS Assistant] ➕ addProduct #${idx}`, {
-              productId,
-              quantity,
-              options: product.options || null,
-              sku: actionProduct && actionProduct.sku ? actionProduct.sku : null,
-              name: actionProduct && actionProduct.name ? actionProduct.name : null,
-              combinationId: a.combinationId || null
-            });
-
-            if (!Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.addProduct !== "function") {
-              console.warn("[RRHS Assistant] Ecwid Cart API not ready");
-              runNext();
-              return;
-            }
-
-            let finished = false;
-            const timeout = setTimeout(() => {
-              if (finished) return;
-              finished = true;
-              console.warn(`[RRHS Assistant] ⚠️ addProduct #${idx} timeout`);
-              runNext();
-            }, 6000);
-
-            const payload = Object.assign({}, product, {
-              callback: function (success, productResult, cart, error) {
-                if (finished) return;
-                finished = true;
-                clearTimeout(timeout);
-                if (!success) {
-                  console.warn(`[RRHS Assistant] ❌ addProduct #${idx} failed`, error || productResult);
-                } else {
-                  console.log(`[RRHS Assistant] ✅ addProduct #${idx} ok`);
+                if (rawQuantity < 0) {
+                  await decrementCartItem(a);
+                  console.log(`[RRHS Assistant] ➖ decrement #${idx + 1}`, {
+                    productId,
+                    quantity: rawQuantity
+                  });
+                  continue;
                 }
-                runNext();
+
+                const product = {
+                  id: productId,
+                  quantity: Math.max(1, Number.isFinite(rawQuantity) ? rawQuantity : 1)
+                };
+                if (Number.isFinite(combinationId) && combinationId > 0) {
+                  product.combinationId = combinationId;
+                }
+                if (options && Object.keys(options).length) {
+                  product.options = options;
+                }
+                await ecwidAddProduct(product);
+                console.log(`[RRHS Assistant] ✅ addProduct #${idx + 1} ok`, {
+                  productId,
+                  quantity: product.quantity
+                });
+                continue;
               }
-            });
 
-            Ecwid.Cart.addProduct(payload);
-            return;
+              if (a.type === "cart.remove") {
+                await decrementCartItem({
+                  type: "cart.add",
+                  product: a.product,
+                  productId: a.productId,
+                  combinationId: a.combinationId,
+                  options: a.options,
+                  selectedOptions: a.selectedOptions,
+                  quantity: -Math.max(1, Math.abs(Number(a.quantity || 1)))
+                });
+                continue;
+              }
+
+              if (a.type === "cart.open") {
+                Ecwid.openPage("cart");
+                continue;
+              }
+
+              if (a.type === "cart.checkout") {
+                Ecwid.Cart.gotoCheckout();
+                continue;
+              }
+            } catch (err) {
+              console.warn(`[RRHS Assistant] Cart action #${idx + 1} failed`, err);
+            }
           }
-
-          if (a.type === "cart.open") {
-            Ecwid.openPage("cart");
-            runNext();
-            return;
-          }
-
-          if (a.type === "cart.checkout") {
-            Ecwid.Cart.gotoCheckout();
-            runNext();
-            return;
-          }
-
-          runNext();
-        };
-
-        console.log("[RRHS Assistant] ➕ Cart action queue start", { count: actions.length });
-        runNext();
+          console.log("[RRHS Assistant] ✅ Cart action queue complete");
+        })();
       });
     }
 
@@ -1304,7 +1470,7 @@
         if (cartActionsHandled || !Array.isArray(actions) || actions.length === 0) return;
         cartActionsHandled = true;
         if (!shouldAllowCartActions(lastUserMessage, options)) {
-          console.warn("[RRHS Assistant] Cart actions blocked (no user add intent/pending).", {
+          console.warn("[RRHS Assistant] Cart actions blocked (no user cart intent/pending).", {
             lastUserMessage,
             hasPending: Boolean(pendingChoice),
             actionCount: actions.length
@@ -1353,7 +1519,9 @@
           streamingBubble = null;
         }
 
-        const products = Array.isArray(payload.products) ? payload.products : [];
+        const payloadProducts = Array.isArray(payload.products) ? payload.products : [];
+        const toolProducts = extractProductsFromToolCalls(payload.tool_calls || payload.toolCalls || []);
+        const products = uniqueProducts([].concat(payloadProducts, toolProducts));
         const finalText = (typeof payload.message === "string" && payload.message.trim())
           ? payload.message
           : ((typeof payload.text === "string" && payload.text.trim())
@@ -1367,7 +1535,7 @@
           addMessage("assistant", "I couldn't generate a response. Please try again.");
         }
 
-        const actions = Array.isArray(payload.actions) ? payload.actions : [];
+        const actions = normalizeActionList(payload);
         const hasCartAdd = actions.some((action) => action && action.type === "cart.add") || lastActionsHadCartAdd;
         if (hasCartAdd) {
           setPendingChoice(null);
@@ -1431,8 +1599,7 @@
         const payload = (data && typeof data === "object") ? data : {};
         const rawText = typeof data === "string" ? data : "";
         const hadPendingChoice = Boolean(pendingChoice);
-        const rawActions = payload ? (payload.cart_actions || payload.cartActions || []) : [];
-        const eventActions = Array.isArray(rawActions) ? rawActions : [];
+        const eventActions = normalizeActionList(payload);
         handleCartActions(eventActions, { hadPendingChoice });
         if (payload && Object.prototype.hasOwnProperty.call(payload, "pending") && eventType !== "final" && eventType !== "done") {
           setPendingChoice(payload.pending || null);
@@ -1475,7 +1642,8 @@
             message: payload.message,
             products: payload.products,
             pending: payload.pending,
-            actions: eventActions
+            actions: eventActions,
+            tool_calls: payload.tool_calls || payload.toolCalls || []
           });
           console.log("[RRHS Assistant] ✅ Legacy stream complete", {
             products: Array.isArray(payload.products) ? payload.products.length : 0
@@ -1526,7 +1694,8 @@
             message: typeof payload.message === "string" ? payload.message : "",
             products: payload.products,
             pending: payload.pending,
-            actions: eventActions
+            actions: eventActions,
+            tool_calls: payload.tool_calls || payload.toolCalls || []
           });
         }
       }
@@ -1534,7 +1703,14 @@
       try {
         const currentOrder = sessionHistory.length + 1;
         const messages = [{ role: "user", content: msg, order: currentOrder }];
+        const simpleHistory = sessionHistory.map((entry) => ({
+          role: entry.role,
+          content: entry.content
+        }));
         const payload = {
+          message: msg,
+          history: simpleHistory,
+          stream: REQUEST_STREAM,
           messages,
           message_history: sessionHistory,
           new_convo: isNewConversationCall,
@@ -1569,7 +1745,8 @@
           sessionId: sessionId || null,
           hasPending: Boolean(payload.pending),
           pendingType: payload.pending && payload.pending.type ? payload.pending.type : null,
-          pendingCount: payload.pending && Array.isArray(payload.pending.options) ? payload.pending.options.length : 0
+          pendingCount: payload.pending && Array.isArray(payload.pending.options) ? payload.pending.options.length : 0,
+          stream: payload.stream
         });
 
         const headers = {
@@ -1589,10 +1766,46 @@
           throw new Error(`HTTP ${res.status}`);
         }
 
-        const reader = res.body.getReader();
+        const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+        const isEventStream = contentType.includes("text/event-stream");
+        if (!isEventStream) {
+          let jsonPayload = null;
+          try {
+            jsonPayload = await res.json();
+          } catch (e) {
+            jsonPayload = null;
+          }
+          if (jsonPayload && typeof jsonPayload === "object") {
+            const responseActions = normalizeActionList(jsonPayload);
+            handleCartActions(responseActions, { hadPendingChoice: Boolean(pendingChoice) });
+            const finalPayload = {
+              message: jsonPayload.message || jsonPayload.text || "",
+              products: jsonPayload.products,
+              actions: responseActions,
+              tool_calls: jsonPayload.tool_calls || jsonPayload.toolCalls || []
+            };
+            if (Object.prototype.hasOwnProperty.call(jsonPayload, "pending")) {
+              finalPayload.pending = jsonPayload.pending;
+            }
+            finalizeAssistantMessage(finalPayload);
+          } else {
+            finalizeAssistantMessage({
+              message: "I couldn't parse the assistant response."
+            });
+          }
+          return;
+        }
+
+        const reader = res.body && typeof res.body.getReader === "function" ? res.body.getReader() : null;
+        if (!reader) {
+          finalizeAssistantMessage({
+            message: "The assistant stream was unavailable."
+          });
+          return;
+        }
+
         const decoder = new TextDecoder();
         let buffer = "";
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
