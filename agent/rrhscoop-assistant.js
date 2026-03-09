@@ -15,6 +15,8 @@
   const API_KEY_HEADER = CONFIG.apiKeyHeader || "Authorization";
   const API_KEY_PREFIX = CONFIG.apiKeyPrefix == null ? "Bearer " : String(CONFIG.apiKeyPrefix);
   const SEND_SESSION_ID = CONFIG.sendSessionId === true;
+  // Temporary kill switch: keep add-to-cart tool outputs from executing on the client.
+  const CART_ACTIONS_ENABLED = false;
   const Z = 2147483647;
   const PING_URLS = Array.isArray(CONFIG.pingUrls)
     ? CONFIG.pingUrls.filter(Boolean)
@@ -381,6 +383,46 @@
         line-height: 1 !important;
         cursor: pointer !important;
       }
+
+      #rrhs-assistant-nudge {
+        position: fixed !important;
+        right: 176px !important;
+        bottom: 22px !important;
+        background: #FFFFFF !important;
+        color: #670000 !important;
+        border: 1px solid rgba(103,0,0,.25) !important;
+        border-radius: 999px !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,.18) !important;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+        letter-spacing: 0.2px !important;
+        z-index: ${Z} !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        opacity: 0 !important;
+        transform: translateY(6px) scale(0.98) !important;
+        transition: opacity 180ms ease, transform 180ms ease !important;
+      }
+
+      #rrhs-assistant-nudge.rrhs-visible {
+        opacity: 1 !important;
+        transform: translateY(0) scale(1) !important;
+      }
+
+      #rrhs-assistant-nudge::after {
+        content: "" !important;
+        position: absolute !important;
+        right: -7px !important;
+        top: 50% !important;
+        transform: translateY(-50%) rotate(45deg) !important;
+        width: 12px !important;
+        height: 12px !important;
+        background: #FFFFFF !important;
+        border-top: 1px solid rgba(103,0,0,.25) !important;
+        border-right: 1px solid rgba(103,0,0,.25) !important;
+      }
     `;
     document.head.appendChild(style);
 
@@ -416,12 +458,15 @@
     const SESSION_ID_KEY = "rrhs_assistant_session_id_v1";
     const PENDING_KEY = "rrhs_assistant_pending_v1";
     const PRODUCT_INFO_KEY = "rrhs_assistant_product_info_v1";
+    const NUDGE_KEY = "rrhs_assistant_nudge_seen_v1";
     let sessionLog = [];
     let pendingChoice = null;
     let productInfoCache = null;
     let storageWarned = false;
     let lastUserMessage = "";
     let retryToastEl = null;
+    let nudgeEl = null;
+    let nudgeHideTimer = null;
     let isNewConversationCall = true;
 
     function getStorageTarget() {
@@ -499,6 +544,60 @@
 
     schedulePings();
 
+    function wasNudgeSeen() {
+      try {
+        if (!storageRef) return false;
+        return storageRef.getItem(NUDGE_KEY) === "1";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function markNudgeSeen() {
+      try {
+        if (!storageRef) return;
+        storageRef.setItem(NUDGE_KEY, "1");
+      } catch (e) {
+        // Ignore storage failures.
+      }
+    }
+
+    function hideNudge() {
+      if (nudgeHideTimer) {
+        clearTimeout(nudgeHideTimer);
+        nudgeHideTimer = null;
+      }
+      if (!nudgeEl) return;
+      nudgeEl.remove();
+      nudgeEl = null;
+    }
+
+    function showNudge() {
+      if (panel.classList.contains("rrhs-expanded")) return;
+      if (wasNudgeSeen()) return;
+      if (nudgeEl) return;
+
+      nudgeEl = document.createElement("button");
+      nudgeEl.id = "rrhs-assistant-nudge";
+      nudgeEl.type = "button";
+      nudgeEl.textContent = "Check me out";
+      nudgeEl.setAttribute("aria-label", "Open store assistant");
+      nudgeEl.addEventListener("click", () => {
+        markNudgeSeen();
+        hideNudge();
+        openPanel();
+      });
+      document.body.appendChild(nudgeEl);
+
+      requestAnimationFrame(() => {
+        if (nudgeEl) nudgeEl.classList.add("rrhs-visible");
+      });
+
+      nudgeHideTimer = setTimeout(() => {
+        hideNudge();
+      }, 8000);
+    }
+
     // ---------- PANEL STATE ----------
     const PANEL_DURATION = 420;
 
@@ -543,9 +642,13 @@
       }
     }
 
+    setTimeout(showNudge, 700);
+
     function openPanel() {
       if (panel.classList.contains("rrhs-expanded")) return;
       console.log("[RRHS Assistant] 🟢 OPENING");
+      markNudgeSeen();
+      hideNudge();
       updatePanelSizes();
       relinkIfMissing();
       hydrateSessionMessages();
@@ -959,7 +1062,7 @@
       messagesEl.dataset.rrhsIntroShown = "1";
       addMessage(
         "assistant",
-        "Hello! I’m the RRHS COOP Bot. You can ask me anything about products, sizes, or recommendations. I am currently under construction, so check in later!",
+        "Hello! I’m the RRHS COOP Bot. You can ask me anything about products, sizes, or recommendations.",
         [],
         { persist: false }
       );
@@ -1033,6 +1136,10 @@
 
     function executeCartActions(actions) {
       if (!Array.isArray(actions) || actions.length === 0) return;
+      if (!CART_ACTIONS_ENABLED) {
+        console.log("[RRHS Assistant] Cart actions are temporarily disabled.", { count: actions.length });
+        return;
+      }
 
       whenEcwidReady(() => {
         const queue = actions.slice();
