@@ -63,7 +63,7 @@
     alphaOffice: Object.freeze({
       enabled: true,
       groupLabel: "Alpha Office",
-      rooms: Object.freeze([100, 200, 1300, 1400, 1500]),
+      rooms: Object.freeze([200, 1300, 1400, 1500]),
       roomLabelSuffix: "Alpha Office"
     }),
     locations: Object.freeze([
