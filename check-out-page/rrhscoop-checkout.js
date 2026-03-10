@@ -15,7 +15,7 @@
   // Frequently edited settings
   // ---------------------------
   // A/B day reference (YYYY-MM-DD). This date is treated as an "A Day".
-  const REFERENCE_A_DAY = "2026-02-24";
+  const REFERENCE_A_DAY = "2026-03-09";
 
   // Emergency bypass (ignores day/period windows).
   const CHECKOUT_ALWAYS_ALLOW = false;
@@ -117,6 +117,7 @@
   ]);
   const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
   const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
+  const RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID = "e-123456";
   // Legacy toggle kept for compatibility. Employee-id prefix is no longer used for access decisions.
   const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
 
@@ -464,8 +465,8 @@
   }
 
   function rrhsEmployeeIdIsValid(value) {
-    // Accept numeric IDs with optional leading letter; do not enforce S/E prefixes.
-    return /^[a-zA-Z]?\d+$/.test(String(value || "").trim());
+    // Accept numeric IDs with optional leading letter and optional hyphen (e.g. 123456, e123456, e-123456).
+    return /^[a-zA-Z]?-?\d+$/.test(String(value || "").trim());
   }
 
   function rrhsPersistEmployeeId(value) {
@@ -499,9 +500,17 @@
     }
   }
 
+  function rrhsGetNormalizedEmployeeIdForAccess() {
+    return String(rrhsGetEmployeeIdForAccess() || "")
+      .trim()
+      .toLowerCase();
+  }
+
   function rrhsGetRoomAccessMode() {
-    // Prefix-based room access is disabled; room filtering rules always apply.
-    return "limited";
+    // Only one specific employee ID can select any room in the loaded school schedule.
+    return rrhsGetNormalizedEmployeeIdForAccess() === RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID
+      ? "all"
+      : "limited";
   }
 
   function rrhsCanBypassOrderingWindowByEmployeeId() {
@@ -551,6 +560,11 @@
   function rrhsEnsureEmployeeValidation() {
     const input = rrhsGetEmployeeInput();
     if (!input) return;
+    // Keep this as text so IDs like "e123456" are typeable even if Ecwid renders a numeric field.
+    input.type = "text";
+    input.inputMode = "text";
+    input.pattern = "[a-zA-Z]?-?\\d+";
+    input.autocomplete = "off";
     rrhsMaybeAutofillEmployeeId(input);
 
     const container = input.closest(".form-control") || input.parentElement;
@@ -738,6 +752,10 @@
   }
 
   function rrhsGetRoomFilter() {
+    if (rrhsGetRoomAccessMode() === "all") {
+      return Object.freeze({ enabled: false, rules: Object.freeze([]) });
+    }
+
     try {
       if (typeof window !== "undefined" && window.RRHS_ROOM_FILTER) {
         const w = window.RRHS_ROOM_FILTER;
