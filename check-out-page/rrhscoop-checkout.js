@@ -218,85 +218,142 @@
     (document.head || document.documentElement).appendChild(style);
   })();
 
-  function rrhsFillAndHideAddressFields() {
-    // Street / city / zip / state
-    const fieldSelectors = [
+  const RRHS_ADDRESS_SELECTORS = Object.freeze({
+    "address-line1": Object.freeze([
       'input[name="address-line1"]',
+      'input[name="street"]',
+      'input[name*="address-line1"]',
+      'input[name*="street"]'
+    ]),
+    "city": Object.freeze([
       'input[name="city"]',
+      'input[name*="city"]'
+    ]),
+    "zip": Object.freeze([
       'input[name="zip"]',
+      'input[name="postalCode"]',
+      'input[name*="zip"]',
+      'input[name*="postal"]'
+    ]),
+    "province": Object.freeze([
       'select[name="province"]',
-      'select[name="country-list"]'
-    ];
+      'select[name="provinceCode"]',
+      'select[name="state"]',
+      'input[name="province"]',
+      'input[name="state"]'
+    ]),
+    "country-list": Object.freeze([
+      'select[name="country-list"]',
+      'select[name="countryCode"]',
+      'input[name="country-list"]',
+      'input[name="countryCode"]'
+    ])
+  });
 
-    fieldSelectors.forEach((sel) => {
-      const el = document.querySelector(sel);
-      if (!el) return;
+  function rrhsFindAddressField(name) {
+    const selectors = RRHS_ADDRESS_SELECTORS[name] || [];
+    for (let i = 0; i < selectors.length; i += 1) {
+      const el = document.querySelector(selectors[i]);
+      if (el) return el;
+    }
+    return null;
+  }
 
-      const fieldName = el.name;
-      const fillValue = RRHS_AUTOFILL_ADDRESS[fieldName];
-      if (fillValue === undefined) return;
-
-      // Always force our value — override anything the user or Ecwid may have set
-      if (el.value !== fillValue) {
+  function rrhsSetAddressFieldValue(el, fillValue) {
+    if (!el) return;
+    let changed = false;
+    if (el.tagName === "SELECT" && el.options && el.options.length) {
+      const target = String(fillValue || "").toUpperCase();
+      let matched = false;
+      for (let i = 0; i < el.options.length; i += 1) {
+        const opt = el.options[i];
+        const optValue = String(opt.value || "").toUpperCase();
+        const optText = String(opt.text || "").toUpperCase();
+        if (optValue === target || optText === target) {
+          if (el.selectedIndex !== i) {
+            el.selectedIndex = i;
+            changed = true;
+          }
+          matched = true;
+          break;
+        }
+      }
+      if (!matched && el.value !== fillValue) {
         el.value = fillValue;
-        el.dispatchEvent(new Event("input",  { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+        changed = true;
       }
+    } else if (el.value !== fillValue) {
+      el.value = fillValue;
+      changed = true;
+    }
+    if (changed) {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
 
-      // Sync the paired read-only display input (Ecwid pattern for selects)
-      const container = el.closest(".form-control--select");
-      if (container) {
-        const readonlyInput = container.querySelector('input[readonly]');
-        if (readonlyInput) {
-          const chosen = el.options[el.selectedIndex];
-          if (chosen) readonlyInput.value = chosen.text;
-        }
+    const container = el.closest(".form-control--select");
+    if (container) {
+      const readonlyInput = container.querySelector('input[readonly]');
+      if (readonlyInput && el.options && el.options[el.selectedIndex]) {
+        readonlyInput.value = el.options[el.selectedIndex].text;
       }
+    }
+  }
 
-      // Belt-and-suspenders: also hide the nearest row/cell via inline style
-      const targets = [
-        el.closest(".ec-form__row"),
-        el.closest(".ec-form__cell--street"),
-        el.closest(".ec-form__cell--city"),
-        el.closest(".ec-form__cell--postalcode"),
-        el.closest(".ec-form__cell--state"),
-        el.closest(".ec-form__cell--country")
-      ].filter(Boolean);
-
-      targets.forEach((node) => {
-        node.style.setProperty("display",         "none",   "important");
-        node.style.setProperty("visibility",      "hidden", "important");
-        node.style.setProperty("height",          "0",      "important");
-        node.style.setProperty("min-height",      "0",      "important");
-        node.style.setProperty("overflow",        "hidden", "important");
-        node.style.setProperty("margin",          "0",      "important");
-        node.style.setProperty("padding",         "0",      "important");
-        node.style.setProperty("pointer-events",  "none",   "important");
-      });
+  function rrhsHideAddressFieldContainers(el) {
+    if (!el) return;
+    const targets = [
+      el.closest(".ec-form__row"),
+      el.closest(".ec-form__cell--street"),
+      el.closest(".ec-form__cell--city"),
+      el.closest(".ec-form__cell--postalcode"),
+      el.closest(".ec-form__cell--state"),
+      el.closest(".ec-form__cell--country")
+    ].filter(Boolean);
+    targets.forEach((node) => {
+      node.style.setProperty("display", "none", "important");
+      node.style.setProperty("visibility", "hidden", "important");
+      node.style.setProperty("height", "0", "important");
+      node.style.setProperty("min-height", "0", "important");
+      node.style.setProperty("overflow", "hidden", "important");
+      node.style.setProperty("margin", "0", "important");
+      node.style.setProperty("padding", "0", "important");
+      node.style.setProperty("pointer-events", "none", "important");
     });
+  }
 
-    // Extra: prevent user from ever changing these fields via direct manipulation
-    fieldSelectors.forEach((sel) => {
-      const el = document.querySelector(sel);
-      if (!el || el.dataset.rrhsAddressLocked === "1") return;
-      el.dataset.rrhsAddressLocked = "1";
-      el.addEventListener("change", (e) => {
-        const fn = el.name;
-        const locked = RRHS_AUTOFILL_ADDRESS[fn];
-        if (locked !== undefined && el.value !== locked) {
-          el.value = locked;
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        e.stopImmediatePropagation();
-      }, true);
-      el.addEventListener("input", (e) => {
-        const fn = el.name;
-        const locked = RRHS_AUTOFILL_ADDRESS[fn];
-        if (locked !== undefined && el.value !== locked) {
-          el.value = locked;
-        }
-        e.stopImmediatePropagation();
-      }, true);
+  function rrhsBindAddressLock(el, fieldName) {
+    if (!el || el.dataset.rrhsAddressLocked === "1") return;
+    const locked = RRHS_AUTOFILL_ADDRESS[fieldName];
+    if (locked === undefined) return;
+    el.dataset.rrhsAddressLocked = "1";
+
+    const enforce = (e) => {
+      if (!e || !e.isTrusted) return;
+      if (el.value !== locked) {
+        rrhsSetAddressFieldValue(el, locked);
+      }
+    };
+
+    el.addEventListener("change", enforce, true);
+    el.addEventListener("input", enforce, true);
+  }
+
+  function rrhsFillAndHideAddressFields() {
+    const countryField = rrhsFindAddressField("country-list");
+    if (countryField) {
+      rrhsSetAddressFieldValue(countryField, RRHS_AUTOFILL_ADDRESS["country-list"]);
+      rrhsHideAddressFieldContainers(countryField);
+      rrhsBindAddressLock(countryField, "country-list");
+    }
+
+    const orderedFields = ["address-line1", "city", "zip", "province"];
+    orderedFields.forEach((fieldName) => {
+      const el = rrhsFindAddressField(fieldName);
+      if (!el) return;
+      rrhsSetAddressFieldValue(el, RRHS_AUTOFILL_ADDRESS[fieldName]);
+      rrhsHideAddressFieldContainers(el);
+      rrhsBindAddressLock(el, fieldName);
     });
   }
 
@@ -305,8 +362,15 @@
   rrhsUiRefreshers.push(rrhsFillAndHideAddressFields);
 
   const _addrObserver = new MutationObserver(rrhsFillAndHideAddressFields);
-  if (document.body) {
+  let rrhsAddressObserverStarted = false;
+  function rrhsStartAddressObserver() {
+    if (!document.body || rrhsAddressObserverStarted) return;
     _addrObserver.observe(document.body, { childList: true, subtree: true });
+    rrhsAddressObserverStarted = true;
+  }
+  rrhsStartAddressObserver();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", rrhsStartAddressObserver, { once: true });
   }
   
   function rrhsRefreshEverything(reason = "") {
