@@ -117,7 +117,7 @@
   ]);
   const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
   const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
-  const RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID = "e-123456";
+  const RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID = "e123456";
   // Legacy toggle kept for compatibility. Employee-id prefix is no longer used for access decisions.
   const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
 
@@ -473,7 +473,10 @@
     try {
       if (typeof window === "undefined" || !window.localStorage) return;
       const v = String(value || "").trim();
-      if (!v) return;
+      if (!v) {
+        window.localStorage.removeItem(RRHS_EMPLOYEE_STORAGE_KEY);
+        return;
+      }
       window.localStorage.setItem(RRHS_EMPLOYEE_STORAGE_KEY, v);
     } catch (_) {}
   }
@@ -506,15 +509,19 @@
       .toLowerCase();
   }
 
+  function rrhsHasPrivilegedEmployeeAccess() {
+    return rrhsGetNormalizedEmployeeIdForAccess() === RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID;
+  }
+
   function rrhsGetRoomAccessMode() {
     // Only one specific employee ID can select any room in the loaded school schedule.
-    return rrhsGetNormalizedEmployeeIdForAccess() === RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID
-      ? "all"
-      : "limited";
+    return rrhsHasPrivilegedEmployeeAccess() ? "all" : "limited";
   }
 
   function rrhsCanBypassOrderingWindowByEmployeeId() {
-    // Prefix-based ordering-window bypass is disabled.
+    // Exact employee ID bypasses ordering-window restrictions.
+    if (rrhsHasPrivilegedEmployeeAccess()) return true;
+    // Legacy toggle kept disabled by default.
     if (!RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED) return false;
     return false;
   }
@@ -580,9 +587,10 @@
       input.dataset.rrhsEmployeeValidationBound = "1";
       const onEmployeeInput = () => {
         const v = String(input.value || "").trim();
-        if (v) rrhsPersistEmployeeId(v);
+        rrhsPersistEmployeeId(v);
         if (rrhsEmployeeIdIsValid(v)) rrhsShowEmployeeInputError(input, false);
         rrhsRefreshRoomAccessIfNeeded();
+        rrhsRecheckCheckoutAvailability();
       };
       input.addEventListener("input", onEmployeeInput);
       input.addEventListener("change", onEmployeeInput);
@@ -1567,6 +1575,10 @@
   }
 
   function getSelectionValidation() {
+    if (rrhsHasPrivilegedEmployeeAccess()) {
+      return { ok: true, message: "" };
+    }
+
     const today = new Date();
     const dow = today.getDay();
     if (dow === 0 || dow === 6) {
