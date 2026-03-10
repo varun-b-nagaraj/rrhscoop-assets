@@ -567,14 +567,22 @@
     }
   }
 
-  function rrhsGetNormalizedEmployeeIdForAccess() {
-    return String(rrhsGetEmployeeIdForAccess() || "")
+  function rrhsNormalizeEmployeeId(value) {
+    return String(value || "")
       .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function rrhsGetNormalizedEmployeeIdForAccess() {
+    return rrhsNormalizeEmployeeId(rrhsGetEmployeeIdForAccess());
   }
 
   function rrhsHasPrivilegedEmployeeAccess() {
-    return rrhsGetNormalizedEmployeeIdForAccess() === RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID;
+    return (
+      rrhsGetNormalizedEmployeeIdForAccess() ===
+      rrhsNormalizeEmployeeId(RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID)
+    );
   }
 
   function rrhsGetRoomAccessMode() {
@@ -1548,7 +1556,9 @@
     if (!rrhsRoomSchedule.ready) return null;
 
     const activePeriod = rrhsGetCurrentOrNextPeriodForToday();
-    const allowedPeriods = activePeriod ? [activePeriod] : getAllowedPeriodsForDay(dayType);
+    const allowedPeriods = rrhsHasPrivilegedEmployeeAccess()
+      ? [1, 2, 3, 4, 5, 6, 7, 8]
+      : (activePeriod ? [activePeriod] : getAllowedPeriodsForDay(dayType));
     const teacherToEntries = Object.create(null);
     const roomToEntries = Object.create(null);
     const teacherNames = [];
