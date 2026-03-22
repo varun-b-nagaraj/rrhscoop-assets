@@ -3521,6 +3521,16 @@
           const schedule = getDerivedScheduleForToday();
           if (!schedule) return;
 
+          if (rrhsDeliverySelection.mode === "hac" && rrhsHacState.isSNumber) {
+            const applied = rrhsApplyHacScheduleToDeliveryInput(input);
+            if (applied) {
+              showSelectionInfo(rrhsDeliverySelection);
+              lastRenderedQuery = null;
+              if (document.activeElement === input) handleQueryChange();
+              return;
+            }
+          }
+
           if (rrhsDeliverySelection.mode === "teacher" && rrhsDeliverySelection.teacher) {
             const teacher = rrhsDeliverySelection.teacher;
             const entries = schedule.teacherToEntries[teacher] || [];
@@ -3984,6 +3994,15 @@
 
         const items = buildSuggestions(query);
         renderSuggestions(items);
+
+        const qTrim = query.trim();
+        const hasHacSelection =
+          String(rrhsDeliverySelection.mode || "") === "hac" &&
+          rrhsDeliverySelection.room &&
+          String(rrhsDeliverySelection.room).trim() === qTrim;
+        if (hasHacSelection) {
+          showSelectionInfo(rrhsDeliverySelection);
+        }
       }
 
       input.addEventListener("input", handleQueryChange);
@@ -4020,7 +4039,10 @@
             if (roomExact) {
               const resolved = resolveRoomDeterministic(qTrim);
               if (resolved) {
-                setSelectionFromEntry(resolved, "room");
+                const keepHacMode =
+                  String(rrhsDeliverySelection.mode || "") === "hac" &&
+                  String(rrhsDeliverySelection.room || "").trim() === qTrim;
+                setSelectionFromEntry(resolved, keepHacMode ? "hac" : "room");
                 showSelectionInfo(rrhsDeliverySelection);
               }
             }
@@ -4879,8 +4901,7 @@
 
   const tick1m = () => {
     const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
-    const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
-    if (!inCartOrCheckout || !checkoutButton) return;
+    if (!inCartOrCheckout) return;
     rrhsEnsureDayTypeSynced();
     rrhsRefreshEverything("tick:1m");
   };
