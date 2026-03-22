@@ -72,6 +72,7 @@ The checkout script exposes `window.RRHS_OVERRIDES` for **your current tab only*
 RRHS_OVERRIDES.help();
 RRHS_OVERRIDES.get();
 RRHS_OVERRIDES.reset();
+RRHS_OVERRIDES.getActive()
 ```
 
 **Always allow checkout (bypass delivery windows):**
