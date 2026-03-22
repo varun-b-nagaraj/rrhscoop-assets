@@ -18,10 +18,14 @@
   const RRHS_DAY_TYPE_API_DEFAULT = Object.freeze({
     endpoint: "https://hacapi-hh-yu5w.vercel.app/api/getDayType",
     baseUrl: "https://accesscenter.roundrockisd.org/",
-    username: "nagarajbr",
-    password: "222svn##",
+    username: "",
+    password: "",
     requestTimeoutMs: 8000
   });
+  // HAC login/switch UI is intentionally disabled for now.
+  // Only day-type sync from HAC API remains active.
+  const RRHS_HAC_UI_ENABLED =
+    (typeof window !== "undefined" && window.RRHS_HAC_UI_ENABLED === true) || false;
 
   // Emergency bypass (ignores day/period windows).
   const CHECKOUT_ALWAYS_ALLOW = false;
@@ -242,13 +246,36 @@
   }
 
   function rrhsGetDayTypeApiConfig() {
+    const getInjected = (key) => {
+      try {
+        if (typeof window === "undefined") return "";
+        const direct = window[key];
+        if (direct != null && String(direct).trim()) return String(direct).trim();
+        const env = window.RRHS_ENV;
+        if (env && typeof env === "object") {
+          const viaEnv = env[key];
+          if (viaEnv != null && String(viaEnv).trim()) return String(viaEnv).trim();
+        }
+      } catch (_) {}
+      return "";
+    };
     const fromWindow =
       (typeof window !== "undefined" &&
         window.RRHS_DAY_TYPE_API_CONFIG &&
         typeof window.RRHS_DAY_TYPE_API_CONFIG === "object")
         ? window.RRHS_DAY_TYPE_API_CONFIG
         : null;
-    const merged = Object.assign({}, RRHS_DAY_TYPE_API_DEFAULT, fromWindow || {});
+    const injected = {};
+    const endpoint = getInjected("RRHS_DAY_TYPE_API_URL");
+    const baseUrl = getInjected("RRHS_HAC_BASE_URL");
+    const username = getInjected("RRHS_HAC_USERNAME");
+    const password = getInjected("RRHS_HAC_PASSWORD");
+    if (endpoint) injected.endpoint = endpoint;
+    if (baseUrl) injected.baseUrl = baseUrl;
+    if (username) injected.username = username;
+    if (password) injected.password = password;
+
+    const merged = Object.assign({}, RRHS_DAY_TYPE_API_DEFAULT, fromWindow || {}, injected);
     merged.endpoint = String(merged.endpoint || "").trim();
     merged.baseUrl = String(merged.baseUrl || "").trim();
     merged.username = String(merged.username || "").trim();
@@ -880,6 +907,7 @@
   }
 
   function rrhsApplyHacScheduleToDeliveryInput(input) {
+    if (!RRHS_HAC_UI_ENABLED) return false;
     if (!input) return false;
     const reportMap = rrhsHacState.reportByPeriod || Object.create(null);
     if (Object.keys(reportMap).length === 0) return false;
@@ -1804,6 +1832,7 @@
   }
 
   function rrhsOpenHacAuthModal(options) {
+    if (!RRHS_HAC_UI_ENABLED) return;
     const existing = document.getElementById("rrhs-hac-auth-modal");
     if (existing) return;
     const opts = options && typeof options === "object" ? options : {};
@@ -2019,12 +2048,14 @@
   }
 
   function rrhsEnsureHacAuthPromptForDeliveryPage() {
+    if (!RRHS_HAC_UI_ENABLED) return;
     if (!rrhsIsDeliveryCheckoutPage()) return;
     rrhsRefreshHacCacheFreshness();
     // Modal is intentionally triggered on checkout/address Continue, not auto-opened on delivery.
   }
 
   async function rrhsRunInlineHacQueryFromFields() {
+    if (!RRHS_HAC_UI_ENABLED) return false;
     const refs = rrhsGetHacContactUiRefs();
     if (!refs.usernameInput || !refs.passwordInput) return false;
     const user = String(refs.usernameInput.value || "").trim();
@@ -2089,6 +2120,10 @@
   }
 
   function rrhsEnsureHacContactFields() {
+    if (!RRHS_HAC_UI_ENABLED) {
+      document.querySelectorAll('[data-rrhs-hac-row="true"]').forEach((el) => el.remove());
+      return;
+    }
     const allowInlineHac = rrhsIsDeliveryCheckoutPage() || rrhsIsAccountPage();
     if (!allowInlineHac) {
       document.querySelectorAll('[data-rrhs-hac-row="true"]').forEach((el) => el.remove());
@@ -3706,7 +3741,7 @@
 
       const section = input.closest(".ec-cart-step__section");
       if (section) section.style.transition = "padding-bottom 0.2s ease";
-      if (section && rrhsHacState.isSNumber) {
+      if (section && RRHS_HAC_UI_ENABLED && rrhsHacState.isSNumber) {
         const subtitle = Array.from(section.querySelectorAll("p.ec-cart-step__subtitle.ec-header-h5"))
           .find((el) => String(el.textContent || "").toLowerCase().includes("delivery location"));
         if (subtitle && !section.querySelector('[data-rrhs-hac-reconfigure-btn="true"]')) {
@@ -4418,6 +4453,7 @@
         ((refs.usernameInput && String(refs.usernameInput.value || "").trim()) ||
           (refs.passwordInput && String(refs.passwordInput.value || "").trim()));
       const needsHacAuth =
+        RRHS_HAC_UI_ENABLED &&
         rrhsHacState.isSNumber &&
         (hasTypedCreds ||
           !rrhsHacState.authenticated ||
@@ -4469,6 +4505,7 @@
   }
 
   function rrhsShouldPromptHacOnAddressContinue() {
+    if (!RRHS_HAC_UI_ENABLED) return false;
     if (!rrhsIsAddressCheckoutPage()) return false;
     if (!rrhsHacState.isSNumber) return false;
     if (rrhsHasPrivilegedEmployeeAccess()) return false;
@@ -4478,6 +4515,7 @@
   }
 
   function initAddressContinueHacGate() {
+    if (!RRHS_HAC_UI_ENABLED) return;
     const continueBtn = rrhsGetAddressContinueButton();
     if (!continueBtn || continueBtn.dataset.rrhsHacAddressGateBound === "1") return;
     continueBtn.dataset.rrhsHacAddressGateBound = "1";
@@ -4522,6 +4560,7 @@
   }
 
   async function rrhsRunAccountHacSaveFlow() {
+    if (!RRHS_HAC_UI_ENABLED) return true;
     if (!rrhsIsAccountPage()) return true;
     const refs = rrhsGetHacContactUiRefs();
     if (!refs.seInput || !refs.usernameInput || !refs.passwordInput || !refs.studentSelect) return true;
@@ -4561,6 +4600,7 @@
   }
 
   function initAccountHacSaveButton() {
+    if (!RRHS_HAC_UI_ENABLED) return;
     const saveBtn = rrhsGetAccountSaveButton();
     if (!saveBtn || saveBtn.dataset.rrhsAccountHacSaveBound === "1") return;
     saveBtn.dataset.rrhsAccountHacSaveBound = "1";
@@ -5335,6 +5375,7 @@
   }
 
   function rrhsScheduleDeliveryAutofill(reason = "ecwid", delayMs = 0) {
+    if (!RRHS_HAC_UI_ENABLED) return;
     const ticket = ++rrhsDeliveryAutofillTicket;
     const delay = Math.max(0, Number(delayMs) || 0);
     setTimeout(() => {

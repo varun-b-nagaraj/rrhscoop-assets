@@ -12,6 +12,22 @@ When you embed `index.js`, it loads `rrhs-runtime.js` first. This provides a sha
 
 File: `check-out-page/rrhscoop-checkout.js`
 
+### Day Type Source (Primary)
+
+Day type is now sourced from HAC `getDayType` API as the primary source of truth.
+The checkout script uses this to decide A/B day, then applies existing period time windows to determine current period (`1-4` on A day, `5-8` on B day).
+
+Set these runtime values from deployment env:
+
+- `RRHS_DAY_TYPE_API_URL`
+- `RRHS_HAC_BASE_URL`
+- `RRHS_HAC_USERNAME`
+- `RRHS_HAC_PASSWORD`
+
+The script reads them from globals (`window.<NAME>`) or `window.RRHS_ENV.<NAME>`.
+
+Note: HAC login/switch UI flows are intentionally disabled by default (`RRHS_HAC_UI_ENABLED = false`), so only day-type sync remains active.
+
 ### Inventory Guard (variation-aware)
 
 File: `check-out-page/rrhs-inventory-guard.js`
