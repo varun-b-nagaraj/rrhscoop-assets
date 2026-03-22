@@ -1753,6 +1753,21 @@
     }
   }
 
+  function rrhsGetCheckoutSaveButton() {
+    const candidates = Array.from(document.querySelectorAll(".ec-cart-step button.form-control__button"));
+    if (!candidates.length) return null;
+    for (let i = 0; i < candidates.length; i++) {
+      const btn = candidates[i];
+      if (!btn || btn.closest("#rrhs-hac-auth-modal") || btn.closest("#rrhs-hac-student-picker-modal")) continue;
+      const text = String(btn.textContent || "").trim().toLowerCase();
+      if (text !== "save") continue;
+      const row = btn.closest(".ec-form__row");
+      if (!row) continue;
+      return btn;
+    }
+    return null;
+  }
+
   function rrhsEnsureHacContactFields() {
     rrhsEnsureHacUiStyles();
     const emailInput = document.querySelector("#ec-email-input, input.form-control__text[type='email'][name='email']");
@@ -3811,7 +3826,7 @@
   }
 
   function initRoomContinueButton() {
-    const continueBtn = document.querySelector('.form-control--button button.form-control__button');
+    const continueBtn = rrhsGetCheckoutSaveButton();
     if (!continueBtn || continueBtn.dataset.rrhsValidation) return;
     continueBtn.dataset.rrhsValidation = "true";
     continueBtn.addEventListener('click', async (e) => {
@@ -3833,9 +3848,18 @@
         return;
       }
 
+      // Always attempt to apply latest HAC-derived room on Save click.
+      rrhsApplyHacScheduleToDeliveryInput(input);
+
+      const refs = rrhsGetHacContactUiRefs();
+      const hasTypedCreds =
+        refs &&
+        ((refs.usernameInput && String(refs.usernameInput.value || "").trim()) ||
+          (refs.passwordInput && String(refs.passwordInput.value || "").trim()));
       const needsHacAuth =
         rrhsHacState.isSNumber &&
-        (!rrhsHacState.authenticated ||
+        (hasTypedCreds ||
+          !rrhsHacState.authenticated ||
           rrhsHacState.cacheStale ||
           Object.keys(rrhsHacState.reportByPeriod || {}).length === 0);
 
@@ -3867,7 +3891,7 @@
         continueBtn.dataset.rrhsBypassOnce = "1";
         continueBtn.click();
       }
-    });
+    }, true);
   }
 
   function initSauceDropdown() {
