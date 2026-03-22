@@ -199,7 +199,8 @@
     targetDate: null, // YYYY-MM-DD | null
     inFlight: false,
     lastError: null,
-    nextRetryAt: 0
+    nextRetryAt: 0,
+    nextRetryTargetDate: null
   };
   const rrhsHacState = {
     seNumber: "",
@@ -284,7 +285,15 @@
 
   async function rrhsFetchDayTypeForDate(targetDate) {
     if (rrhsDayTypeState.inFlight) return;
-    if (rrhsDayTypeState.nextRetryAt && Date.now() < rrhsDayTypeState.nextRetryAt) return;
+    const normalizedTargetDate = rrhsNormalizeIsoDate(targetDate) || String(targetDate || "").trim();
+    if (
+      rrhsDayTypeState.nextRetryAt &&
+      Date.now() < rrhsDayTypeState.nextRetryAt &&
+      rrhsDayTypeState.nextRetryTargetDate &&
+      rrhsDayTypeState.nextRetryTargetDate === normalizedTargetDate
+    ) {
+      return;
+    }
     const cfg = rrhsGetDayTypeApiConfig();
     if (!cfg.endpoint || !cfg.baseUrl || !cfg.username || !cfg.password) return;
 
@@ -302,7 +311,7 @@
             username: cfg.username,
             password: cfg.password,
             base_url: cfg.baseUrl,
-            target_date: targetDate
+            target_date: normalizedTargetDate
           }),
           signal: controller ? controller.signal : undefined
         });
@@ -313,7 +322,7 @@
       }
 
       const dayTypeRaw = String(payload && payload.day_type ? payload.day_type : "").trim().toUpperCase();
-      const resolvedDate = String(payload && payload.target_date ? payload.target_date : targetDate).trim();
+      const resolvedDate = String(payload && payload.target_date ? payload.target_date : normalizedTargetDate).trim();
       if (dayTypeRaw !== "A" && dayTypeRaw !== "B") {
         throw new Error("DayType API returned invalid day_type");
       }
@@ -324,6 +333,7 @@
       rrhsDayTypeState.targetDate = resolvedDate;
       rrhsDayTypeState.lastError = null;
       rrhsDayTypeState.nextRetryAt = 0;
+      rrhsDayTypeState.nextRetryTargetDate = null;
       rrhsPersistDayType(dayTypeRaw, resolvedDate);
 
       if (prevDayType !== dayTypeRaw || prevDate !== resolvedDate) {
@@ -333,6 +343,7 @@
       rrhsDayTypeState.lastError = e;
       // CORS/preflight failures can spam heavily from repeated mounts; back off retries.
       rrhsDayTypeState.nextRetryAt = Date.now() + (15 * 60 * 1000);
+      rrhsDayTypeState.nextRetryTargetDate = normalizedTargetDate;
       log("RRHS day-type sync failed", e);
     } finally {
       rrhsDayTypeState.inFlight = false;
@@ -2989,12 +3000,16 @@
       setSimDate: (isoDate) => {
         if (isoDate == null || String(isoDate).trim() === "") {
           rrhsSim.isoDate = null;
+          rrhsDayTypeState.nextRetryAt = 0;
+          rrhsDayTypeState.nextRetryTargetDate = null;
           rrhsRefreshEverything("sim:clearDate");
           return true;
         }
         const normalized = rrhsNormalizeIsoDate(isoDate);
         if (!normalized) return false;
         rrhsSim.isoDate = normalized;
+        rrhsDayTypeState.nextRetryAt = 0;
+        rrhsDayTypeState.nextRetryTargetDate = null;
         rrhsRefreshEverything("sim:setDate");
         return true;
       },
@@ -3030,6 +3045,8 @@
         rrhsSim.dayType = null;
         rrhsSim.isoDate = null;
         rrhsSim.nowMinutes = null;
+        rrhsDayTypeState.nextRetryAt = 0;
+        rrhsDayTypeState.nextRetryTargetDate = null;
         rrhsRefreshEverything("override:reset");
         return true;
       }
@@ -3060,7 +3077,7 @@
   }
 
   function rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin = null) {
-    const minutes = nowMin == null ? getNowMinutes(new Date()) : Number(nowMin);
+    const minutes = nowMin == null ? getNowMinutes() : Number(nowMin);
     if (!Number.isFinite(minutes)) return null;
 
     // Prefer a period that is currently in-session (start..end)
@@ -3086,7 +3103,7 @@
     const allowedPeriods = getAllowedPeriodsForDay(dayType);
     if (!allowedPeriods || allowedPeriods.length === 0) return null;
 
-    const minutes = nowMin == null ? getNowMinutes(new Date()) : Number(nowMin);
+    const minutes = nowMin == null ? getNowMinutes() : Number(nowMin);
     if (!Number.isFinite(minutes)) return null;
 
     // Prefer an allowed period that is currently in-session (start..end)
