@@ -882,6 +882,10 @@
       if (!rrhsRoomSchedule.ready) return false;
       const teacherKey = rrhsFindCsvTeacherName(resolvedTeacher);
       if (!teacherKey) return false;
+      const teacherPeriods = ROOM_DATA[teacherKey] || null;
+      const periodRoom = teacherPeriods ? String(teacherPeriods[Number(scheduled.period)] || "").trim() : "";
+      // Respect blocked period markers from CSV: room must exist for this exact period.
+      if (!periodRoom || periodRoom !== String(scheduled.room || "").trim()) return false;
       resolvedTeacher = teacherKey;
     }
 
@@ -1783,9 +1787,20 @@
     });
   }
 
-  function rrhsOpenHacAuthModal() {
+  function rrhsOpenHacAuthModal(options) {
     const existing = document.getElementById("rrhs-hac-auth-modal");
     if (existing) return;
+    const opts = options && typeof options === "object" ? options : {};
+    const onResolved = typeof opts.onResolved === "function" ? opts.onResolved : null;
+    let resolved = false;
+    const resolveOnce = (status) => {
+      if (resolved) return;
+      resolved = true;
+      if (!onResolved) return;
+      try {
+        onResolved(status);
+      } catch (_) {}
+    };
 
     const overlay = document.createElement("div");
     overlay.id = "rrhs-hac-auth-modal";
@@ -1859,13 +1874,14 @@
       errorNode.style.display = "block";
     };
 
-    const close = () => {
+    const close = (status = null) => {
       overlay.remove();
+      if (status) resolveOnce(status);
     };
 
-    cancelBtn.addEventListener("click", close);
+    cancelBtn.addEventListener("click", () => close("cancelled"));
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) close();
+      if (e.target === overlay) close("cancelled");
     });
 
     let authBusy = false;
@@ -1901,7 +1917,7 @@
           initRoomAutocomplete();
         };
 
-        close();
+        close(null);
 
         if (students.length > 1) {
           rrhsOpenHacStudentPickerModal({
@@ -1910,6 +1926,10 @@
             onSave: async (selectedId) => {
               await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
               await afterStudentResolved();
+              resolveOnce("saved");
+            },
+            onCancel: () => {
+              resolveOnce("cancelled");
             }
           });
           return;
@@ -1918,6 +1938,7 @@
           await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
         }
         await afterStudentResolved();
+        resolveOnce("saved");
       } catch (err) {
         setModalError(rrhsHumanizeHacError(err));
       } finally {
@@ -1964,14 +1985,27 @@
     return path.includes("/products/cart");
   }
 
+  function rrhsIsAddressCheckoutPage() {
+    try {
+      const href = String((window && window.location && window.location.href) || "").toLowerCase();
+      const path = String((window && window.location && window.location.pathname) || "").toLowerCase();
+      const hash = String((window && window.location && window.location.hash) || "").toLowerCase();
+      if (href.includes("/products/checkout/address") || path.includes("/products/checkout/address")) {
+        return true;
+      }
+      if (path.includes("/products/checkout") && hash.includes("address")) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function rrhsEnsureHacAuthPromptForDeliveryPage() {
     if (!rrhsIsDeliveryCheckoutPage()) return;
     rrhsRefreshHacCacheFreshness();
-    if (!rrhsHacState.isSNumber) return;
-    if (rrhsHacState.authenticated) return;
-    if (rrhsHacState.authModalShownForCurrentView) return;
-    rrhsHacState.authModalShownForCurrentView = true;
-    rrhsOpenHacAuthModal();
+    // Modal is intentionally triggered on checkout/address Continue, not auto-opened on delivery.
   }
 
   async function rrhsRunInlineHacQueryFromFields() {
@@ -2800,6 +2834,7 @@
     }
 
     const data = Object.create(null);
+    let blockedPeriodCells = 0;
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r] || [];
       const teacherName = String(row[teacherIdx] || "").trim();
@@ -2809,10 +2844,15 @@
       for (let p = 1; p <= 8; p++) {
         const raw = row[periodIdx[p]];
         const roomRaw = String(raw == null ? "" : raw);
-        const roomTrimmed = roomRaw.trim();
+        const hasBlockedMarker = roomRaw.includes("!");
+        const roomTrimmed = roomRaw.replace(/!/g, "").trim();
         if (!roomTrimmed) continue;
         const roomNormalized = roomTrimmed.replace(/\s+/g, " ");
         if (!rrhsIsAllowedRoomValue(roomNormalized, roomFilter)) continue;
+        if (hasBlockedMarker) {
+          blockedPeriodCells += 1;
+          continue;
+        }
         periods[p] = roomNormalized;
       }
       if (Object.keys(periods).length === 0) continue;
@@ -2820,7 +2860,7 @@
     }
 
     const teachers = Object.keys(data).sort((a, b) => a.localeCompare(b));
-    return { data, teachers };
+    return { data, teachers, blockedPeriodCells };
   }
 
   function getRoomScheduleCsvUrl() {
@@ -2860,7 +2900,8 @@
         rrhsRoomSchedule.error = null;
         console.log("[RRHS CSV debug] room schedule loaded:", {
           url,
-          teachers: built.teachers.length
+          teachers: built.teachers.length,
+          blockedPeriodCells: Number(built.blockedPeriodCells || 0)
         });
         return rrhsRoomSchedule;
       })
@@ -3526,6 +3567,13 @@
           message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
         };
       }
+
+      const derived = getDerivedScheduleForToday();
+      const roomKey = String(rrhsDeliverySelection.room || "").trim();
+      const periodEntries = derived && derived.roomToEntries ? derived.roomToEntries[roomKey] : null;
+      if (!Array.isArray(periodEntries) || !periodEntries.some((entry) => Number(entry && entry.period) === period)) {
+        return { ok: false, message: "That room is unavailable for the current delivery period." };
+      }
       return { ok: true, message: "" };
     }
 
@@ -3604,6 +3652,10 @@
       rrhsDeliverySelection.specialId = null;
 
       rrhsApplyHacScheduleToDeliveryInput(input);
+      rrhsRunInBackground(async () => {
+        await rrhsPrimeDayTypeForToday();
+        rrhsRefreshEverything("daytype:prime-delivery");
+      });
 
       const section = input.closest(".ec-cart-step__section");
       if (section) section.style.transition = "padding-bottom 0.2s ease";
@@ -4243,7 +4295,7 @@
             return;
           }
           const isCsvRoom = rrhsRoomExistsInCsvAnyPeriod(qTrim);
-          if (isCsvRoom) {
+          if (isCsvRoom && rrhsHasPrivilegedEmployeeAccess()) {
             showError(false);
             const preferredPeriod = rrhsDeliverySelection.period || rrhsGetCurrentOrNextPeriodForToday();
             const resolvedAny = rrhsResolveRoomFromCsvAnyPeriod(qTrim, preferredPeriod);
@@ -4353,6 +4405,60 @@
         continueBtn.dataset.rrhsBypassOnce = "1";
         continueBtn.click();
       }
+    }, true);
+  }
+
+  function rrhsGetAddressContinueButton() {
+    if (!rrhsIsAddressCheckoutPage()) return null;
+    const candidates = Array.from(document.querySelectorAll(".ec-cart-step button.form-control__button"));
+    for (let i = 0; i < candidates.length; i++) {
+      const btn = candidates[i];
+      if (!btn || btn.closest("#rrhs-hac-auth-modal") || btn.closest("#rrhs-hac-student-picker-modal")) continue;
+      const text = String(btn.textContent || "").trim().toLowerCase();
+      if (text !== "continue") continue;
+      return btn;
+    }
+    return null;
+  }
+
+  function rrhsShouldPromptHacOnAddressContinue() {
+    if (!rrhsIsAddressCheckoutPage()) return false;
+    if (!rrhsHacState.isSNumber) return false;
+    if (rrhsHasPrivilegedEmployeeAccess()) return false;
+    // Only prompt during active delivery windows.
+    if (!checkOrderingWindowBase()) return false;
+    return true;
+  }
+
+  function initAddressContinueHacGate() {
+    const continueBtn = rrhsGetAddressContinueButton();
+    if (!continueBtn || continueBtn.dataset.rrhsHacAddressGateBound === "1") return;
+    continueBtn.dataset.rrhsHacAddressGateBound = "1";
+
+    continueBtn.addEventListener("click", (e) => {
+      const bypass = continueBtn.dataset.rrhsBypassOnce === "1";
+      if (bypass) {
+        continueBtn.dataset.rrhsBypassOnce = "";
+        return;
+      }
+      if (!rrhsShouldPromptHacOnAddressContinue()) return;
+      if (document.getElementById("rrhs-hac-auth-modal")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+
+      const resumeContinue = () => {
+        continueBtn.dataset.rrhsBypassOnce = "1";
+        continueBtn.click();
+      };
+
+      rrhsOpenHacAuthModal({
+        onResolved: () => {
+          // Success and cancel both continue; on cancel we keep existing local cache.
+          resumeContinue();
+        }
+      });
     }, true);
   }
 
@@ -5116,6 +5222,7 @@
         computeCartFlags(cart);
         rrhsEnsureHacContactFields();
         rrhsEnsureHacAuthPromptForDeliveryPage();
+        initAddressContinueHacGate();
         rrhsSyncAllDayOnlyRoomField();
         initEmployeeCheckoutValidation();
         initRoomAutocomplete();
@@ -5137,6 +5244,7 @@
       initCartChangedListener();
       rrhsEnsureHacContactFields();
       rrhsEnsureHacAuthPromptForDeliveryPage();
+      initAddressContinueHacGate();
       initAccountHacSaveButton();
       initEmployeeCheckoutValidation();
       initRoomAutocomplete();
