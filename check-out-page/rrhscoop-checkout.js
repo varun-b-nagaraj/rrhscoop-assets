@@ -3097,6 +3097,39 @@
     if (window.RRHS_OVERRIDES && window.RRHS_OVERRIDES.__installed) return;
 
     const ss = rrhsGetSessionStorage();
+    const getActiveOverrides = () => {
+      const active = {};
+      const alwaysAllow = rrhsGetAlwaysAllowOverride();
+      const closeDeltaMinutes = rrhsGetCloseDeltaMinutesOverride();
+      const basePeriodWindows = rrhsGetBaseWindowsOverride();
+      if (alwaysAllow !== null) active.alwaysAllow = alwaysAllow;
+      if (closeDeltaMinutes !== null) active.closeDeltaMinutes = closeDeltaMinutes;
+      if (basePeriodWindows && typeof basePeriodWindows === "object") {
+        active.basePeriodWindows = basePeriodWindows;
+      }
+      if (rrhsSim.dayType) active.simDayType = rrhsSim.dayType;
+      if (rrhsSim.isoDate) active.simDate = rrhsSim.isoDate;
+      if (Number.isFinite(rrhsSim.nowMinutes)) {
+        active.simNowMinutes = rrhsSim.nowMinutes;
+        active.simNowLabel = formatMinutes(rrhsSim.nowMinutes);
+      }
+      return active;
+    };
+
+    const clearAllOverrides = () => {
+      if (!ss) return false;
+      ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
+      ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
+      ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
+      rrhsSim.dayType = null;
+      rrhsSim.isoDate = null;
+      rrhsSim.nowMinutes = null;
+      rrhsDayTypeState.nextRetryAt = 0;
+      rrhsDayTypeState.nextRetryTargetDate = null;
+      rrhsRefreshEverything("override:clearAll");
+      return true;
+    };
+
     const api = {
       __installed: true,
       help: () => {
@@ -3108,6 +3141,8 @@
           setSimDate: "RRHS_OVERRIDES.setSimDate('YYYY-MM-DD'|null)",
           setSimTime: "RRHS_OVERRIDES.setSimTime('HH:MM'|null)",
           setSimMinutes: "RRHS_OVERRIDES.setSimMinutes(0..1439|null)",
+          getActive: "RRHS_OVERRIDES.getActive() // only currently set overrides",
+          clearAll: "RRHS_OVERRIDES.clearAll() // clear all overrides at once",
           reset: "RRHS_OVERRIDES.reset()",
           note:
             "Config overrides are stored in sessionStorage (tab-only). Simulation overrides are in-memory and reset on refresh."
@@ -3125,6 +3160,11 @@
             ? formatMinutes(rrhsSim.nowMinutes)
             : null
         };
+      },
+      getActive: () => {
+        const active = getActiveOverrides();
+        console.log("[RRHS_OVERRIDES] Active:", active);
+        return active;
       },
       setAlwaysAllow: (value) => {
         if (!ss) return false;
@@ -3199,18 +3239,9 @@
         rrhsRefreshEverything("sim:setMinutes");
         return true;
       },
+      clearAll: () => clearAllOverrides(),
       reset: () => {
-        if (!ss) return false;
-        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.alwaysAllow);
-        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
-        ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
-        rrhsSim.dayType = null;
-        rrhsSim.isoDate = null;
-        rrhsSim.nowMinutes = null;
-        rrhsDayTypeState.nextRetryAt = 0;
-        rrhsDayTypeState.nextRetryTargetDate = null;
-        rrhsRefreshEverything("override:reset");
-        return true;
+        return clearAllOverrides();
       }
     };
 
