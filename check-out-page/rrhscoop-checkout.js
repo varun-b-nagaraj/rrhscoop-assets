@@ -1658,19 +1658,20 @@
     panel.appendChild(pickerWrap);
 
     const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px;";
+    actions.style.cssText = "display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid #eef2f5;";
     const cancelBtn = document.createElement("button");
     cancelBtn.type = "button";
     cancelBtn.textContent = "Cancel";
-    cancelBtn.style.cssText = "border:1px solid #d0d0d0;background:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;min-width:116px;height:42px;";
+    cancelBtn.style.cssText = "border:1px solid #d1d5db;background:#fff;color:#374151;padding:0 16px;border-radius:10px;cursor:pointer;min-width:116px;height:42px;font-weight:600;line-height:1;";
 
     const saveBtnWrap = document.createElement("div");
     saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--done";
-    saveBtnWrap.style.cssText = "width:140px;max-width:140px;";
+    saveBtnWrap.style.cssText = "width:150px;max-width:150px;";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "form-control__button";
-    saveBtn.innerHTML = `<div class="form-control__loader"></div><span class="form-control__button-text">Save</span>`;
+    saveBtn.style.cssText = "width:100%;display:flex;align-items:center;justify-content:center;";
+    saveBtn.innerHTML = `<div class="form-control__loader"></div><span class="form-control__button-text">Set Active</span>`;
     saveBtnWrap.appendChild(saveBtn);
     actions.appendChild(cancelBtn);
     actions.appendChild(saveBtnWrap);
@@ -1725,6 +1726,13 @@
     const close = () => {
       overlay.remove();
     };
+
+    cancelBtn.addEventListener("mouseenter", () => {
+      cancelBtn.style.background = "#f9fafb";
+    });
+    cancelBtn.addEventListener("mouseleave", () => {
+      cancelBtn.style.background = "#fff";
+    });
 
     let busyOverlay = null;
     const setBusy = (busy) => {
