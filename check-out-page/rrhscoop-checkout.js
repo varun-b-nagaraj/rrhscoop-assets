@@ -818,7 +818,12 @@
       .sort((a, b) => a - b);
     if (!reportPeriods.length) return null;
 
-    const allowedPeriods = getAllowedPeriodsForDay(getTodayDayType());
+    const dayType = getTodayDayType();
+    const allowedPeriodsRaw = getAllowedPeriodsForDay(dayType);
+    const allowedPeriods =
+      allowedPeriodsRaw && allowedPeriodsRaw.length
+        ? allowedPeriodsRaw
+        : (dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8]);
     const candidates = reportPeriods.filter((p) => allowedPeriods.includes(p));
     const usablePeriods = candidates.length ? candidates : reportPeriods;
 
@@ -1035,6 +1040,11 @@
 
     rrhsHacState.inFlight = true;
     try {
+      await rrhsHacPost("/lookup/switch", {
+        username: user,
+        password: pass,
+        student_id: sid
+      });
       const selected = rrhsHacState.students.find((s) => String(s && s.id ? s.id : "") === sid) || null;
       rrhsSetActiveStudent(sid, selected && selected.name ? selected.name : "");
 
@@ -1935,17 +1945,21 @@
 
   function rrhsEnsureHacContactFields() {
     rrhsEnsureHacUiStyles();
-    const emailInput = document.querySelector("#ec-email-input, input.form-control__text[type='email'][name='email']");
+    const emailInput = document.querySelector(
+      "#ec-email-input, input.form-control__text[type='email'][name='email'], input[type='email'][name='email'], input[type='email']"
+    );
     if (!emailInput) return;
 
     const emailRow = emailInput.closest(".ec-form__row");
-    if (!emailRow || emailRow.parentElement == null) return;
-    if (document.querySelector('[data-rrhs-hac-row="true"]')) {
+    const fallbackAnchor = emailInput.closest(".ec-form__cell") || emailInput.parentElement;
+    const anchorNode = emailRow || fallbackAnchor;
+    if (!anchorNode || anchorNode.parentElement == null) return;
+    const root = anchorNode.parentElement;
+
+    if (root.querySelector('[data-rrhs-hac-row="true"]')) {
       rrhsRefreshHacUiVisibility();
       return;
     }
-
-    const root = emailRow.parentElement;
 
     const seRow = document.createElement("div");
     seRow.className = "ec-form__row";
@@ -2031,7 +2045,7 @@
     studentSelect.style.borderRadius = "4px";
     studentCell.appendChild(studentSelect);
 
-    root.insertBefore(seRow, emailRow.nextSibling);
+    root.insertBefore(seRow, anchorNode.nextSibling);
     root.insertBefore(credsRow, seRow.nextSibling);
     root.insertBefore(studentRow, credsRow.nextSibling);
 
@@ -3101,14 +3115,18 @@
   function rrhsGetCurrentOrNextPeriodForToday(nowMin = null) {
     const dayType = getTodayDayType();
     const allowedPeriods = getAllowedPeriodsForDay(dayType);
-    if (!allowedPeriods || allowedPeriods.length === 0) return null;
+    const displayPeriods =
+      allowedPeriods && allowedPeriods.length
+        ? allowedPeriods
+        : (dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8]);
+    if (!displayPeriods || displayPeriods.length === 0) return null;
 
     const minutes = nowMin == null ? getNowMinutes() : Number(nowMin);
     if (!Number.isFinite(minutes)) return null;
 
     // Prefer an allowed period that is currently in-session (start..end)
-    for (let i = 0; i < allowedPeriods.length; i++) {
-      const p = allowedPeriods[i];
+    for (let i = 0; i < displayPeriods.length; i++) {
+      const p = displayPeriods[i];
       const w = getPeriodWindow(p);
       if (!w) continue;
       if (minutes >= w.startMin && minutes < w.endMin) return p;
@@ -3117,8 +3135,8 @@
     // Otherwise, choose the next upcoming allowed period start
     let next = null;
     let nextStart = Infinity;
-    for (let i = 0; i < allowedPeriods.length; i++) {
-      const p = allowedPeriods[i];
+    for (let i = 0; i < displayPeriods.length; i++) {
+      const p = displayPeriods[i];
       const w = getPeriodWindow(p);
       if (!w) continue;
       if (minutes < w.startMin && w.startMin < nextStart) {
@@ -3129,7 +3147,7 @@
     if (next != null) return next;
 
     // After the last allowed period, keep it stable on the last allowed period
-    return allowedPeriods[allowedPeriods.length - 1];
+    return displayPeriods[displayPeriods.length - 1];
   }
 
   function resolveTeacherName(value) {
@@ -3984,8 +4002,8 @@
         showError(false);
         const query = String(input.value || "");
 
-        const qTrim = query.trim();
-        if (rrhsDeliverySelection.room && rrhsDeliverySelection.room !== qTrim) {
+        const queryTrimmed = query.trim();
+        if (rrhsDeliverySelection.room && rrhsDeliverySelection.room !== queryTrimmed) {
           clearSelection();
         }
 
@@ -3995,7 +4013,7 @@
         const items = buildSuggestions(query);
         renderSuggestions(items);
 
-        const qTrim = query.trim();
+        const qTrim = queryTrimmed;
         const hasHacSelection =
           String(rrhsDeliverySelection.mode || "") === "hac" &&
           rrhsDeliverySelection.room &&
