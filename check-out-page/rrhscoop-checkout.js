@@ -550,23 +550,57 @@
     }
     console.log("[RRHS HAC debug] API request:", path, safePayload);
     try {
-      const res = await fetch(`${cfg.baseUrl}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify(fullPayload),
-        signal: controller ? controller.signal : undefined
-      });
-      const json = await res.json().catch(() => ({}));
-      console.log("[RRHS HAC debug] API response:", path, { status: res.status, ok: res.ok, body: json });
-      if (!res.ok) {
-        const msg = json && json.error ? String(json.error) : `HAC API HTTP ${res.status}`;
-        throw new Error(msg);
+      const maxAttempts = path === "/api/getReport" ? 3 : 1;
+      let lastErr = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const res = await fetch(`${cfg.baseUrl}${path}`, {
+            method: "POST",
+            headers: {
+              "Accept": "*/*",
+              "Content-Type": "application/json"
+            },
+            cache: "no-store",
+            mode: "cors",
+            referrerPolicy: "origin",
+            body: JSON.stringify(fullPayload),
+            signal: controller ? controller.signal : undefined
+          });
+          const text = await res.text().catch(() => "");
+          let json = {};
+          try {
+            json = text ? JSON.parse(text) : {};
+          } catch (_) {
+            json = {};
+          }
+          console.log("[RRHS HAC debug] API response:", path, {
+            attempt,
+            status: res.status,
+            ok: res.ok,
+            body: json,
+            rawText: text
+          });
+          if (!res.ok) {
+            const msg = json && json.error ? String(json.error) : `HAC API HTTP ${res.status}`;
+            throw new Error(msg);
+          }
+          if (json && json.success === false) {
+            throw new Error(String(json.error || "HAC authentication failed."));
+          }
+          return json;
+        } catch (err) {
+          lastErr = err;
+          const retryable = path === "/api/getReport" && attempt < maxAttempts;
+          if (!retryable) throw err;
+          console.warn("[RRHS HAC debug] retrying API request:", path, {
+            attempt,
+            maxAttempts,
+            error: String(err && err.message ? err.message : err)
+          });
+          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        }
       }
-      if (json && json.success === false) {
-        throw new Error(String(json.error || "HAC authentication failed."));
-      }
-      return json;
+      throw lastErr || new Error("HAC request failed.");
     } finally {
       if (timer) clearTimeout(timer);
     }
