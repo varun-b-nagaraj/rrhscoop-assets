@@ -1944,6 +1944,14 @@
   }
 
   function rrhsEnsureHacContactFields() {
+    const path = String((window && window.location && window.location.pathname) || "").toLowerCase();
+    const inCheckout = path.includes("/products/checkout");
+    const allowInlineHac = !inCheckout || rrhsIsDeliveryCheckoutPage();
+    if (!allowInlineHac) {
+      document.querySelectorAll('[data-rrhs-hac-row="true"]').forEach((el) => el.remove());
+      return;
+    }
+
     rrhsEnsureHacUiStyles();
     const emailInput = document.querySelector(
       "#ec-email-input, input.form-control__text[type='email'][name='email'], input[type='email'][name='email'], input[type='email']"
