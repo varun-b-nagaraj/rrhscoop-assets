@@ -345,9 +345,11 @@
       const v = String(value || "").trim();
       if (!v) {
         window.localStorage.removeItem(key);
+        console.log("[RRHS HAC debug] localStorage remove:", key);
         return;
       }
       window.localStorage.setItem(key, v);
+      console.log("[RRHS HAC debug] localStorage set:", key, v);
     } catch (_) {}
   }
 
@@ -407,11 +409,15 @@
     try {
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(RRHS_HAC_STORAGE_KEYS.cacheLocal, JSON.stringify(payload));
+        console.log("[RRHS HAC debug] localStorage cache set:", RRHS_HAC_STORAGE_KEYS.cacheLocal, payload);
       }
     } catch (_) {}
     try {
       const ss = rrhsGetSessionStorageSafe();
-      if (ss) ss.setItem(RRHS_HAC_STORAGE_KEYS.cacheSession, JSON.stringify(payload));
+      if (ss) {
+        ss.setItem(RRHS_HAC_STORAGE_KEYS.cacheSession, JSON.stringify(payload));
+        console.log("[RRHS HAC debug] sessionStorage cache set:", RRHS_HAC_STORAGE_KEYS.cacheSession, payload);
+      }
     } catch (_) {}
     rrhsHacState.cachedAt = Number(payload.cachedAt) || 0;
     rrhsHacState.cacheStale = false;
@@ -537,15 +543,22 @@
 
     const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), cfg.requestTimeoutMs) : null;
+    const fullPayload = Object.assign({}, payload, { base_url: cfg.hacBaseUrl });
+    const safePayload = Object.assign({}, fullPayload);
+    if (typeof safePayload.password === "string" && safePayload.password) {
+      safePayload.password = "[REDACTED]";
+    }
+    console.log("[RRHS HAC debug] API request:", path, safePayload);
     try {
       const res = await fetch(`${cfg.baseUrl}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify(Object.assign({}, payload, { base_url: cfg.hacBaseUrl })),
+        body: JSON.stringify(fullPayload),
         signal: controller ? controller.signal : undefined
       });
       const json = await res.json().catch(() => ({}));
+      console.log("[RRHS HAC debug] API response:", path, { status: res.status, ok: res.ok, body: json });
       if (!res.ok) {
         const msg = json && json.error ? String(json.error) : `HAC API HTTP ${res.status}`;
         throw new Error(msg);
@@ -612,6 +625,38 @@
     return "";
   }
 
+  function rrhsResolveReportStudentIdFromRecord(student) {
+    if (!student || typeof student !== "object") return "";
+    const candidates = [
+      student.student_id,
+      student.studentId,
+      student.se_number,
+      student.seNumber,
+      student.s_number,
+      student.sNumber,
+      student.id
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      const raw = String(candidates[i] == null ? "" : candidates[i]).trim();
+      if (!raw) continue;
+      const digitsMatch = raw.match(/^s?(\d+)$/i);
+      if (digitsMatch && digitsMatch[1]) return String(digitsMatch[1]);
+      return raw;
+    }
+    return "";
+  }
+
+  function rrhsResolveReportStudentIdFromSelection(studentId) {
+    const sid = String(studentId || "").trim();
+    const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [];
+    const selected = students.find((s) => String((s && s.id) || "").trim() === sid) || null;
+    const fromSelected = rrhsResolveReportStudentIdFromRecord(selected);
+    if (fromSelected) return fromSelected;
+    const directDigits = sid.match(/^s?(\d+)$/i);
+    if (directDigits && directDigits[1]) return String(directDigits[1]);
+    return rrhsResolveHacStudentId(sid);
+  }
+
   function rrhsBuildGetReportPayload(username, password, studentId) {
     const cfg = rrhsGetHacApiConfig();
     return {
@@ -663,9 +708,27 @@
 
   function rrhsGetHacRoomForCurrentPeriod() {
     rrhsRefreshHacCacheFreshness();
-    const period = rrhsGetCurrentOrNextPeriodForToday();
-    if (!Number.isFinite(Number(period))) return null;
-    const raw = rrhsHacState.reportByPeriod[Number(period)];
+    const requestedPeriod = rrhsGetCurrentOrNextPeriodForToday();
+    const report = rrhsHacState.reportByPeriod || Object.create(null);
+    const reportPeriods = Object.keys(report)
+      .map((k) => Number(k))
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b);
+    if (!reportPeriods.length) return null;
+
+    const allowedPeriods = getAllowedPeriodsForDay(getTodayDayType());
+    const candidates = reportPeriods.filter((p) => allowedPeriods.includes(p));
+    const usablePeriods = candidates.length ? candidates : reportPeriods;
+
+    let period = Number(requestedPeriod);
+    if (!Number.isFinite(period)) {
+      period = usablePeriods[0];
+    } else if (!usablePeriods.includes(period)) {
+      const next = usablePeriods.find((p) => p >= period);
+      period = Number.isFinite(next) ? next : usablePeriods[usablePeriods.length - 1];
+    }
+
+    const raw = report[Number(period)];
     if (!raw) return null;
 
     let room = "";
@@ -677,6 +740,14 @@
       teacher = String(raw.teacher == null ? "" : raw.teacher).trim();
     }
     if (!room) return null;
+    console.log("[RRHS HAC debug] period resolution:", {
+      requestedPeriod: Number(requestedPeriod),
+      resolvedPeriod: Number(period),
+      reportPeriods,
+      usablePeriods,
+      room,
+      teacher
+    });
     return { period: Number(period), room, teacher };
   }
 
@@ -764,38 +835,30 @@
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
       rrhsSetHacUsername(user);
+      console.log("[RRHS HAC debug] students fetched:", students);
 
       let studentId = rrhsHacState.activeStudentId;
-      try {
-        const currentResp = await rrhsHacPost("/lookup/current", { username: user, password: pass });
-        const currentCandidate =
-          (currentResp && currentResp.current && currentResp.current.id) ||
-          (currentResp && currentResp.student && currentResp.student.id) ||
-          currentResp.student_id;
-        if (currentCandidate != null && String(currentCandidate).trim()) {
-          studentId = String(currentCandidate).trim();
-        }
-      } catch (_) {}
+      if (studentId && !students.some((s) => String((s && s.id) || "").trim() === String(studentId))) {
+        studentId = "";
+      }
       if (!studentId && students[0] && students[0].id) {
         studentId = String(students[0].id);
       }
       if (studentId) {
-        await rrhsHacPost("/lookup/switch", {
-          username: user,
-          password: pass,
-          student_id: studentId
-        });
         const selected = students.find((s) => String(s && s.id ? s.id : "") === studentId) || null;
         rrhsSetActiveStudent(studentId, selected && selected.name ? selected.name : "");
       }
 
-      const reportStudentId = rrhsResolveHacStudentId(rrhsHacState.activeStudentId);
+      const reportStudentId = rrhsResolveReportStudentIdFromSelection(rrhsHacState.activeStudentId);
       if (!reportStudentId) throw new Error("Missing student_id for HAC report.");
       const reportResp = await rrhsHacPost(
         "/api/getReport",
         rrhsBuildGetReportPayload(user, pass, reportStudentId)
       );
+      console.log("[RRHS HAC debug] report payload student_id:", reportStudentId);
+      console.log("[RRHS HAC debug] report response body:", reportResp);
       rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
+      console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
       rrhsHacState.cacheStale = false;
       rrhsPersistHacCache();
       rrhsHacState.lastError = null;
@@ -829,18 +892,12 @@
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
       rrhsSetHacUsername(user);
+      console.log("[RRHS HAC debug] students fetched:", students);
 
       let studentId = rrhsHacState.activeStudentId;
-      try {
-        const currentResp = await rrhsHacPost("/lookup/current", { username: user, password: pass });
-        const currentCandidate =
-          (currentResp && currentResp.current && currentResp.current.id) ||
-          (currentResp && currentResp.student && currentResp.student.id) ||
-          currentResp.student_id;
-        if (currentCandidate != null && String(currentCandidate).trim()) {
-          studentId = String(currentCandidate).trim();
-        }
-      } catch (_) {}
+      if (studentId && !students.some((s) => String((s && s.id) || "").trim() === String(studentId))) {
+        studentId = "";
+      }
       if (!studentId && students[0] && students[0].id) {
         studentId = String(students[0].id);
       }
@@ -848,6 +905,10 @@
         const selected = students.find((s) => String(s && s.id ? s.id : "") === studentId) || null;
         rrhsSetActiveStudent(studentId, selected && selected.name ? selected.name : "");
       }
+      console.log("[RRHS HAC debug] active student after list:", {
+        activeStudentId: rrhsHacState.activeStudentId,
+        activeStudentName: rrhsHacState.activeStudentName
+      });
       rrhsHacState.lastError = null;
       return {
         students: rrhsHacState.students.slice(),
@@ -870,27 +931,23 @@
 
     rrhsHacState.inFlight = true;
     try {
-      await rrhsHacPost("/lookup/switch", {
-        username: user,
-        password: pass,
-        student_id: sid
-      });
-      try {
-        await rrhsHacPost("/lookup/current", {
-          username: user,
-          password: pass
-        });
-      } catch (_) {}
       const selected = rrhsHacState.students.find((s) => String(s && s.id ? s.id : "") === sid) || null;
       rrhsSetActiveStudent(sid, selected && selected.name ? selected.name : "");
 
-      const reportStudentId = rrhsResolveHacStudentId(sid);
+      const reportStudentId = rrhsResolveReportStudentIdFromSelection(sid);
       if (!reportStudentId) throw new Error("Missing student_id for HAC report.");
       const reportResp = await rrhsHacPost(
         "/api/getReport",
         rrhsBuildGetReportPayload(user, pass, reportStudentId)
       );
+      console.log("[RRHS HAC debug] switched active student:", {
+        activeStudentId: sid,
+        activeStudentName: rrhsHacState.activeStudentName,
+        reportStudentId
+      });
+      console.log("[RRHS HAC debug] report response body:", reportResp);
       rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
+      console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
       rrhsHacState.cacheStale = false;
