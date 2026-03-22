@@ -3003,7 +3003,8 @@
         const roomLabel = formatRoomLabel(selection.room);
         const teacher = String(selection.teacher || "").trim();
         if (teacher) {
-          showInfo(`Delivering to ${teacher} in ${roomLabel}.`);
+          const hacSuffix = String(selection.mode || "").trim() === "hac" ? " — autofilled from HAC" : "";
+          showInfo(`Delivering to ${teacher}${hacSuffix} in ${roomLabel}.`);
           return;
         }
         if (String(selection.mode || "").trim() === "hac") {
