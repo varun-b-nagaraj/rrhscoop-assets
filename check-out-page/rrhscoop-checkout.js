@@ -567,16 +567,30 @@
     const normalized = headers.map(normalizeHeaderValue);
     const periodIdx = normalized.findIndex((h) => h === "period");
     const roomIdx = normalized.findIndex((h) => h === "room");
+    const teacherIdx = normalized.findIndex(
+      (h) =>
+        h === "teacher" ||
+        h === "teachers" ||
+        h === "instructor" ||
+        h === "staff" ||
+        h === "staffname"
+    );
     if (periodIdx === -1 || roomIdx === -1) return out;
 
     rows.forEach((row) => {
       if (!Array.isArray(row)) return;
       const periodRaw = String(row[periodIdx] == null ? "" : row[periodIdx]).trim();
       const roomRaw = String(row[roomIdx] == null ? "" : row[roomIdx]).trim();
+      const teacherRaw =
+        teacherIdx !== -1 ? String(row[teacherIdx] == null ? "" : row[teacherIdx]).trim() : "";
       const periodNum = Number(periodRaw.replace(/[^\d]/g, ""));
       if (!Number.isFinite(periodNum) || periodNum < 1 || periodNum > 8) return;
       if (!roomRaw) return;
-      if (!out[periodNum]) out[periodNum] = roomRaw;
+      if (!out[periodNum]) {
+        out[periodNum] = { room: roomRaw, teacher: teacherRaw };
+      } else if (typeof out[periodNum] === "object" && out[periodNum] && !out[periodNum].teacher && teacherRaw) {
+        out[periodNum].teacher = teacherRaw;
+      }
     });
     return out;
   }
@@ -585,9 +599,19 @@
     rrhsRefreshHacCacheFreshness();
     const period = rrhsGetCurrentOrNextPeriodForToday();
     if (!Number.isFinite(Number(period))) return null;
-    const room = rrhsHacState.reportByPeriod[Number(period)];
+    const raw = rrhsHacState.reportByPeriod[Number(period)];
+    if (!raw) return null;
+
+    let room = "";
+    let teacher = "";
+    if (typeof raw === "string") {
+      room = String(raw).trim();
+    } else if (typeof raw === "object") {
+      room = String(raw.room == null ? "" : raw.room).trim();
+      teacher = String(raw.teacher == null ? "" : raw.teacher).trim();
+    }
     if (!room) return null;
-    return { period: Number(period), room: String(room) };
+    return { period: Number(period), room, teacher };
   }
 
   function rrhsApplyHacScheduleToDeliveryInput(input) {
@@ -597,7 +621,7 @@
     if (!scheduled || !scheduled.room) return false;
 
     rrhsDeliverySelection.dayType = getTodayDayType();
-    rrhsDeliverySelection.teacher = null;
+    rrhsDeliverySelection.teacher = scheduled.teacher ? String(scheduled.teacher) : null;
     rrhsDeliverySelection.period = scheduled.period;
     rrhsDeliverySelection.room = scheduled.room;
     rrhsDeliverySelection.mode = "hac";
@@ -2942,12 +2966,51 @@
         if (show) {
           input.style.border = "2px solid #d32f2f";
           input.style.backgroundColor = "#ffebee";
+          errorMsg.style.color = "#d32f2f";
+          errorMsg.textContent = "We couldn't find that room. Please select a valid room from the list.";
           errorMsg.style.display = "block";
-        } else {
-          input.style.border = "1px solid #ddd";
-          input.style.backgroundColor = "";
-          errorMsg.style.display = "none";
+          return;
         }
+        input.style.border = "1px solid #ddd";
+        input.style.backgroundColor = "";
+        errorMsg.style.display = "none";
+      }
+
+      function showInfo(message) {
+        const text = String(message || "").trim();
+        if (!text) {
+          showError(false);
+          return;
+        }
+        input.style.border = "1px solid #ddd";
+        input.style.backgroundColor = "";
+        errorMsg.style.color = "#1f2937";
+        errorMsg.textContent = text;
+        errorMsg.style.display = "block";
+      }
+
+      function formatRoomLabel(roomValue) {
+        const room = String(roomValue || "").trim();
+        if (!room) return "";
+        return room.startsWith("Room") ? room : `Room ${room}`;
+      }
+
+      function showSelectionInfo(selection) {
+        if (!selection || !selection.room) {
+          showError(false);
+          return;
+        }
+        const roomLabel = formatRoomLabel(selection.room);
+        const teacher = String(selection.teacher || "").trim();
+        if (teacher) {
+          showInfo(`Delivering to ${teacher} in ${roomLabel}.`);
+          return;
+        }
+        if (String(selection.mode || "").trim() === "hac") {
+          showInfo(`Auto-filled delivery location: ${roomLabel}.`);
+          return;
+        }
+        showError(false);
       }
 
       function clearSelection() {
@@ -2957,6 +3020,7 @@
         rrhsDeliverySelection.room = null;
         rrhsDeliverySelection.mode = null;
         rrhsDeliverySelection.specialId = null;
+        showError(false);
       }
 
       function setRoomValue(value) {
@@ -2992,6 +3056,7 @@
         showError(false);
         setSelectionFromSpecial(option);
         setRoomValue(option.roomValue);
+        showInfo(`Delivery location set to ${String(option.roomValue || "").trim()}.`);
         hideDropdown();
       }
 
@@ -3000,6 +3065,7 @@
         showError(false);
         setSelectionFromEntry(entry, mode);
         setRoomValue(entry.room);
+        showSelectionInfo(rrhsDeliverySelection);
         hideDropdown();
       }
 
@@ -3321,6 +3387,7 @@
             if (String(input.value || "") !== String(specialExact.roomValue || "")) {
               setRoomValue(String(specialExact.roomValue || ""));
             }
+            showInfo(`Delivery location set to ${String(specialExact.roomValue || "").trim()}.`);
             return;
           }
           if (!schedule || !qTrim) {
@@ -3331,11 +3398,20 @@
           const roomExact = Boolean(schedule.roomToEntries[qTrim]);
           if (teacherExact || roomExact) {
             showError(false);
+            if (roomExact) {
+              const resolved = resolveRoomDeterministic(qTrim);
+              if (resolved) {
+                setSelectionFromEntry(resolved, "room");
+                showSelectionInfo(rrhsDeliverySelection);
+              }
+            }
             return;
           }
           showError(true);
         }, 150);
       });
+
+      showSelectionInfo(rrhsDeliverySelection);
 
       document.addEventListener("click", (e) => {
         if (!wrapper.contains(e.target)) hideDropdown();
