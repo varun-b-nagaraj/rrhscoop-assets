@@ -871,8 +871,8 @@
 
   function rrhsApplyHacScheduleToDeliveryInput(input) {
     if (!input) return false;
-    if (!rrhsHacState.isSNumber) return false;
-    if (!rrhsHacState.authenticated && Object.keys(rrhsHacState.reportByPeriod || {}).length === 0) return false;
+    const reportMap = rrhsHacState.reportByPeriod || Object.create(null);
+    if (Object.keys(reportMap).length === 0) return false;
     const scheduled = rrhsGetHacRoomForCurrentPeriod();
     if (!scheduled || !scheduled.room) return false;
 
@@ -5284,6 +5284,9 @@
       initSauceQtyFields();
       initRoomContinueButton();
       wrapCheckoutButton();
+      if (rrhsIsDeliveryCheckoutPage()) {
+        rrhsScheduleDeliveryAutofill("boot", 0);
+      }
       const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
       if (checkoutButton) {
         rrhsRecheckCheckoutAvailability();
@@ -5358,6 +5361,9 @@
     if (ecwid.OnPageLoad && typeof ecwid.OnPageLoad.add === "function") {
       ecwid.OnPageLoad.add(function() {
         scheduleBoot();
+        if (rrhsIsDeliveryCheckoutPage()) {
+          rrhsScheduleDeliveryAutofill("OnPageLoad", 0);
+        }
       });
     }
 
