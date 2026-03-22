@@ -102,8 +102,8 @@
   // Controls which period numbers (1–8) are eligible for ordering, by day type.
   // For B Day, you can write either [1,2] meaning "base" -> 5/6, or [5,6] explicitly.
   const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
-    A: [],
-    B: []
+    A: [1, 2],
+    B: [5, 6]
   });
 
   // Base origin used for product links shown in modals/tooltips.
@@ -5133,6 +5133,12 @@
   }
 
   function getRestrictionMessage() {
+    const now = rrhsGetNowDate();
+    const dow = now.getDay();
+    if (dow === 0 || dow === 6) {
+      return "Store is closed on weekends.";
+    }
+
     if (rrhsCartState.hasAllDayDelivery && rrhsCartState.hasRegularItems) {
       const parts =
         rrhsCartState.allDayDisplayParts && rrhsCartState.allDayDisplayParts.length
@@ -5140,9 +5146,6 @@
           : ["all-day delivery items"];
       return `Your cart includes ${parts.join(", ")} along with other items. Items eligible for all-day delivery must be placed separately. Please remove other items and complete them in a separate order, as regular items are only available during active delivery windows.`;
     }
-
-    const now = rrhsGetNowDate();
-    const dow = now.getDay();
     if (dow !== 0 && dow !== 6 && rrhsIsPastLastDeliveryWindow(now)) {
       return RRHS_STORE_CLOSED_FOR_DAY_MESSAGE;
     }
@@ -5200,6 +5203,10 @@
   }
 
   function checkOrderingWindow() {
+    const now = rrhsGetNowDate();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return false;
+
     if (!CHECKOUT_ALWAYS_ALLOW && rrhsGetAlwaysAllowOverride() !== true && rrhsIsPastLastDeliveryWindow(rrhsGetNowDate())) {
       return false;
     }
