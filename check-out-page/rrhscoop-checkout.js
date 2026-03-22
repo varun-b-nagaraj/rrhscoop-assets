@@ -534,7 +534,6 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        credentials: "include",
         body: JSON.stringify(Object.assign({}, payload, { base_url: cfg.hacBaseUrl })),
         signal: controller ? controller.signal : undefined
       });
