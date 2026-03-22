@@ -20,6 +20,8 @@
 
   const defaultConfig = Object.freeze({
     apiBase: "https://app.ecwid.com/api/v3",
+    storeId: "104841648",
+    apiToken: "secret_nHv8GnnhKdESsZuHy4hSpiczWqL1B4JB",
     minRemainingAllowed: 5,
     requestTimeoutMs: 6000,
     cacheTtlMs: 15000
