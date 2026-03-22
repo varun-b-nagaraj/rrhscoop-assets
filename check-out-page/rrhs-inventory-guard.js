@@ -265,7 +265,7 @@
     root.id = "rrhs-inventory-toast";
     root.style.cssText = [
       "position:fixed",
-      "top:84px",
+      "top:130px",
       "right:16px",
       "left:auto",
       "display:none",
@@ -338,7 +338,7 @@
     }
     if (!anchor || typeof anchor.getBoundingClientRect !== "function") return;
     const rect = anchor.getBoundingClientRect();
-    const top = Math.max(12, Math.round(rect.bottom + 8));
+    const top = Math.max(130, Math.round(rect.bottom + 24));
     root.style.top = `${top}px`;
   }
 
