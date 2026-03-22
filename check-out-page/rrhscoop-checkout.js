@@ -1407,7 +1407,7 @@
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000001;display:flex;align-items:center;justify-content:center;padding:16px;";
 
     const panel = document.createElement("div");
-    panel.style.cssText = "width:100%;max-width:440px;background:#fff;border-radius:10px;padding:18px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
+    panel.style.cssText = "width:100%;max-width:460px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
     panel.innerHTML = `
       <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Set Active Student</div>
       <div style="font-size:13px;color:#555;margin-bottom:12px;">Choose which student should be active for room auto-fill.</div>
@@ -1431,15 +1431,15 @@
     panel.appendChild(pickerWrap);
 
     const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    actions.style.cssText = "display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px;";
     const cancelBtn = document.createElement("button");
     cancelBtn.type = "button";
     cancelBtn.textContent = "Cancel";
-    cancelBtn.style.cssText = "border:1px solid #ccc;background:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
+    cancelBtn.style.cssText = "border:1px solid #d0d0d0;background:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;min-width:116px;height:42px;";
 
     const saveBtnWrap = document.createElement("div");
-    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary";
-    saveBtnWrap.style.flex = "0 0 auto";
+    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--done";
+    saveBtnWrap.style.cssText = "width:140px;max-width:140px;";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "form-control__button";
@@ -1545,7 +1545,7 @@
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000000;display:flex;align-items:center;justify-content:center;padding:16px;";
 
     const panel = document.createElement("div");
-    panel.style.cssText = "width:100%;max-width:440px;background:#fff;border-radius:10px;padding:18px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
+    panel.style.cssText = "width:100%;max-width:460px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
     const staleLead = rrhsHacState.cacheStale
       ? "Cached HAC info is old. Log in again to query a new session."
       : "Enter HAC credentials to continue delivery selection for your S-number profile.";
@@ -1574,14 +1574,15 @@
     passwordField.input.style.marginBottom = "12px";
 
     const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    actions.style.cssText = "display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px;";
     const cancelBtn = document.createElement("button");
     cancelBtn.type = "button";
     cancelBtn.textContent = "Cancel";
-    cancelBtn.style.cssText = "border:1px solid #ccc;background:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
+    cancelBtn.style.cssText = "border:1px solid #d0d0d0;background:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;min-width:116px;height:42px;";
 
     const saveBtnWrap = document.createElement("div");
-    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--flexible";
+    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--done";
+    saveBtnWrap.style.cssText = "width:140px;max-width:140px;";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "form-control__button";
