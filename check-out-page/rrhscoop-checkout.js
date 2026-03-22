@@ -517,7 +517,10 @@
   }
 
   function rrhsHydrateHacFromStorage() {
-    rrhsSetSeNumber(rrhsLoadHacStorageValue(RRHS_HAC_STORAGE_KEYS.seNumber));
+    const storedHacSe = rrhsLoadHacStorageValue(RRHS_HAC_STORAGE_KEYS.seNumber);
+    const storedEmployeeId = rrhsGetEmployeeIdForAccess();
+    const seCandidate = String(storedHacSe || storedEmployeeId || "").trim();
+    rrhsSetSeNumber(seCandidate);
     rrhsSetHacUsername(rrhsLoadHacStorageValue(RRHS_HAC_STORAGE_KEYS.hacUsername));
     const storedStudentId = rrhsLoadHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentId);
     const storedStudentName = rrhsLoadHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentName);
@@ -620,8 +623,20 @@
     const scheduled = rrhsGetHacRoomForCurrentPeriod();
     if (!scheduled || !scheduled.room) return false;
 
+    let resolvedTeacher = scheduled.teacher ? String(scheduled.teacher).trim() : "";
+    if (resolvedTeacher) {
+      // Only trust HAC teacher-prefill when that teacher exists somewhere in the loaded CSV schedule.
+      if (!rrhsRoomSchedule.ready) return false;
+      const teacherKeys = Object.keys(ROOM_DATA || {});
+      const teacherKey = teacherKeys.find(
+        (k) => String(k || "").trim().toLowerCase() === resolvedTeacher.toLowerCase()
+      ) || null;
+      if (!teacherKey) return false;
+      resolvedTeacher = teacherKey;
+    }
+
     rrhsDeliverySelection.dayType = getTodayDayType();
-    rrhsDeliverySelection.teacher = scheduled.teacher ? String(scheduled.teacher) : null;
+    rrhsDeliverySelection.teacher = resolvedTeacher || null;
     rrhsDeliverySelection.period = scheduled.period;
     rrhsDeliverySelection.room = scheduled.room;
     rrhsDeliverySelection.mode = "hac";
@@ -1265,6 +1280,150 @@
     }
   }
 
+  function rrhsOpenHacStudentPickerModal(options) {
+    const existing = document.getElementById("rrhs-hac-student-picker-modal");
+    if (existing) existing.remove();
+
+    const opts = options && typeof options === "object" ? options : {};
+    const students = Array.isArray(opts.students) ? opts.students : [];
+    const onSave = typeof opts.onSave === "function" ? opts.onSave : null;
+    const onCancel = typeof opts.onCancel === "function" ? opts.onCancel : null;
+    let selectedId = String(opts.activeStudentId || "").trim();
+
+    const overlay = document.createElement("div");
+    overlay.id = "rrhs-hac-student-picker-modal";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000001;display:flex;align-items:center;justify-content:center;padding:16px;";
+
+    const panel = document.createElement("div");
+    panel.style.cssText = "width:100%;max-width:440px;background:#fff;border-radius:10px;padding:18px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
+    panel.innerHTML = `
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Set Active Student</div>
+      <div style="font-size:13px;color:#555;margin-bottom:12px;">Choose which student should be active for room auto-fill.</div>
+      <div data-rrhs-hac-student-modal-error="true" style="display:none;color:#d32f2f;font-size:12px;margin-bottom:10px;"></div>
+    `;
+
+    const pickerWrap = document.createElement("div");
+    pickerWrap.style.cssText = "margin-bottom:12px;";
+    pickerWrap.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#222;">Active student</div>`;
+
+    const pickerBtn = document.createElement("button");
+    pickerBtn.type = "button";
+    pickerBtn.style.cssText = "width:100%;text-align:left;border:1px solid #cfd8dc;background:#fff;color:#111;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;";
+    pickerBtn.textContent = "Select student";
+
+    const menu = document.createElement("div");
+    menu.style.cssText = "display:none;margin-top:6px;border:1px solid #cfd8dc;border-radius:8px;max-height:220px;overflow:auto;background:#fff;";
+
+    pickerWrap.appendChild(pickerBtn);
+    pickerWrap.appendChild(menu);
+    panel.appendChild(pickerWrap);
+
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.cssText = "border:1px solid #ccc;background:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
+
+    const saveBtnWrap = document.createElement("div");
+    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary";
+    saveBtnWrap.style.flex = "0 0 auto";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "form-control__button";
+    saveBtn.innerHTML = `<div class="form-control__loader"></div><span class="form-control__button-text">Save</span>`;
+    saveBtnWrap.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtnWrap);
+    panel.appendChild(actions);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    const errorNode = panel.querySelector('[data-rrhs-hac-student-modal-error="true"]');
+    const setError = (message) => {
+      if (!errorNode) return;
+      if (!message) {
+        errorNode.style.display = "none";
+        errorNode.textContent = "";
+        return;
+      }
+      errorNode.textContent = String(message);
+      errorNode.style.display = "block";
+    };
+
+    const renderMenu = () => {
+      menu.innerHTML = "";
+      students.forEach((student) => {
+        const id = String(student && student.id ? student.id : "").trim();
+        const name = String(student && student.name ? student.name : id).trim();
+        if (!id) return;
+        const row = document.createElement("button");
+        row.type = "button";
+        row.style.cssText = "width:100%;text-align:left;padding:10px 12px;border:none;border-bottom:1px solid #eceff1;background:#fff;cursor:pointer;font-size:14px;";
+        row.textContent = name ? `${name} (${id})` : id;
+        row.addEventListener("mouseenter", () => { row.style.background = "#f5f7fa"; });
+        row.addEventListener("mouseleave", () => { row.style.background = "#fff"; });
+        row.addEventListener("click", () => {
+          selectedId = id;
+          pickerBtn.textContent = name ? `${name} (${id})` : id;
+          menu.style.display = "none";
+          setError("");
+        });
+        menu.appendChild(row);
+      });
+    };
+    renderMenu();
+
+    const active = students.find((s) => String(s && s.id ? s.id : "").trim() === selectedId) || null;
+    if (active) {
+      const label = String(active.name || active.id || "").trim();
+      pickerBtn.textContent = active.id ? `${label} (${active.id})` : label;
+    }
+
+    const onDocClick = (e) => {
+      if (!overlay.contains(e.target) || pickerWrap.contains(e.target)) return;
+      menu.style.display = "none";
+    };
+    document.addEventListener("click", onDocClick, true);
+
+    const close = () => {
+      document.removeEventListener("click", onDocClick, true);
+      overlay.remove();
+    };
+
+    pickerBtn.addEventListener("click", () => {
+      menu.style.display = menu.style.display === "none" ? "block" : "none";
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      close();
+      if (onCancel) onCancel();
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        close();
+        if (onCancel) onCancel();
+      }
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      if (!selectedId) {
+        setError("Select an active student.");
+        return;
+      }
+      saveBtn.disabled = true;
+      try {
+        if (onSave) await onSave(selectedId);
+        close();
+      } catch (err) {
+        setError(String(err && err.message ? err.message : "Failed to save active student."));
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
   function rrhsOpenHacAuthModal() {
     const existing = document.getElementById("rrhs-hac-auth-modal");
     if (existing) return;
@@ -1281,8 +1440,8 @@
     panel.innerHTML = `
       <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Student Login Required</div>
       <div style="font-size:13px;color:#555;margin-bottom:12px;">${staleLead}</div>
+      <div style="font-size:12px;color:#555;margin-bottom:12px;">Your HAC password is used only for this query session and is not saved.</div>
       <div data-rrhs-hac-modal-error="true" style="display:none;color:#d32f2f;font-size:12px;margin-bottom:10px;"></div>
-      <div data-rrhs-hac-modal-success="true" style="display:none;color:#2e7d32;font-size:12px;margin-bottom:10px;"></div>
     `;
 
     const usernameField = rrhsBuildHacInputField({
@@ -1309,114 +1468,44 @@
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "border:1px solid #ccc;background:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
 
+    const loginBtnWrap = document.createElement("div");
+    loginBtnWrap.className = "form-control form-control--button form-control--large form-control--primary";
+    loginBtnWrap.style.flex = "0 0 auto";
     const loginBtn = document.createElement("button");
     loginBtn.type = "button";
-    loginBtn.textContent = "Log in";
-    loginBtn.style.cssText = "border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
-
-    const studentPickerWrap = document.createElement("div");
-    studentPickerWrap.style.cssText = "display:none;margin-bottom:12px;";
-    studentPickerWrap.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#222;">Select active student</div>`;
-
-    const studentPickerButton = document.createElement("button");
-    studentPickerButton.type = "button";
-    studentPickerButton.style.cssText = "width:100%;text-align:left;border:1px solid #cfd8dc;background:#fff;color:#111;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;";
-    studentPickerButton.textContent = "Select student";
-
-    const studentPickerMenu = document.createElement("div");
-    studentPickerMenu.style.cssText = "display:none;margin-top:6px;border:1px solid #cfd8dc;border-radius:8px;max-height:220px;overflow:auto;background:#fff;";
-
-    studentPickerWrap.appendChild(studentPickerButton);
-    studentPickerWrap.appendChild(studentPickerMenu);
-
-    const continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.textContent = "Continue";
-    continueBtn.style.cssText = "display:none;border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
+    loginBtn.className = "form-control__button";
+    loginBtn.innerHTML = `<div class="form-control__loader"></div><span class="form-control__button-text">Log in</span>`;
+    loginBtnWrap.appendChild(loginBtn);
 
     actions.appendChild(cancelBtn);
-    actions.appendChild(loginBtn);
-    actions.appendChild(continueBtn);
+    actions.appendChild(loginBtnWrap);
     panel.appendChild(usernameField.wrap);
     panel.appendChild(passwordField.wrap);
-    panel.appendChild(studentPickerWrap);
     panel.appendChild(actions);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
     const errorNode = panel.querySelector('[data-rrhs-hac-modal-error="true"]');
-    const successNode = panel.querySelector('[data-rrhs-hac-modal-success="true"]');
-    let modalAuthedUser = "";
-    let modalAuthedPass = "";
-    let selectedStudentId = String(rrhsHacState.activeStudentId || "").trim();
-    let selectedStudentName = String(rrhsHacState.activeStudentName || "").trim();
-    let modalStudents = [];
-
     const setModalError = (message) => {
-      if (!errorNode || !successNode) return;
-      errorNode.style.display = "none";
-      successNode.style.display = "none";
-      if (!message) return;
+      if (!errorNode) return;
+      if (!message) {
+        errorNode.style.display = "none";
+        errorNode.textContent = "";
+        return;
+      }
       errorNode.textContent = String(message);
       errorNode.style.display = "block";
     };
 
-    const setModalSuccess = (message) => {
-      if (!errorNode || !successNode) return;
-      errorNode.style.display = "none";
-      successNode.style.display = "none";
-      if (!message) return;
-      successNode.textContent = String(message);
-      successNode.style.display = "block";
-    };
-
-    const renderStudentPickerMenu = () => {
-      studentPickerMenu.innerHTML = "";
-      modalStudents.forEach((student) => {
-        const id = String(student && student.id ? student.id : "").trim();
-        const name = String(student && student.name ? student.name : id).trim();
-        if (!id) return;
-        const row = document.createElement("button");
-        row.type = "button";
-        row.style.cssText = "width:100%;text-align:left;padding:10px 12px;border:none;border-bottom:1px solid #eceff1;background:#fff;cursor:pointer;font-size:14px;";
-        row.textContent = name ? `${name} (${id})` : id;
-        row.addEventListener("mouseenter", () => {
-          row.style.background = "#f5f7fa";
-        });
-        row.addEventListener("mouseleave", () => {
-          row.style.background = "#fff";
-        });
-        row.addEventListener("click", () => {
-          selectedStudentId = id;
-          selectedStudentName = name;
-          studentPickerButton.textContent = name ? `${name} (${id})` : id;
-          studentPickerMenu.style.display = "none";
-        });
-        studentPickerMenu.appendChild(row);
-      });
-    };
-
     const close = () => {
-      document.removeEventListener("click", onDocClick, true);
       overlay.remove();
     };
-
-    const onDocClick = (e) => {
-      if (!overlay.contains(e.target) || studentPickerWrap.contains(e.target)) return;
-      studentPickerMenu.style.display = "none";
-    };
-
-    document.addEventListener("click", onDocClick, true);
-
-    studentPickerButton.addEventListener("click", () => {
-      if (studentPickerWrap.style.display === "none") return;
-      studentPickerMenu.style.display = studentPickerMenu.style.display === "none" ? "block" : "none";
-    });
 
     cancelBtn.addEventListener("click", close);
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) close();
     });
+
     loginBtn.addEventListener("click", async () => {
       const user = String(usernameField.input.value || "").trim();
       const pass = String(passwordField.input.value || "");
@@ -1424,66 +1513,42 @@
         setModalError("Enter HAC username and password.");
         return;
       }
+
       loginBtn.disabled = true;
       try {
         await rrhsAuthenticateAndLoadHac(user, pass);
-        modalAuthedUser = user;
-        modalAuthedPass = pass;
-        modalStudents = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
-        selectedStudentId = String(rrhsHacState.activeStudentId || "").trim();
-        const active = modalStudents.find((s) => String(s && s.id ? s.id : "").trim() === selectedStudentId) || null;
-        selectedStudentName = String(
-          (active && active.name) || rrhsHacState.activeStudentName || selectedStudentId || ""
-        ).trim();
-
-        if (modalStudents.length > 1) {
-          studentPickerWrap.style.display = "block";
-          continueBtn.style.display = "";
-          renderStudentPickerMenu();
-          studentPickerButton.textContent = selectedStudentName
-            ? `${selectedStudentName} (${selectedStudentId})`
-            : selectedStudentId || "Select student";
-          setModalSuccess("Logged in. Choose the active student to continue.");
-          return;
-        }
-
         rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
         rrhsSetHacUiMessage("error", "");
         rrhsRefreshHacUiVisibility();
-        rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+
+        const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
+        const afterStudentResolved = () => {
+          rrhsRefreshHacUiVisibility();
+          rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+          initRoomAutocomplete();
+        };
+
         close();
-        initRoomAutocomplete();
+
+        if (students.length > 1) {
+          rrhsOpenHacStudentPickerModal({
+            students,
+            activeStudentId: rrhsHacState.activeStudentId,
+            onSave: async (selectedId) => {
+              if (String(rrhsHacState.activeStudentId || "").trim() !== String(selectedId || "").trim()) {
+                await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
+              }
+              afterStudentResolved();
+            }
+          });
+          return;
+        }
+
+        afterStudentResolved();
       } catch (err) {
         setModalError(String(err && err.message ? err.message : "Authentication failed."));
       } finally {
         loginBtn.disabled = false;
-      }
-    });
-
-    continueBtn.addEventListener("click", async () => {
-      if (!modalAuthedUser || !modalAuthedPass) {
-        setModalError("Log in first.");
-        return;
-      }
-      if (!selectedStudentId) {
-        setModalError("Select an active student.");
-        return;
-      }
-      continueBtn.disabled = true;
-      try {
-        if (String(rrhsHacState.activeStudentId || "").trim() !== selectedStudentId) {
-          await rrhsSwitchActiveStudentAndRefresh(modalAuthedUser, modalAuthedPass, selectedStudentId);
-        }
-        rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
-        rrhsSetHacUiMessage("error", "");
-        rrhsRefreshHacUiVisibility();
-        rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
-        close();
-        initRoomAutocomplete();
-      } catch (err) {
-        setModalError(String(err && err.message ? err.message : "Failed to set active student."));
-      } finally {
-        continueBtn.disabled = false;
       }
     });
   }
@@ -1492,7 +1557,17 @@
     try {
       const href = String((window && window.location && window.location.href) || "").toLowerCase();
       const path = String((window && window.location && window.location.pathname) || "").toLowerCase();
-      return href.includes("/products/checkout/delivery") || path.includes("/products/checkout/delivery");
+      const hash = String((window && window.location && window.location.hash) || "").toLowerCase();
+      if (href.includes("/products/checkout/delivery") || path.includes("/products/checkout/delivery")) {
+        return true;
+      }
+      if (path.includes("/products/checkout") && hash.includes("delivery")) {
+        return true;
+      }
+      if (path.includes("/products/checkout") && document.querySelector('input[name="z7rty2b"]')) {
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }
@@ -1568,6 +1643,11 @@
     passField.input.dataset.rrhsHacPasswordInput = "true";
     passField.wrap.style.marginBottom = "8px";
     credsCell.appendChild(passField.wrap);
+    const passPrivacyNote = document.createElement("div");
+    passPrivacyNote.className = "rrhs-hac-note";
+    passPrivacyNote.textContent = "Your HAC password is not saved.";
+    passPrivacyNote.style.marginBottom = "8px";
+    credsCell.appendChild(passPrivacyNote);
 
     const cacheInfo = document.createElement("div");
     cacheInfo.className = "rrhs-hac-note";
@@ -1648,12 +1728,29 @@
       loginBtn.disabled = true;
       try {
         await rrhsAuthenticateAndLoadHac(user, pass);
-        rrhsRenderHacStudentsIntoSelect(studentSelect);
-        rrhsRefreshHacUiVisibility();
-        rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
-        passField.input.value = "";
-        rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
-        initRoomAutocomplete();
+        const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
+        const afterStudentResolved = () => {
+          rrhsRenderHacStudentsIntoSelect(studentSelect);
+          rrhsRefreshHacUiVisibility();
+          rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
+          passField.input.value = "";
+          rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+          initRoomAutocomplete();
+        };
+        if (students.length > 1) {
+          rrhsOpenHacStudentPickerModal({
+            students,
+            activeStudentId: rrhsHacState.activeStudentId,
+            onSave: async (selectedId) => {
+              if (String(rrhsHacState.activeStudentId || "").trim() !== String(selectedId || "").trim()) {
+                await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
+              }
+              afterStudentResolved();
+            }
+          });
+        } else {
+          afterStudentResolved();
+        }
         return true;
       } catch (err) {
         rrhsSetHacUiMessage(
@@ -3007,6 +3104,27 @@
 
       const section = input.closest(".ec-cart-step__section");
       if (section) section.style.transition = "padding-bottom 0.2s ease";
+      if (section && rrhsHacState.isSNumber) {
+        const subtitle = Array.from(section.querySelectorAll("p.ec-cart-step__subtitle.ec-header-h5"))
+          .find((el) => String(el.textContent || "").toLowerCase().includes("delivery location"));
+        if (subtitle && !section.querySelector('[data-rrhs-hac-reconfigure-btn="true"]')) {
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;";
+          subtitle.parentNode.insertBefore(row, subtitle);
+          row.appendChild(subtitle);
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.dataset.rrhsHacReconfigureBtn = "true";
+          btn.textContent = "Re-Configure HAC";
+          btn.style.cssText = "border:1px solid #c9c6c4;background:#fff;color:#222;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;";
+          btn.addEventListener("click", () => {
+            rrhsHacState.authModalShownForCurrentView = false;
+            rrhsOpenHacAuthModal();
+          });
+          row.appendChild(btn);
+        }
+      }
 
       const wrapper = document.createElement("div");
       wrapper.style.position = "relative";
@@ -3110,6 +3228,9 @@
           input.style.border = "2px solid #d32f2f";
           input.style.backgroundColor = "#ffebee";
           errorMsg.style.color = "#d32f2f";
+          errorMsg.style.background = "transparent";
+          errorMsg.style.borderRadius = "0";
+          errorMsg.style.padding = "0";
           errorMsg.textContent = "We couldn't find that room. Please select a valid room from the list.";
           errorMsg.style.display = "block";
           return;
@@ -3128,6 +3249,9 @@
         input.style.border = "1px solid #ddd";
         input.style.backgroundColor = "";
         errorMsg.style.color = "#1f2937";
+        errorMsg.style.background = "#F3F1F0";
+        errorMsg.style.borderRadius = "6px";
+        errorMsg.style.padding = "8px 10px";
         errorMsg.textContent = text;
         errorMsg.style.display = "block";
       }
@@ -3563,7 +3687,9 @@
 
       loadRoomSchedule()
         .then(() => {
+          rrhsApplyHacScheduleToDeliveryInput(input);
           buildDerivedScheduleForToday();
+          showSelectionInfo(rrhsDeliverySelection);
           if (document.activeElement === input) handleQueryChange();
         })
         .catch((e) => {
