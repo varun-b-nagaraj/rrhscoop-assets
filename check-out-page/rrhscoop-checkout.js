@@ -634,6 +634,9 @@
       student.seNumber,
       student.s_number,
       student.sNumber,
+      student.student_number,
+      student.studentNumber,
+      student.number,
       student.id
     ];
     for (let i = 0; i < candidates.length; i++) {
@@ -641,7 +644,6 @@
       if (!raw) continue;
       const digitsMatch = raw.match(/^s?(\d+)$/i);
       if (digitsMatch && digitsMatch[1]) return String(digitsMatch[1]);
-      return raw;
     }
     return "";
   }
@@ -651,10 +653,27 @@
     const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [];
     const selected = students.find((s) => String((s && s.id) || "").trim() === sid) || null;
     const fromSelected = rrhsResolveReportStudentIdFromRecord(selected);
-    if (fromSelected) return fromSelected;
+    if (fromSelected) {
+      console.log("[RRHS HAC debug] report student_id from selected record:", fromSelected, selected);
+      return fromSelected;
+    }
     const directDigits = sid.match(/^s?(\d+)$/i);
-    if (directDigits && directDigits[1]) return String(directDigits[1]);
-    return rrhsResolveHacStudentId(sid);
+    if (directDigits && directDigits[1]) {
+      console.log("[RRHS HAC debug] report student_id from selected id:", directDigits[1], sid);
+      return String(directDigits[1]);
+    }
+    const fromSeNumber = String(rrhsHacState.seNumber || "").trim().match(/^s(\d+)$/i);
+    if (fromSeNumber && fromSeNumber[1]) {
+      console.log("[RRHS HAC debug] report student_id from seNumber:", fromSeNumber[1], rrhsHacState.seNumber);
+      return String(fromSeNumber[1]);
+    }
+    const fallback = rrhsResolveHacStudentId(sid);
+    const fallbackDigits = String(fallback || "").trim().match(/^(\d+)$/);
+    if (fallbackDigits && fallbackDigits[1]) {
+      console.log("[RRHS HAC debug] report student_id from fallback:", fallbackDigits[1], fallback);
+      return String(fallbackDigits[1]);
+    }
+    return "";
   }
 
   function rrhsBuildGetReportPayload(username, password, studentId) {
@@ -850,7 +869,9 @@
       }
 
       const reportStudentId = rrhsResolveReportStudentIdFromSelection(rrhsHacState.activeStudentId);
-      if (!reportStudentId) throw new Error("Missing student_id for HAC report.");
+      if (!reportStudentId) {
+        throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
+      }
       const reportResp = await rrhsHacPost(
         "/api/getReport",
         rrhsBuildGetReportPayload(user, pass, reportStudentId)
@@ -935,7 +956,9 @@
       rrhsSetActiveStudent(sid, selected && selected.name ? selected.name : "");
 
       const reportStudentId = rrhsResolveReportStudentIdFromSelection(sid);
-      if (!reportStudentId) throw new Error("Missing student_id for HAC report.");
+      if (!reportStudentId) {
+        throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
+      }
       const reportResp = await rrhsHacPost(
         "/api/getReport",
         rrhsBuildGetReportPayload(user, pass, reportStudentId)
