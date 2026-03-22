@@ -12,6 +12,32 @@ When you embed `index.js`, it loads `rrhs-runtime.js` first. This provides a sha
 
 File: `check-out-page/rrhscoop-checkout.js`
 
+### Inventory Guard (variation-aware)
+
+File: `check-out-page/rrhs-inventory-guard.js`
+
+- Runs `Ecwid.Cart.get()` on page load and listens to `Ecwid.OnCartChanged`.
+- Checks cart items against Ecwid REST inventory endpoints.
+- Uses variation-level lookup when `item.product.variation` exists.
+- Removes blocked lines from cart and shows a modal when available stock is below threshold.
+
+Expected runtime config object:
+
+```js
+window.RRHS_INVENTORY_GUARD_CONFIG = {
+  storeId: "YOUR_STORE_ID",
+  apiToken: "YOUR_ECWID_BEARER_TOKEN",
+  minRemainingAllowed: 5, // block item if quantity < this number
+  apiBase: "https://app.ecwid.com/api/v3"
+};
+```
+
+Project `.env` placeholders were added for these values:
+- `RRHS_ECWID_STORE_ID`
+- `RRHS_ECWID_API_TOKEN`
+- `RRHS_INVENTORY_MIN_REMAINING`
+- `RRHS_ECWID_API_BASE`
+
 ### Ordering Period Matrix (Allowed Periods)
 
 To restrict (or expand) which class periods can place orders, edit the matrix in:
