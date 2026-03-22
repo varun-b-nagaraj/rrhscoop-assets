@@ -1638,12 +1638,14 @@
     cancelBtn.style.cssText = "border:1px solid #d0d0d0;background:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;min-width:116px;height:42px;";
 
     const saveBtnWrap = document.createElement("div");
-    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--done";
-    saveBtnWrap.style.cssText = "width:140px;max-width:140px;";
+    saveBtnWrap.style.cssText = "display:flex;align-items:center;justify-content:center;";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "form-control__button";
+    saveBtn.style.cssText = "display:flex;align-items:center;justify-content:center;min-width:116px;height:42px;padding:10px 14px;border-radius:8px;border:1px solid #1f2937;background:#1f2937;color:#fff;cursor:pointer;";
     saveBtn.innerHTML = `<span class="form-control__button-text">Save</span>`;
+    const saveBtnText = saveBtn.querySelector(".form-control__button-text");
+    if (saveBtnText) saveBtnText.style.cssText = "color:inherit;font-weight:600;line-height:1;";
     saveBtnWrap.appendChild(saveBtn);
 
     actions.appendChild(cancelBtn);
