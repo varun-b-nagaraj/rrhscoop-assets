@@ -162,7 +162,8 @@
     value: null,      // "A" | "B" | null
     targetDate: null, // YYYY-MM-DD | null
     inFlight: false,
-    lastError: null
+    lastError: null,
+    nextRetryAt: 0
   };
   const rrhsHacState = {
     seNumber: "",
@@ -245,6 +246,7 @@
 
   async function rrhsFetchDayTypeForDate(targetDate) {
     if (rrhsDayTypeState.inFlight) return;
+    if (rrhsDayTypeState.nextRetryAt && Date.now() < rrhsDayTypeState.nextRetryAt) return;
     const cfg = rrhsGetDayTypeApiConfig();
     if (!cfg.endpoint || !cfg.baseUrl || !cfg.username || !cfg.password) return;
 
@@ -283,6 +285,7 @@
       rrhsDayTypeState.value = dayTypeRaw;
       rrhsDayTypeState.targetDate = resolvedDate;
       rrhsDayTypeState.lastError = null;
+      rrhsDayTypeState.nextRetryAt = 0;
       rrhsPersistDayType(dayTypeRaw, resolvedDate);
 
       if (prevDayType !== dayTypeRaw || prevDate !== resolvedDate) {
@@ -290,6 +293,8 @@
       }
     } catch (e) {
       rrhsDayTypeState.lastError = e;
+      // CORS/preflight failures can spam heavily from repeated mounts; back off retries.
+      rrhsDayTypeState.nextRetryAt = Date.now() + (15 * 60 * 1000);
       log("RRHS day-type sync failed", e);
     } finally {
       rrhsDayTypeState.inFlight = false;
@@ -606,13 +611,31 @@
 
   function rrhsRenderHacStudentsIntoSelect(select) {
     if (!select) return;
+    const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [];
+    const activeId = String(rrhsHacState.activeStudentId || "").trim();
+    const signature = JSON.stringify({
+      s: students.map((student) => ({
+        id: String(student && student.id ? student.id : "").trim(),
+        name: String(student && student.name ? student.name : "").trim()
+      })),
+      a: activeId
+    });
+    const prevSignature = String(select.dataset.rrhsStudentSignature || "");
+
+    if (prevSignature === signature) {
+      if (activeId && select.value !== activeId && document.activeElement !== select) {
+        select.value = activeId;
+      }
+      return;
+    }
+
     select.innerHTML = "";
     const placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent = "Select student";
     select.appendChild(placeholder);
 
-    rrhsHacState.students.forEach((student) => {
+    students.forEach((student) => {
       const id = String(student && student.id ? student.id : "").trim();
       const name = String(student && student.name ? student.name : id).trim();
       if (!id) return;
@@ -621,7 +644,8 @@
       option.textContent = name ? `${name} (${id})` : id;
       select.appendChild(option);
     });
-    if (rrhsHacState.activeStudentId) select.value = rrhsHacState.activeStudentId;
+    if (activeId) select.value = activeId;
+    select.dataset.rrhsStudentSignature = signature;
   }
 
   async function rrhsAuthenticateAndLoadHac(username, password) {
@@ -1152,7 +1176,6 @@
       usernameInput: document.querySelector('[data-rrhs-hac-username-input="true"]'),
       passwordInput: document.querySelector('[data-rrhs-hac-password-input="true"]'),
       loginButton: document.querySelector('[data-rrhs-hac-login-btn="true"]'),
-      refreshButton: document.querySelector('[data-rrhs-hac-refresh-btn="true"]'),
       studentSelect: document.querySelector('[data-rrhs-hac-student-select="true"]'),
       studentRow: document.querySelector('[data-rrhs-hac-student-row="true"]'),
       credsRow: document.querySelector('[data-rrhs-hac-creds-row="true"]'),
@@ -1182,13 +1205,12 @@
     rrhsRefreshHacCacheFreshness();
     const refs = rrhsGetHacContactUiRefs();
     if (!refs.seInput || !refs.credsRow || !refs.studentRow) return;
-    refs.seInput.value = rrhsHacState.seNumber || "";
+    if (document.activeElement !== refs.seInput) refs.seInput.value = rrhsHacState.seNumber || "";
     if (refs.usernameInput && !refs.usernameInput.value) refs.usernameInput.value = rrhsHacState.hacUsername || "";
 
     const showCreds = rrhsHacState.isSNumber;
     refs.credsRow.style.display = showCreds ? "" : "none";
     refs.studentRow.style.display = showCreds && rrhsHacState.authenticated ? "" : "none";
-    if (refs.refreshButton) refs.refreshButton.style.display = showCreds ? "" : "none";
 
     if (refs.cacheInfo) {
       if (rrhsHacState.cachedAt > 0) {
@@ -1211,7 +1233,7 @@
     if (rrhsHacState.cacheStale) {
       rrhsSetHacUiMessage(
         "error",
-        "HAC session is old. Query a new session with your username and password."
+        "HAC session is old. Log in again to query a new session."
       );
     }
     if (showCreds && refs.studentSelect) {
@@ -1230,7 +1252,7 @@
     const panel = document.createElement("div");
     panel.style.cssText = "width:100%;max-width:440px;background:#fff;border-radius:10px;padding:18px;box-shadow:0 10px 32px rgba(0,0,0,.25);";
     const staleLead = rrhsHacState.cacheStale
-      ? "Cached HAC info is old. Start a new query session to continue."
+      ? "Cached HAC info is old. Log in again to query a new session."
       : "Enter HAC credentials to continue delivery selection for your S-number profile.";
     panel.innerHTML = `
       <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Student Login Required</div>
@@ -1264,7 +1286,7 @@
 
     const loginBtn = document.createElement("button");
     loginBtn.type = "button";
-    loginBtn.textContent = "Authenticate";
+    loginBtn.textContent = "Log in";
     loginBtn.style.cssText = "border:1px solid #111;background:#111;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
 
     actions.appendChild(cancelBtn);
@@ -1388,23 +1410,9 @@
     loginBtn.type = "button";
     loginBtn.className = "form-control__button";
     loginBtn.dataset.rrhsHacLoginBtn = "true";
-    loginBtn.innerHTML = `<span class="form-control__button-text">Authenticate HAC</span>`;
+    loginBtn.innerHTML = `<span class="form-control__button-text">Log in</span>`;
     loginBtnWrap.appendChild(loginBtn);
     credsCell.appendChild(loginBtnWrap);
-
-    const refreshBtnWrap = document.createElement("div");
-    refreshBtnWrap.className = "form-control form-control--button form-control--large form-control--flexible";
-    refreshBtnWrap.style.marginTop = "8px";
-    const refreshBtn = document.createElement("button");
-    refreshBtn.type = "button";
-    refreshBtn.className = "form-control__button";
-    refreshBtn.dataset.rrhsHacRefreshBtn = "true";
-    refreshBtn.style.background = "#fff";
-    refreshBtn.style.color = "#111";
-    refreshBtn.style.border = "1px solid #ddd";
-    refreshBtn.innerHTML = `<span class="form-control__button-text">Query New Session</span>`;
-    refreshBtnWrap.appendChild(refreshBtn);
-    credsCell.appendChild(refreshBtnWrap);
 
     const credsError = document.createElement("div");
     credsError.className = "rrhs-hac-error";
@@ -1452,22 +1460,20 @@
       rrhsSetHacUsername(userField.input.value);
     });
 
-    const runHacQuery = async (force = false) => {
+    const runHacQuery = async () => {
       const user = String(userField.input.value || "").trim();
       const pass = String(passField.input.value || "");
       if (!rrhsHacState.isSNumber) {
         rrhsSetHacUiMessage("error", "HAC login is only available for S-number users.");
         return false;
       }
-      if (!user || !pass && (force || rrhsHacState.cacheStale || !rrhsHacState.authenticated)) {
+      if (!user || !pass) {
         rrhsSetHacUiMessage("error", "Enter HAC username and password.");
         return false;
       }
-      if (!user || !pass) return false;
       rrhsSetHacUiMessage("error", "");
       rrhsSetHacUiMessage("success", "");
       loginBtn.disabled = true;
-      refreshBtn.disabled = true;
       try {
         await rrhsAuthenticateAndLoadHac(user, pass);
         rrhsRenderHacStudentsIntoSelect(studentSelect);
@@ -1485,21 +1491,11 @@
         return false;
       } finally {
         loginBtn.disabled = false;
-        refreshBtn.disabled = false;
       }
     };
 
     loginBtn.addEventListener("click", async () => {
-      await runHacQuery(true);
-    });
-
-    refreshBtn.addEventListener("click", async () => {
-      await runHacQuery(true);
-    });
-
-    passField.input.addEventListener("change", async () => {
-      if (!rrhsHacState.isSNumber) return;
-      await runHacQuery(false);
+      await runHacQuery();
     });
 
     studentSelect.addEventListener("change", async () => {
