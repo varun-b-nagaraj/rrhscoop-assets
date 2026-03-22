@@ -891,18 +891,21 @@
     if (!select) return;
     const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [];
     const activeId = String(rrhsHacState.activeStudentId || "").trim();
+    const pendingId = String(select.dataset.rrhsPendingStudentId || "").trim();
+    const displayId = pendingId || activeId;
     const signature = JSON.stringify({
       s: students.map((student) => ({
         id: String(student && student.id ? student.id : "").trim(),
         name: String(student && student.name ? student.name : "").trim()
       })),
-      a: activeId
+      a: activeId,
+      p: pendingId
     });
     const prevSignature = String(select.dataset.rrhsStudentSignature || "");
 
     if (prevSignature === signature) {
-      if (activeId && select.value !== activeId && document.activeElement !== select) {
-        select.value = activeId;
+      if (displayId && select.value !== displayId && document.activeElement !== select) {
+        select.value = displayId;
       }
       return;
     }
@@ -922,7 +925,7 @@
       option.textContent = name ? `${name} (${id})` : id;
       select.appendChild(option);
     });
-    if (activeId) select.value = activeId;
+    if (displayId) select.value = displayId;
     select.dataset.rrhsStudentSignature = signature;
   }
 
@@ -1677,6 +1680,26 @@
       overlay.remove();
     };
 
+    let busyOverlay = null;
+    const setBusy = (busy) => {
+      saveBtn.disabled = !!busy;
+      cancelBtn.disabled = !!busy;
+      pickerBtn.disabled = !!busy;
+      if (busy) {
+        if (!busyOverlay) {
+          busyOverlay = document.createElement("div");
+          busyOverlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000002;display:flex;align-items:center;justify-content:center;";
+          busyOverlay.innerHTML = `<div style="background:#111827;color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;">Fetching student schedule...</div>`;
+          document.body.appendChild(busyOverlay);
+        }
+        return;
+      }
+      if (busyOverlay) {
+        busyOverlay.remove();
+        busyOverlay = null;
+      }
+    };
+
     pickerBtn.addEventListener("click", () => {
       menu.style.display = menu.style.display === "none" ? "block" : "none";
     });
@@ -1697,14 +1720,14 @@
         setError("Select an active student.");
         return;
       }
-      saveBtn.disabled = true;
+      setBusy(true);
       try {
         if (onSave) await onSave(selectedId);
         close();
       } catch (err) {
         setError(String(err && err.message ? err.message : "Failed to save active student."));
       } finally {
-        saveBtn.disabled = false;
+        setBusy(false);
       }
     });
   }
@@ -1869,6 +1892,24 @@
     }
   }
 
+  function rrhsGetPathnameLower() {
+    try {
+      return String((window && window.location && window.location.pathname) || "").toLowerCase();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function rrhsIsAccountPage() {
+    const path = rrhsGetPathnameLower();
+    return path.includes("/products/account");
+  }
+
+  function rrhsIsCartPage() {
+    const path = rrhsGetPathnameLower();
+    return path.includes("/products/cart");
+  }
+
   function rrhsEnsureHacAuthPromptForDeliveryPage() {
     if (!rrhsIsDeliveryCheckoutPage()) return;
     rrhsRefreshHacCacheFreshness();
@@ -1944,9 +1985,7 @@
   }
 
   function rrhsEnsureHacContactFields() {
-    const path = String((window && window.location && window.location.pathname) || "").toLowerCase();
-    const inCheckout = path.includes("/products/checkout");
-    const allowInlineHac = !inCheckout || rrhsIsDeliveryCheckoutPage();
+    const allowInlineHac = rrhsIsDeliveryCheckoutPage() || rrhsIsAccountPage();
     if (!allowInlineHac) {
       document.querySelectorAll('[data-rrhs-hac-row="true"]').forEach((el) => el.remove());
       return;
@@ -2079,6 +2118,12 @@
       const user = String(userField.input.value || rrhsHacState.hacUsername || "").trim();
       const pass = String(passField.input.value || rrhsHacState.sessionPassword || "");
       if (!selectedId) return;
+      if (rrhsIsAccountPage()) {
+        studentSelect.dataset.rrhsPendingStudentId = selectedId;
+        rrhsRenderHacStudentsIntoSelect(studentSelect);
+        rrhsSetHacUiMessage("success", "Student selection staged. Click Save to apply.");
+        return;
+      }
       if (!user || !pass) {
         rrhsSetHacUiMessage("error", "Re-enter HAC password to switch students.");
         studentSelect.value = rrhsHacState.activeStudentId || "";
@@ -4187,6 +4232,79 @@
     }, true);
   }
 
+  function rrhsGetAccountSaveButton() {
+    if (!rrhsIsAccountPage()) return null;
+    const candidates = Array.from(document.querySelectorAll(".ec-form__row button.form-control__button"));
+    for (let i = 0; i < candidates.length; i++) {
+      const btn = candidates[i];
+      if (!btn || btn.closest("#rrhs-hac-auth-modal") || btn.closest("#rrhs-hac-student-picker-modal")) continue;
+      const text = String(btn.textContent || "").trim().toLowerCase();
+      if (text === "save") return btn;
+    }
+    return null;
+  }
+
+  async function rrhsRunAccountHacSaveFlow() {
+    if (!rrhsIsAccountPage()) return true;
+    const refs = rrhsGetHacContactUiRefs();
+    if (!refs.seInput || !refs.usernameInput || !refs.passwordInput || !refs.studentSelect) return true;
+
+    rrhsSetSeNumber(refs.seInput.value || "");
+    rrhsResetHacSessionIfIneligible();
+    if (!rrhsHacState.isSNumber) return true;
+
+    const user = String(refs.usernameInput.value || rrhsHacState.hacUsername || "").trim();
+    const pass = String(refs.passwordInput.value || "");
+    const selectedId = String(refs.studentSelect.dataset.rrhsPendingStudentId || refs.studentSelect.value || rrhsHacState.activeStudentId || "").trim();
+    const needsApply = Boolean(user || pass || selectedId);
+    if (!needsApply) return true;
+    if (!user || !pass) {
+      rrhsSetHacUiMessage("error", "Enter HAC username and password, then click Save.");
+      return false;
+    }
+
+    try {
+      await rrhsAuthenticateAndListHacStudents(user, pass);
+      const switchId = selectedId || rrhsHacState.activeStudentId;
+      if (switchId) {
+        await rrhsSwitchActiveStudentAndRefresh(user, pass, switchId);
+      }
+      refs.passwordInput.value = "";
+      refs.studentSelect.dataset.rrhsPendingStudentId = "";
+      rrhsRenderHacStudentsIntoSelect(refs.studentSelect);
+      rrhsRefreshHacUiVisibility();
+      rrhsSetHacUiMessage("success", "HAC info saved and student schedule refreshed.");
+      rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+      initRoomAutocomplete();
+      return true;
+    } catch (err) {
+      rrhsSetHacUiMessage("error", rrhsHumanizeHacError(err));
+      return false;
+    }
+  }
+
+  function initAccountHacSaveButton() {
+    const saveBtn = rrhsGetAccountSaveButton();
+    if (!saveBtn || saveBtn.dataset.rrhsAccountHacSaveBound === "1") return;
+    saveBtn.dataset.rrhsAccountHacSaveBound = "1";
+    saveBtn.addEventListener("click", async (e) => {
+      if (saveBtn.dataset.rrhsBypassOnce === "1") {
+        saveBtn.dataset.rrhsBypassOnce = "";
+        return;
+      }
+      const ok = await rrhsRunAccountHacSaveFlow();
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+        shakeElement(saveBtn);
+        return;
+      }
+      saveBtn.dataset.rrhsBypassOnce = "1";
+      saveBtn.click();
+    }, true);
+  }
+
   function initSauceDropdown() {
     const options = Object.freeze([
       Object.freeze({ id: "no_sauce", label: "--no sauce--" }),
@@ -4885,6 +5003,7 @@
       initCartChangedListener();
       rrhsEnsureHacContactFields();
       rrhsEnsureHacAuthPromptForDeliveryPage();
+      initAccountHacSaveButton();
       initEmployeeCheckoutValidation();
       initRoomAutocomplete();
       initSauceDropdown();
