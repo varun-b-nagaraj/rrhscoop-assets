@@ -604,76 +604,86 @@
     const username = String(payload && payload.username ? payload.username : "").trim();
     const password = String(payload && payload.password ? payload.password : "");
     if (!username || !password) throw new Error("HAC credentials are required.");
-
-    const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), cfg.requestTimeoutMs) : null;
     const fullPayload = Object.assign({}, payload, { base_url: cfg.hacBaseUrl });
     const safePayload = Object.assign({}, fullPayload);
     if (typeof safePayload.password === "string" && safePayload.password) {
       safePayload.password = "[REDACTED]";
     }
     console.log("[RRHS HAC debug] API request:", path, safePayload);
-    try {
-      const maxAttempts = path === "/api/getReport" ? 3 : 1;
-      let lastErr = null;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const maxAttempts = path === "/api/getReport" ? 3 : 1;
+    const timeoutMs = path === "/api/getReport"
+      ? Math.max(12000, Number(cfg.requestTimeoutMs) || 0)
+      : cfg.requestTimeoutMs;
+    let lastErr = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+      try {
+        const res = await fetch(`${cfg.baseUrl}${path}`, {
+          method: "POST",
+          headers: {
+            "Accept": "*/*",
+            "Content-Type": "application/json"
+          },
+          cache: "no-store",
+          mode: "cors",
+          referrerPolicy: "origin",
+          body: JSON.stringify(fullPayload),
+          signal: controller ? controller.signal : undefined
+        });
+        const text = await res.text().catch(() => "");
+        let json = {};
         try {
-          const res = await fetch(`${cfg.baseUrl}${path}`, {
-            method: "POST",
-            headers: {
-              "Accept": "*/*",
-              "Content-Type": "application/json"
-            },
-            cache: "no-store",
-            mode: "cors",
-            referrerPolicy: "origin",
-            body: JSON.stringify(fullPayload),
-            signal: controller ? controller.signal : undefined
-          });
-          const text = await res.text().catch(() => "");
-          let json = {};
-          try {
-            json = text ? JSON.parse(text) : {};
-          } catch (_) {
-            json = {};
-          }
-          console.log("[RRHS HAC debug] API response:", path, {
-            attempt,
-            status: res.status,
-            ok: res.ok,
-            body: json,
-            rawText: text
-          });
-          if (!res.ok) {
-            const msg = json && json.error ? String(json.error) : `HAC API HTTP ${res.status}`;
-            throw new Error(msg);
-          }
-          if (json && json.success === false) {
-            throw new Error(String(json.error || "HAC authentication failed."));
-          }
-          return json;
-        } catch (err) {
-          lastErr = err;
-          const retryable = path === "/api/getReport" && attempt < maxAttempts;
-          if (!retryable) throw err;
-          console.warn("[RRHS HAC debug] retrying API request:", path, {
-            attempt,
-            maxAttempts,
-            error: String(err && err.message ? err.message : err)
-          });
-          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+          json = text ? JSON.parse(text) : {};
+        } catch (_) {
+          json = {};
         }
+        console.log("[RRHS HAC debug] API response:", path, {
+          attempt,
+          status: res.status,
+          ok: res.ok,
+          body: json,
+          rawText: text
+        });
+        if (!res.ok) {
+          const msg = json && json.error ? String(json.error) : `HAC API HTTP ${res.status}`;
+          throw new Error(msg);
+        }
+        if (json && json.success === false) {
+          throw new Error(String(json.error || "HAC authentication failed."));
+        }
+        return json;
+      } catch (err) {
+        const normalizedErr =
+          err && err.name === "AbortError"
+            ? new Error(`HAC request timed out after ${timeoutMs}ms`)
+            : err;
+        lastErr = normalizedErr;
+        const retryable = path === "/api/getReport" && attempt < maxAttempts;
+        if (!retryable) throw normalizedErr;
+        console.warn("[RRHS HAC debug] retrying API request:", path, {
+          attempt,
+          maxAttempts,
+          error: String(normalizedErr && normalizedErr.message ? normalizedErr.message : normalizedErr)
+        });
+        await new Promise((resolve) => setTimeout(resolve, 350 * attempt));
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      throw lastErr || new Error("HAC request failed.");
-    } finally {
-      if (timer) clearTimeout(timer);
     }
+    throw lastErr || new Error("HAC request failed.");
   }
 
   function rrhsHumanizeHacError(err) {
     const raw = String(err && err.message ? err.message : err || "").trim();
     const lower = raw.toLowerCase();
     if (!raw) return "Login failed. Please try again.";
+    if (lower.includes("no students found")) {
+      return "No students found. Enter your HAC username (not your S-number) and try again.";
+    }
+    if (lower.includes("failed to retrieve report")) {
+      return "Could not fetch schedule report. Please retry in a few seconds.";
+    }
     if (
       lower.includes("wrong password") ||
       lower.includes("invalid password") ||
@@ -1001,6 +1011,9 @@
       const students = Array.isArray(studentsResp && studentsResp.students)
         ? studentsResp.students
         : [];
+      if (!students.length) {
+        throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
+      }
       rrhsHacState.students = students;
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
@@ -1061,6 +1074,9 @@
       const students = Array.isArray(studentsResp && studentsResp.students)
         ? studentsResp.students
         : [];
+      if (!students.length) {
+        throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
+      }
       rrhsHacState.students = students;
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
