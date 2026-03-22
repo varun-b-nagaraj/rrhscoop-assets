@@ -151,6 +151,7 @@
   // Message shown when all delivery windows are disabled (matrix empty).
   const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. Thank you for your patience — service will resume on February 18th.`;
   const RRHS_STORE_CLOSED_FOR_DAY_MESSAGE = "Store is closed for the day.";
+  const RRHS_DELIVERIES_CLOSED_MESSAGE = "Deliveries closed for the day.";
 
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
@@ -3905,10 +3906,10 @@
       }
 
       function setClosedForDayState() {
-        const isClosedForDay = rrhsIsPastLastDeliveryWindow(rrhsGetNowDate());
+        const isClosedForDeliveryWindow = !checkOrderingWindowBase();
         if (input.dataset.rrhsAllDayRoomLocked === "1") return false;
 
-        if (isClosedForDay) {
+        if (isClosedForDeliveryWindow) {
           if (input.dataset.rrhsClosedForDayLocked !== "1") {
             input.dataset.rrhsClosedForDayLocked = "1";
             input.dataset.rrhsClosedForDayPrevPointerEvents = String(input.style.pointerEvents || "");
@@ -3921,7 +3922,7 @@
           input.style.cursor = "not-allowed";
           input.style.backgroundColor = "#f5f5f5";
           hideDropdown();
-          showInfo(RRHS_STORE_CLOSED_FOR_DAY_MESSAGE);
+          showInfo(RRHS_DELIVERIES_CLOSED_MESSAGE);
           return true;
         }
 
