@@ -90,7 +90,7 @@ RRHS_OVERRIDES.setSimDayType("A"); // force A Day
 RRHS_OVERRIDES.setSimDayType("B"); // force B Day
 RRHS_OVERRIDES.setSimDayType(null); // back to real isADay()
 
-RRHS_OVERRIDES.setSimTime("10:15"); // force "now" to 10:15
+RRHS_OVERRIDES.setSimTime("10:00"); // force "now" to 10:15
 RRHS_OVERRIDES.setSimTime(null); // back to real clock
 ```
 

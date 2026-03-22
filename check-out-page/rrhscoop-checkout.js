@@ -2629,6 +2629,10 @@
         rrhsRoomSchedule.ready = true;
         rrhsRoomSchedule.teachers = built.teachers;
         rrhsRoomSchedule.error = null;
+        console.log("[RRHS CSV debug] room schedule loaded:", {
+          url,
+          teachers: built.teachers.length
+        });
         return rrhsRoomSchedule;
       })
       .catch((err) => {
@@ -3102,6 +3106,47 @@
     if (!key) return null;
     const matches = s.roomToEntries[key];
     if (!matches || matches.length === 0) return null;
+    return matches[0];
+  }
+
+  function rrhsRoomExistsInCsvAnyPeriod(room) {
+    const key = String(room || "").trim();
+    if (!key || !rrhsRoomSchedule.ready) return false;
+    const teachers = rrhsRoomSchedule.teachers || [];
+    for (let i = 0; i < teachers.length; i++) {
+      const periods = ROOM_DATA[teachers[i]];
+      if (!periods) continue;
+      for (let p = 1; p <= 8; p++) {
+        if (String(periods[p] || "").trim() === key) return true;
+      }
+    }
+    return false;
+  }
+
+  function rrhsResolveRoomFromCsvAnyPeriod(room, preferredPeriod = null) {
+    const key = String(room || "").trim();
+    if (!key || !rrhsRoomSchedule.ready) return null;
+    const pref = Number(preferredPeriod);
+    const teachers = rrhsRoomSchedule.teachers || [];
+    const matches = [];
+    for (let i = 0; i < teachers.length; i++) {
+      const teacher = teachers[i];
+      const periods = ROOM_DATA[teacher];
+      if (!periods) continue;
+      for (let p = 1; p <= 8; p++) {
+        if (String(periods[p] || "").trim() === key) {
+          matches.push({ teacher, period: p, room: key });
+        }
+      }
+    }
+    if (!matches.length) return null;
+    if (Number.isFinite(pref)) {
+      const exact = matches.find((m) => m.period === pref);
+      if (exact) return exact;
+      matches.sort((a, b) => Math.abs(a.period - pref) - Math.abs(b.period - pref) || a.teacher.localeCompare(b.teacher));
+      return matches[0];
+    }
+    matches.sort((a, b) => a.period - b.period || a.teacher.localeCompare(b.teacher));
     return matches[0];
   }
 
@@ -3849,6 +3894,20 @@
                 setSelectionFromEntry(resolved, "room");
                 showSelectionInfo(rrhsDeliverySelection);
               }
+            }
+            return;
+          }
+          const isCsvRoom = rrhsRoomExistsInCsvAnyPeriod(qTrim);
+          if (isCsvRoom) {
+            showError(false);
+            const preferredPeriod = rrhsDeliverySelection.period || rrhsGetCurrentOrNextPeriodForToday();
+            const resolvedAny = rrhsResolveRoomFromCsvAnyPeriod(qTrim, preferredPeriod);
+            if (resolvedAny) {
+              const keepHacMode =
+                String(rrhsDeliverySelection.mode || "") === "hac" &&
+                String(rrhsDeliverySelection.room || "").trim() === qTrim;
+              setSelectionFromEntry(resolvedAny, keepHacMode ? "hac" : "room");
+              showSelectionInfo(rrhsDeliverySelection);
             }
             return;
           }
