@@ -5269,6 +5269,7 @@
   function boot() {
     try {
       log('RRHS checkout boot');
+      rrhsBindEcwidPageEvents();
       rrhsHydrateDayTypeFromStorage();
       rrhsHydrateHacFromStorage();
       rrhsEnsureDayTypeSynced();
@@ -5293,6 +5294,8 @@
   }
 
   let bootScheduled = false;
+  let rrhsEcwidPageEventsBound = false;
+  let rrhsDeliveryAutofillTicket = 0;
   const raf =
     (typeof window !== "undefined" &&
       typeof window.requestAnimationFrame === "function")
@@ -5307,7 +5310,72 @@
     });
   };
 
+  function rrhsNormalizeEcwidPageType(page) {
+    if (!page || typeof page !== "object") return "";
+    return String(page.type || page.pageType || "").trim().toUpperCase();
+  }
+
+  function rrhsScheduleDeliveryAutofill(reason = "ecwid", delayMs = 0) {
+    const ticket = ++rrhsDeliveryAutofillTicket;
+    const delay = Math.max(0, Number(delayMs) || 0);
+    setTimeout(() => {
+      const runAttempt = (retriesLeft) => {
+        if (ticket !== rrhsDeliveryAutofillTicket) return;
+        if (!rrhsIsDeliveryCheckoutPage()) return;
+
+        const input = document.querySelector('input[name="z7rty2b"]');
+        if (!input) {
+          if (retriesLeft > 0) {
+            setTimeout(() => runAttempt(retriesLeft - 1), 120);
+          }
+          return;
+        }
+
+        rrhsRunInBackground(async () => {
+          initRoomAutocomplete();
+          await rrhsForceHacAutofillIntoDeliveryInput(`ecwid:${reason}`);
+          rrhsRefreshEverything(`ecwid:${reason}`);
+        }, 300);
+      };
+      runAttempt(40);
+    }, delay);
+  }
+
+  function rrhsBindEcwidPageEvents() {
+    if (rrhsEcwidPageEventsBound) return;
+    const ecwid = (typeof window !== "undefined") ? window.Ecwid : null;
+    if (!ecwid) return;
+
+    if (ecwid.OnPageSwitch && typeof ecwid.OnPageSwitch.add === "function") {
+      ecwid.OnPageSwitch.add(function(page) {
+        const type = rrhsNormalizeEcwidPageType(page);
+        if (type === "CHECKOUT_DELIVERY") {
+          rrhsScheduleDeliveryAutofill("OnPageSwitch", 20);
+        }
+      });
+    }
+
+    if (ecwid.OnPageLoad && typeof ecwid.OnPageLoad.add === "function") {
+      ecwid.OnPageLoad.add(function() {
+        scheduleBoot();
+      });
+    }
+
+    if (ecwid.OnPageLoaded && typeof ecwid.OnPageLoaded.add === "function") {
+      ecwid.OnPageLoaded.add(function(page) {
+        scheduleBoot();
+        const type = rrhsNormalizeEcwidPageType(page);
+        if (type === "CHECKOUT_DELIVERY") {
+          rrhsScheduleDeliveryAutofill("OnPageLoaded", 0);
+        }
+      });
+    }
+
+    rrhsEcwidPageEventsBound = true;
+  }
+
   scheduleBoot();
+  rrhsBindEcwidPageEvents();
   const runtime = (typeof window !== "undefined") ? window.RRHS_RUNTIME : null;
   if (runtime && typeof runtime.onDomChanged === "function") {
     runtime.onDomChanged(scheduleBoot, { runNow: false });
