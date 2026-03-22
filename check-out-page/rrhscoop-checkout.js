@@ -559,6 +559,48 @@
     }
   }
 
+  function rrhsHumanizeHacError(err) {
+    const raw = String(err && err.message ? err.message : err || "").trim();
+    const lower = raw.toLowerCase();
+    if (!raw) return "Login failed. Please try again.";
+    if (
+      lower.includes("wrong password") ||
+      lower.includes("invalid password") ||
+      lower.includes("invalid credentials") ||
+      lower.includes("bad credentials") ||
+      lower.includes("authentication failed") ||
+      lower.includes("unauthorized") ||
+      lower.includes("forbidden") ||
+      lower.includes("401") ||
+      lower.includes("403")
+    ) {
+      return "Wrong HAC username or password. Please try again.";
+    }
+    if (lower.includes("timeout") || lower.includes("aborted")) {
+      return "HAC request timed out. Please try again.";
+    }
+    return raw;
+  }
+
+  function rrhsNormalizeTeacherName(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s*,\s*/g, ",")
+      .replace(/\s+/g, " ");
+  }
+
+  function rrhsFindCsvTeacherName(candidate) {
+    const target = rrhsNormalizeTeacherName(candidate);
+    if (!target) return null;
+    const keys = Object.keys(ROOM_DATA || {});
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      if (rrhsNormalizeTeacherName(key) === target) return key;
+    }
+    return null;
+  }
+
   function rrhsParseHacReportByPeriod(reportPayload) {
     const out = Object.create(null);
     const headers = Array.isArray(reportPayload && reportPayload.headers)
@@ -619,7 +661,8 @@
 
   function rrhsApplyHacScheduleToDeliveryInput(input) {
     if (!input) return false;
-    if (!rrhsHacState.isSNumber || !rrhsHacState.authenticated) return false;
+    if (!rrhsHacState.isSNumber) return false;
+    if (!rrhsHacState.authenticated && Object.keys(rrhsHacState.reportByPeriod || {}).length === 0) return false;
     const scheduled = rrhsGetHacRoomForCurrentPeriod();
     if (!scheduled || !scheduled.room) return false;
 
@@ -627,10 +670,7 @@
     if (resolvedTeacher) {
       // Only trust HAC teacher-prefill when that teacher exists somewhere in the loaded CSV schedule.
       if (!rrhsRoomSchedule.ready) return false;
-      const teacherKeys = Object.keys(ROOM_DATA || {});
-      const teacherKey = teacherKeys.find(
-        (k) => String(k || "").trim().toLowerCase() === resolvedTeacher.toLowerCase()
-      ) || null;
+      const teacherKey = rrhsFindCsvTeacherName(resolvedTeacher);
       if (!teacherKey) return false;
       resolvedTeacher = teacherKey;
     }
@@ -741,6 +781,55 @@
         students: rrhsHacState.students.slice(),
         activeStudentId: rrhsHacState.activeStudentId,
         reportByPeriod: Object.assign({}, rrhsHacState.reportByPeriod)
+      };
+    } catch (err) {
+      rrhsHacState.lastError = err;
+      rrhsClearHacSessionState();
+      throw err;
+    } finally {
+      rrhsHacState.inFlight = false;
+    }
+  }
+
+  async function rrhsAuthenticateAndListHacStudents(username, password) {
+    const user = String(username || "").trim();
+    const pass = String(password || "");
+    if (!user || !pass) throw new Error("HAC username and password are required.");
+
+    rrhsHacState.inFlight = true;
+    try {
+      await rrhsHacPost("/api/login", { username: user, password: pass });
+      const studentsResp = await rrhsHacPost("/lookup/students", { username: user, password: pass });
+      const students = Array.isArray(studentsResp && studentsResp.students)
+        ? studentsResp.students
+        : [];
+      rrhsHacState.students = students;
+      rrhsHacState.authenticated = true;
+      rrhsHacState.sessionPassword = pass;
+      rrhsSetHacUsername(user);
+
+      let studentId = rrhsHacState.activeStudentId;
+      try {
+        const currentResp = await rrhsHacPost("/lookup/current", { username: user, password: pass });
+        const currentCandidate =
+          (currentResp && currentResp.current && currentResp.current.id) ||
+          (currentResp && currentResp.student && currentResp.student.id) ||
+          currentResp.student_id;
+        if (currentCandidate != null && String(currentCandidate).trim()) {
+          studentId = String(currentCandidate).trim();
+        }
+      } catch (_) {}
+      if (!studentId && students[0] && students[0].id) {
+        studentId = String(students[0].id);
+      }
+      if (studentId) {
+        const selected = students.find((s) => String(s && s.id ? s.id : "") === studentId) || null;
+        rrhsSetActiveStudent(studentId, selected && selected.name ? selected.name : "");
+      }
+      rrhsHacState.lastError = null;
+      return {
+        students: rrhsHacState.students.slice(),
+        activeStudentId: rrhsHacState.activeStudentId
       };
     } catch (err) {
       rrhsHacState.lastError = err;
@@ -1468,17 +1557,16 @@
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "border:1px solid #ccc;background:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;";
 
-    const loginBtnWrap = document.createElement("div");
-    loginBtnWrap.className = "form-control form-control--button form-control--large form-control--primary";
-    loginBtnWrap.style.flex = "0 0 auto";
-    const loginBtn = document.createElement("button");
-    loginBtn.type = "button";
-    loginBtn.className = "form-control__button";
-    loginBtn.innerHTML = `<div class="form-control__loader"></div><span class="form-control__button-text">Log in</span>`;
-    loginBtnWrap.appendChild(loginBtn);
+    const saveBtnWrap = document.createElement("div");
+    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--flexible";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "form-control__button";
+    saveBtn.innerHTML = `<span class="form-control__button-text">Save</span>`;
+    saveBtnWrap.appendChild(saveBtn);
 
     actions.appendChild(cancelBtn);
-    actions.appendChild(loginBtnWrap);
+    actions.appendChild(saveBtnWrap);
     panel.appendChild(usernameField.wrap);
     panel.appendChild(passwordField.wrap);
     panel.appendChild(actions);
@@ -1506,17 +1594,26 @@
       if (e.target === overlay) close();
     });
 
-    loginBtn.addEventListener("click", async () => {
+    let authBusy = false;
+    const setAuthBusy = (busy) => {
+      authBusy = Boolean(busy);
+      saveBtn.setAttribute("aria-disabled", authBusy ? "true" : "false");
+      saveBtn.style.opacity = authBusy ? "0.65" : "";
+      saveBtn.style.cursor = authBusy ? "wait" : "";
+    };
+
+    saveBtn.addEventListener("click", async () => {
+      if (authBusy) return;
       const user = String(usernameField.input.value || "").trim();
       const pass = String(passwordField.input.value || "");
       if (!user || !pass) {
         setModalError("Enter HAC username and password.");
         return;
       }
-
-      loginBtn.disabled = true;
+      setModalError("");
+      setAuthBusy(true);
       try {
-        await rrhsAuthenticateAndLoadHac(user, pass);
+        await rrhsAuthenticateAndListHacStudents(user, pass);
         rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
         rrhsSetHacUiMessage("error", "");
         rrhsRefreshHacUiVisibility();
@@ -1535,20 +1632,20 @@
             students,
             activeStudentId: rrhsHacState.activeStudentId,
             onSave: async (selectedId) => {
-              if (String(rrhsHacState.activeStudentId || "").trim() !== String(selectedId || "").trim()) {
-                await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
-              }
+              await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
               afterStudentResolved();
             }
           });
           return;
         }
-
+        if (rrhsHacState.activeStudentId) {
+          await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
+        }
         afterStudentResolved();
       } catch (err) {
-        setModalError(String(err && err.message ? err.message : "Authentication failed."));
+        setModalError(rrhsHumanizeHacError(err));
       } finally {
-        loginBtn.disabled = false;
+        setAuthBusy(false);
       }
     });
   }
@@ -1662,7 +1759,7 @@
     loginBtn.type = "button";
     loginBtn.className = "form-control__button";
     loginBtn.dataset.rrhsHacLoginBtn = "true";
-    loginBtn.innerHTML = `<span class="form-control__button-text">Log in</span>`;
+    loginBtn.innerHTML = `<span class="form-control__button-text">Save</span>`;
     loginBtnWrap.appendChild(loginBtn);
     credsCell.appendChild(loginBtnWrap);
 
@@ -1712,7 +1809,9 @@
       rrhsSetHacUsername(userField.input.value);
     });
 
+    let hacQueryBusy = false;
     const runHacQuery = async () => {
+      if (hacQueryBusy) return false;
       const user = String(userField.input.value || "").trim();
       const pass = String(passField.input.value || "");
       if (!rrhsHacState.isSNumber) {
@@ -1725,9 +1824,12 @@
       }
       rrhsSetHacUiMessage("error", "");
       rrhsSetHacUiMessage("success", "");
-      loginBtn.disabled = true;
+      hacQueryBusy = true;
+      loginBtn.setAttribute("aria-disabled", "true");
+      loginBtn.style.opacity = "0.65";
+      loginBtn.style.cursor = "wait";
       try {
-        await rrhsAuthenticateAndLoadHac(user, pass);
+        await rrhsAuthenticateAndListHacStudents(user, pass);
         const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
         const afterStudentResolved = () => {
           rrhsRenderHacStudentsIntoSelect(studentSelect);
@@ -1742,24 +1844,28 @@
             students,
             activeStudentId: rrhsHacState.activeStudentId,
             onSave: async (selectedId) => {
-              if (String(rrhsHacState.activeStudentId || "").trim() !== String(selectedId || "").trim()) {
-                await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
-              }
+              await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
               afterStudentResolved();
             }
           });
         } else {
+          if (rrhsHacState.activeStudentId) {
+            await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
+          }
           afterStudentResolved();
         }
         return true;
       } catch (err) {
         rrhsSetHacUiMessage(
           "error",
-          String(err && err.message ? err.message : "HAC authentication failed.")
+          rrhsHumanizeHacError(err)
         );
         return false;
       } finally {
-        loginBtn.disabled = false;
+        hacQueryBusy = false;
+        loginBtn.setAttribute("aria-disabled", "false");
+        loginBtn.style.opacity = "";
+        loginBtn.style.cursor = "";
       }
     };
 
