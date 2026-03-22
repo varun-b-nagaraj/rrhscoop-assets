@@ -146,6 +146,7 @@
 
   // Message shown when all delivery windows are disabled (matrix empty).
   const RRHS_CLOSED_MESSAGE_HTML = `The website is temporarily unavailable for regular orders due to maintenance. Thank you for your patience — service will resume on February 18th.`;
+  const RRHS_STORE_CLOSED_FOR_DAY_MESSAGE = "Store is closed for the day.";
 
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
@@ -359,6 +360,20 @@
     rrhsRunInBackground(() => {
       rrhsFetchDayTypeForDate(today);
     });
+  }
+
+  async function rrhsPrimeDayTypeForToday() {
+    if (rrhsSim.dayType === "A" || rrhsSim.dayType === "B") return rrhsSim.dayType;
+    const today = rrhsTodayIsoDate();
+    const alreadySynced =
+      rrhsDayTypeState.targetDate === today &&
+      (rrhsDayTypeState.value === "A" || rrhsDayTypeState.value === "B");
+    if (!alreadySynced) {
+      try {
+        await rrhsFetchDayTypeForDate(today);
+      } catch (_) {}
+    }
+    return getTodayDayType();
   }
 
   function rrhsGetHacApiConfig() {
@@ -819,11 +834,7 @@
     if (!reportPeriods.length) return null;
 
     const dayType = getTodayDayType();
-    const allowedPeriodsRaw = getAllowedPeriodsForDay(dayType);
-    const allowedPeriods =
-      allowedPeriodsRaw && allowedPeriodsRaw.length
-        ? allowedPeriodsRaw
-        : (dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8]);
+    const allowedPeriods = rrhsGetDisplayPeriodsForDay(dayType);
     const candidates = reportPeriods.filter((p) => allowedPeriods.includes(p));
     const usablePeriods = candidates.length ? candidates : reportPeriods;
 
@@ -885,6 +896,51 @@
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
+  }
+
+  function rrhsResetRoomInputVisualState(input, options = null) {
+    if (!input) return;
+    const opts = options && typeof options === "object" ? options : {};
+    const clearValue = Boolean(opts.clearValue);
+    const dispatch = opts.dispatchEvents !== false;
+
+    const wrapper = input.closest('[data-rrhs-room-wrapper="true"]');
+    if (wrapper) {
+      const dropdown = wrapper.querySelector('[data-rrhs-room-dropdown="true"]');
+      const errorMsg = wrapper.querySelector('[data-rrhs-room-error="true"]');
+      if (dropdown) dropdown.style.display = "none";
+      if (errorMsg) errorMsg.style.display = "none";
+    }
+
+    input.style.border = "1px solid #ddd";
+    input.style.backgroundColor = "";
+    if (clearValue) input.value = "";
+    if (dispatch) {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+
+  async function rrhsForceHacAutofillIntoDeliveryInput(reason = "hac:autofill") {
+    const input = document.querySelector('input[name="z7rty2b"]');
+    if (!input) return false;
+
+    try {
+      await loadRoomSchedule();
+    } catch (_) {}
+    await rrhsPrimeDayTypeForToday();
+
+    rrhsDeliverySelection.dayType = getTodayDayType();
+    rrhsDeliverySelection.teacher = null;
+    rrhsDeliverySelection.period = null;
+    rrhsDeliverySelection.room = null;
+    rrhsDeliverySelection.mode = null;
+    rrhsDeliverySelection.specialId = null;
+
+    rrhsResetRoomInputVisualState(input, { clearValue: true, dispatchEvents: false });
+    const applied = rrhsApplyHacScheduleToDeliveryInput(input);
+    rrhsRefreshEverything(applied ? reason : `${reason}:noop`);
+    return applied;
   }
 
   function rrhsRenderHacStudentsIntoSelect(select) {
@@ -971,6 +1027,7 @@
       console.log("[RRHS HAC debug] report response body:", reportResp);
       rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
       console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
+      await rrhsPrimeDayTypeForToday();
       rrhsHacState.cacheStale = false;
       rrhsPersistHacCache();
       rrhsHacState.lastError = null;
@@ -1067,6 +1124,7 @@
       console.log("[RRHS HAC debug] report response body:", reportResp);
       rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
       console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
+      await rrhsPrimeDayTypeForToday();
       rrhsHacState.authenticated = true;
       rrhsHacState.sessionPassword = pass;
       rrhsHacState.cacheStale = false;
@@ -1594,16 +1652,9 @@
     pickerWrap.style.cssText = "margin-bottom:12px;";
     pickerWrap.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#222;">Active student</div>`;
 
-    const pickerBtn = document.createElement("button");
-    pickerBtn.type = "button";
-    pickerBtn.style.cssText = "width:100%;text-align:left;border:1px solid #cfd8dc;background:#fff;color:#111;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;";
-    pickerBtn.textContent = "Select student";
-
-    const menu = document.createElement("div");
-    menu.style.cssText = "display:none;margin-top:6px;border:1px solid #cfd8dc;border-radius:8px;max-height:220px;overflow:auto;background:#fff;";
-
-    pickerWrap.appendChild(pickerBtn);
-    pickerWrap.appendChild(menu);
+    const list = document.createElement("div");
+    list.style.cssText = "border:1px solid #cfd8dc;border-radius:10px;max-height:220px;overflow:auto;background:#fff;";
+    pickerWrap.appendChild(list);
     panel.appendChild(pickerWrap);
 
     const actions = document.createElement("div");
@@ -1640,43 +1691,38 @@
       errorNode.style.display = "block";
     };
 
-    const renderMenu = () => {
-      menu.innerHTML = "";
+    const renderList = () => {
+      list.innerHTML = "";
       students.forEach((student) => {
         const id = String(student && student.id ? student.id : "").trim();
         const name = String(student && student.name ? student.name : id).trim();
         if (!id) return;
         const row = document.createElement("button");
         row.type = "button";
-        row.style.cssText = "width:100%;text-align:left;padding:10px 12px;border:none;border-bottom:1px solid #eceff1;background:#fff;cursor:pointer;font-size:14px;";
-        row.textContent = name ? `${name} (${id})` : id;
-        row.addEventListener("mouseenter", () => { row.style.background = "#f5f7fa"; });
-        row.addEventListener("mouseleave", () => { row.style.background = "#fff"; });
+        const isSelected = selectedId === id;
+        row.style.cssText =
+          "width:100%;text-align:left;padding:11px 12px;border:none;border-bottom:1px solid #eceff1;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;";
+        row.innerHTML = `
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+            <span style="font-weight:600;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name || id}</span>
+            <span style="font-size:12px;color:#6b7280;">${id}</span>
+          </span>
+          <span style="font-size:12px;color:${isSelected ? "#1d4ed8" : "#9ca3af"};font-weight:600;">${isSelected ? "Selected" : ""}</span>
+        `;
+        row.style.background = isSelected ? "#eff6ff" : "#fff";
         row.addEventListener("click", () => {
           selectedId = id;
-          pickerBtn.textContent = name ? `${name} (${id})` : id;
-          menu.style.display = "none";
           setError("");
+          renderList();
         });
-        menu.appendChild(row);
+        list.appendChild(row);
       });
+      const last = list.lastElementChild;
+      if (last) last.style.borderBottom = "none";
     };
-    renderMenu();
-
-    const active = students.find((s) => String(s && s.id ? s.id : "").trim() === selectedId) || null;
-    if (active) {
-      const label = String(active.name || active.id || "").trim();
-      pickerBtn.textContent = active.id ? `${label} (${active.id})` : label;
-    }
-
-    const onDocClick = (e) => {
-      if (!overlay.contains(e.target) || pickerWrap.contains(e.target)) return;
-      menu.style.display = "none";
-    };
-    document.addEventListener("click", onDocClick, true);
+    renderList();
 
     const close = () => {
-      document.removeEventListener("click", onDocClick, true);
       overlay.remove();
     };
 
@@ -1684,7 +1730,8 @@
     const setBusy = (busy) => {
       saveBtn.disabled = !!busy;
       cancelBtn.disabled = !!busy;
-      pickerBtn.disabled = !!busy;
+      list.style.pointerEvents = busy ? "none" : "";
+      list.style.opacity = busy ? "0.7" : "";
       if (busy) {
         if (!busyOverlay) {
           busyOverlay = document.createElement("div");
@@ -1699,10 +1746,6 @@
         busyOverlay = null;
       }
     };
-
-    pickerBtn.addEventListener("click", () => {
-      menu.style.display = menu.style.display === "none" ? "block" : "none";
-    });
 
     cancelBtn.addEventListener("click", () => {
       close();
@@ -1777,11 +1820,12 @@
     cancelBtn.style.cssText = "border:1px solid #d0d0d0;background:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;min-width:116px;height:42px;";
 
     const saveBtnWrap = document.createElement("div");
-    saveBtnWrap.style.cssText = "display:flex;align-items:center;justify-content:center;";
+    saveBtnWrap.className = "form-control form-control--button form-control--large form-control--primary form-control--done";
+    saveBtnWrap.style.cssText = "min-width:116px;max-width:116px;display:flex;align-items:center;";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "form-control__button";
-    saveBtn.style.cssText = "display:flex;align-items:center;justify-content:center;min-width:116px;height:42px;padding:10px 14px;border-radius:8px;border:1px solid #1f2937;background:#1f2937;color:#fff;cursor:pointer;";
+    saveBtn.style.cssText = "width:100%;display:flex;align-items:center;justify-content:center;height:42px;padding:10px 14px;border-radius:8px;cursor:pointer;";
     saveBtn.innerHTML = `<span class="form-control__button-text">Save</span>`;
     const saveBtnText = saveBtn.querySelector(".form-control__button-text");
     if (saveBtnText) saveBtnText.style.cssText = "color:inherit;font-weight:600;line-height:1;";
@@ -1819,6 +1863,8 @@
     let authBusy = false;
     const setAuthBusy = (busy) => {
       authBusy = Boolean(busy);
+      saveBtn.disabled = authBusy;
+      cancelBtn.disabled = authBusy;
       saveBtn.setAttribute("aria-disabled", authBusy ? "true" : "false");
       saveBtn.style.opacity = authBusy ? "0.65" : "";
       saveBtn.style.cursor = authBusy ? "wait" : "";
@@ -1841,9 +1887,9 @@
         rrhsRefreshHacUiVisibility();
 
         const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
-        const afterStudentResolved = () => {
+        const afterStudentResolved = async () => {
           rrhsRefreshHacUiVisibility();
-          rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+          await rrhsForceHacAutofillIntoDeliveryInput("hac:auth-modal");
           initRoomAutocomplete();
         };
 
@@ -1855,7 +1901,7 @@
             activeStudentId: rrhsHacState.activeStudentId,
             onSave: async (selectedId) => {
               await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
-              afterStudentResolved();
+              await afterStudentResolved();
             }
           });
           return;
@@ -1863,7 +1909,7 @@
         if (rrhsHacState.activeStudentId) {
           await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
         }
-        afterStudentResolved();
+        await afterStudentResolved();
       } catch (err) {
         setModalError(rrhsHumanizeHacError(err));
       } finally {
@@ -1960,7 +2006,7 @@
       rrhsRefreshHacUiVisibility();
       rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
       refs.passwordInput.value = "";
-      rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+      await rrhsForceHacAutofillIntoDeliveryInput("hac:inline-save");
       initRoomAutocomplete();
       return true;
     } catch (err) {
@@ -2134,7 +2180,7 @@
         await rrhsSwitchActiveStudentAndRefresh(user, pass, selectedId);
         rrhsSetHacUiMessage("success", "Active student updated.");
         passField.input.value = "";
-        rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+        await rrhsForceHacAutofillIntoDeliveryInput("hac:inline-switch");
         initRoomAutocomplete();
       } catch (err) {
         rrhsSetHacUiMessage("error", String(err && err.message ? err.message : "Failed to switch student."));
@@ -3143,6 +3189,35 @@
     return Array.from(new Set(mapped)).sort((a, b) => a - b);
   }
 
+  function rrhsGetDisplayPeriodsForDay(dayType) {
+    const dt = dayType === "A" ? "A" : "B";
+    const allowed = getAllowedPeriodsForDay(dt);
+    if (allowed && allowed.length) return allowed;
+    return dt === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8];
+  }
+
+  function rrhsGetLastCloseMinuteForDay(dayType) {
+    const displayPeriods = rrhsGetDisplayPeriodsForDay(dayType);
+    let latest = null;
+    for (let i = 0; i < displayPeriods.length; i++) {
+      const w = getPeriodWindow(displayPeriods[i]);
+      if (!w) continue;
+      if (latest == null || w.closeMin > latest) latest = w.closeMin;
+    }
+    return latest;
+  }
+
+  function rrhsIsPastLastDeliveryWindow(nowDate = rrhsGetNowDate(), dayType = null) {
+    const now = nowDate instanceof Date ? nowDate : rrhsGetNowDate();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return false;
+    const dt = (dayType === "A" || dayType === "B") ? dayType : getTodayDayType();
+    const lastClose = rrhsGetLastCloseMinuteForDay(dt);
+    if (!Number.isFinite(lastClose)) return false;
+    const nowMin = getNowMinutes(now);
+    return nowMin >= lastClose;
+  }
+
   function rrhsGetCurrentOrNextBasePeriodForDelivery(nowMin = null) {
     const minutes = nowMin == null ? getNowMinutes() : Number(nowMin);
     if (!Number.isFinite(minutes)) return null;
@@ -3167,11 +3242,7 @@
 
   function rrhsGetCurrentOrNextPeriodForToday(nowMin = null) {
     const dayType = getTodayDayType();
-    const allowedPeriods = getAllowedPeriodsForDay(dayType);
-    const displayPeriods =
-      allowedPeriods && allowedPeriods.length
-        ? allowedPeriods
-        : (dayType === "A" ? [1, 2, 3, 4] : [5, 6, 7, 8]);
+    const displayPeriods = rrhsGetDisplayPeriodsForDay(dayType);
     if (!displayPeriods || displayPeriods.length === 0) return null;
 
     const minutes = nowMin == null ? getNowMinutes() : Number(nowMin);
@@ -3351,14 +3422,16 @@
   }
 
   function getSelectionValidation() {
-    if (rrhsHasPrivilegedEmployeeAccess()) {
-      return { ok: true, message: "" };
-    }
-
     const today = rrhsGetNowDate();
     const dow = today.getDay();
     if (dow === 0 || dow === 6) {
       return { ok: false, message: "Deliveries are only available on school days." };
+    }
+    if (rrhsIsPastLastDeliveryWindow(today)) {
+      return { ok: false, message: RRHS_STORE_CLOSED_FOR_DAY_MESSAGE };
+    }
+    if (rrhsHasPrivilegedEmployeeAccess()) {
+      return { ok: true, message: "" };
     }
 
     if (
@@ -3589,6 +3662,7 @@
       if (input.dataset.rrhsUiRefresher !== "1") {
         input.dataset.rrhsUiRefresher = "1";
         rrhsUiRefreshers.push((reason) => {
+          if (setClosedForDayState()) return;
           const schedule = getDerivedScheduleForToday();
           if (!schedule) return;
 
@@ -3686,6 +3760,45 @@
         errorMsg.style.padding = "8px 10px";
         errorMsg.textContent = text;
         errorMsg.style.display = "block";
+      }
+
+      function setClosedForDayState() {
+        const isClosedForDay = rrhsIsPastLastDeliveryWindow(rrhsGetNowDate());
+        if (input.dataset.rrhsAllDayRoomLocked === "1") return false;
+
+        if (isClosedForDay) {
+          if (input.dataset.rrhsClosedForDayLocked !== "1") {
+            input.dataset.rrhsClosedForDayLocked = "1";
+            input.dataset.rrhsClosedForDayPrevPointerEvents = String(input.style.pointerEvents || "");
+            input.dataset.rrhsClosedForDayPrevCursor = String(input.style.cursor || "");
+            input.dataset.rrhsClosedForDayPrevBackground = String(input.style.backgroundColor || "");
+            input.dataset.rrhsClosedForDayPrevReadOnly = input.readOnly ? "1" : "0";
+          }
+          input.readOnly = true;
+          input.style.pointerEvents = "none";
+          input.style.cursor = "not-allowed";
+          input.style.backgroundColor = "#f5f5f5";
+          hideDropdown();
+          showInfo(RRHS_STORE_CLOSED_FOR_DAY_MESSAGE);
+          return true;
+        }
+
+        if (input.dataset.rrhsClosedForDayLocked === "1") {
+          const prevPointerEvents = String(input.dataset.rrhsClosedForDayPrevPointerEvents || "");
+          const prevCursor = String(input.dataset.rrhsClosedForDayPrevCursor || "");
+          const prevBackground = String(input.dataset.rrhsClosedForDayPrevBackground || "");
+          const prevReadOnly = String(input.dataset.rrhsClosedForDayPrevReadOnly || "0") === "1";
+          input.readOnly = prevReadOnly;
+          input.style.pointerEvents = prevPointerEvents;
+          input.style.cursor = prevCursor;
+          input.style.backgroundColor = prevBackground;
+          delete input.dataset.rrhsClosedForDayLocked;
+          delete input.dataset.rrhsClosedForDayPrevPointerEvents;
+          delete input.dataset.rrhsClosedForDayPrevCursor;
+          delete input.dataset.rrhsClosedForDayPrevBackground;
+          delete input.dataset.rrhsClosedForDayPrevReadOnly;
+        }
+        return false;
       }
 
       function formatRoomLabel(roomValue) {
@@ -4052,6 +4165,7 @@
 
       function handleQueryChange() {
         if (ignoreInput) return;
+        if (setClosedForDayState()) return;
         showError(false);
         const query = String(input.value || "");
 
@@ -4078,6 +4192,7 @@
 
       input.addEventListener("input", handleQueryChange);
       input.addEventListener("focus", () => {
+        if (setClosedForDayState()) return;
         lastRenderedQuery = null;
         handleQueryChange();
       });
@@ -4138,6 +4253,7 @@
       });
 
       showSelectionInfo(rrhsDeliverySelection);
+      setClosedForDayState();
 
       document.addEventListener("click", (e) => {
         if (!wrapper.contains(e.target)) hideDropdown();
@@ -4274,7 +4390,7 @@
       rrhsRenderHacStudentsIntoSelect(refs.studentSelect);
       rrhsRefreshHacUiVisibility();
       rrhsSetHacUiMessage("success", "HAC info saved and student schedule refreshed.");
-      rrhsApplyHacScheduleToDeliveryInput(document.querySelector('input[name="z7rty2b"]'));
+      await rrhsForceHacAutofillIntoDeliveryInput("hac:account-save");
       initRoomAutocomplete();
       return true;
     } catch (err) {
@@ -4823,6 +4939,12 @@
       return `Your cart includes ${parts.join(", ")} along with other items. Items eligible for all-day delivery must be placed separately. Please remove other items and complete them in a separate order, as regular items are only available during active delivery windows.`;
     }
 
+    const now = rrhsGetNowDate();
+    const dow = now.getDay();
+    if (dow !== 0 && dow !== 6 && rrhsIsPastLastDeliveryWindow(now)) {
+      return RRHS_STORE_CLOSED_FOR_DAY_MESSAGE;
+    }
+
     const hasCompleteSelection =
       rrhsDeliverySelection.dayType &&
       rrhsDeliverySelection.room &&
@@ -4860,13 +4982,14 @@
     if (CHECKOUT_ALWAYS_ALLOW) return true;
     const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
     if (alwaysAllowOverride === true) return true;
-    if (rrhsCanBypassOrderingWindowByEmployeeId()) return true;
     const now = rrhsGetNowDate();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
-    const nowMin = getNowMinutes(now);
     const dayType = getTodayDayType();
-    const allowedPeriods = getAllowedPeriodsForDay(dayType);
+    if (rrhsIsPastLastDeliveryWindow(now, dayType)) return false;
+    if (rrhsCanBypassOrderingWindowByEmployeeId()) return true;
+    const nowMin = getNowMinutes(now);
+    const allowedPeriods = rrhsGetDisplayPeriodsForDay(dayType);
     return allowedPeriods.some((p) => {
       const w = getPeriodWindow(p);
       if (!w) return false;
@@ -4875,6 +4998,9 @@
   }
 
   function checkOrderingWindow() {
+    if (!CHECKOUT_ALWAYS_ALLOW && rrhsGetAlwaysAllowOverride() !== true && rrhsIsPastLastDeliveryWindow(rrhsGetNowDate())) {
+      return false;
+    }
     if (rrhsCartState.hasAllDayDelivery && !rrhsCartState.hasRegularItems) return true;
     if (rrhsCartState.hasAllDayDelivery && rrhsCartState.hasRegularItems) return false;
     return checkOrderingWindowBase();
