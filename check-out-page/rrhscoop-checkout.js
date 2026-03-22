@@ -155,8 +155,44 @@
   // In-memory simulation overrides (reset on refresh)
   const rrhsSim = {
     dayType: null, // "A" | "B" | null
-    nowMinutes: null // number (0..1439) | null
+    nowMinutes: null, // number (0..1439) | null
+    isoDate: null // "YYYY-MM-DD" | null
   };
+
+  function rrhsNormalizeIsoDate(value) {
+    const v = String(value == null ? "" : value).trim();
+    if (!v) return null;
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+    const dt = new Date(y, mo - 1, d);
+    if (
+      dt.getFullYear() !== y ||
+      dt.getMonth() !== mo - 1 ||
+      dt.getDate() !== d
+    ) {
+      return null;
+    }
+    return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+
+  function rrhsGetNowDate() {
+    const now = new Date();
+    const simIso = rrhsNormalizeIsoDate(rrhsSim.isoDate);
+    if (!simIso) return now;
+    const dt = new Date(`${simIso}T00:00:00`);
+    if (!Number.isFinite(dt.getTime())) return now;
+    if (Number.isFinite(rrhsSim.nowMinutes)) {
+      const mins = Math.max(0, Math.min(24 * 60 - 1, Math.floor(Number(rrhsSim.nowMinutes))));
+      dt.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    } else {
+      dt.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    }
+    return dt;
+  }
 
   const rrhsDayTypeState = {
     value: null,      // "A" | "B" | null
@@ -194,7 +230,9 @@
   }
 
   function rrhsTodayIsoDate() {
-    const now = new Date();
+    const simIso = rrhsNormalizeIsoDate(rrhsSim.isoDate);
+    if (simIso) return simIso;
+    const now = rrhsGetNowDate();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
     const d = String(now.getDate()).padStart(2, "0");
@@ -2744,7 +2782,7 @@
     return `Period ${p}`;
   }
 
-  function getNowMinutes(date = new Date()) {
+  function getNowMinutes(date = rrhsGetNowDate()) {
     if (Number.isFinite(rrhsSim.nowMinutes)) {
       return Math.max(0, Math.min(24 * 60 - 1, Math.floor(Number(rrhsSim.nowMinutes))));
     }
@@ -2894,6 +2932,7 @@
           setCloseDeltaMinutes: "RRHS_OVERRIDES.setCloseDeltaMinutes(15)",
           setBasePeriodWindow: "RRHS_OVERRIDES.setBasePeriodWindow(1, '09:00', '10:40')",
           setSimDayType: "RRHS_OVERRIDES.setSimDayType('A'|'B'|null)",
+          setSimDate: "RRHS_OVERRIDES.setSimDate('YYYY-MM-DD'|null)",
           setSimTime: "RRHS_OVERRIDES.setSimTime('HH:MM'|null)",
           setSimMinutes: "RRHS_OVERRIDES.setSimMinutes(0..1439|null)",
           reset: "RRHS_OVERRIDES.reset()",
@@ -2907,6 +2946,7 @@
           closeDeltaMinutes: rrhsGetCloseDeltaMinutesOverride(),
           basePeriodWindows: rrhsGetBaseWindowsOverride(),
           simDayType: rrhsSim.dayType,
+          simDate: rrhsSim.isoDate,
           simNowMinutes: rrhsSim.nowMinutes,
           simNowLabel: Number.isFinite(rrhsSim.nowMinutes)
             ? formatMinutes(rrhsSim.nowMinutes)
@@ -2946,6 +2986,18 @@
         rrhsRefreshEverything("sim:setDayType");
         return true;
       },
+      setSimDate: (isoDate) => {
+        if (isoDate == null || String(isoDate).trim() === "") {
+          rrhsSim.isoDate = null;
+          rrhsRefreshEverything("sim:clearDate");
+          return true;
+        }
+        const normalized = rrhsNormalizeIsoDate(isoDate);
+        if (!normalized) return false;
+        rrhsSim.isoDate = normalized;
+        rrhsRefreshEverything("sim:setDate");
+        return true;
+      },
       setSimTime: (hhmm) => {
         if (hhmm == null || String(hhmm).trim() === "") {
           rrhsSim.nowMinutes = null;
@@ -2976,6 +3028,7 @@
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.closeDeltaMinutes);
         ss.removeItem(RRHS_SESSION_OVERRIDE_KEYS.baseWindows);
         rrhsSim.dayType = null;
+        rrhsSim.isoDate = null;
         rrhsSim.nowMinutes = null;
         rrhsRefreshEverything("override:reset");
         return true;
@@ -3214,7 +3267,7 @@
       return { ok: true, message: "" };
     }
 
-    const today = new Date();
+    const today = rrhsGetNowDate();
     const dow = today.getDay();
     if (dow === 0 || dow === 6) {
       return { ok: false, message: "Deliveries are only available on school days." };
@@ -4625,7 +4678,7 @@
     const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
     if (alwaysAllowOverride === true) return true;
     if (rrhsCanBypassOrderingWindowByEmployeeId()) return true;
-    const now = new Date();
+    const now = rrhsGetNowDate();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
     const nowMin = getNowMinutes(now);
