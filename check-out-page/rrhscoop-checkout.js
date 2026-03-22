@@ -14,8 +14,14 @@
   // ---------------------------
   // Frequently edited settings
   // ---------------------------
-  // A/B day reference (YYYY-MM-DD). This date is treated as an "A Day".
-  const REFERENCE_A_DAY = "2026-03-09";
+  // A/B day source (HAC API).
+  const RRHS_DAY_TYPE_API_DEFAULT = Object.freeze({
+    endpoint: "https://hacapi-hh-yu5w.vercel.app/api/getDayType",
+    baseUrl: "https://accesscenter.roundrockisd.org/",
+    username: "nagarajbr",
+    password: "222svn##",
+    requestTimeoutMs: 8000
+  });
 
   // Emergency bypass (ignores day/period windows).
   const CHECKOUT_ALWAYS_ALLOW = false;
@@ -130,11 +136,19 @@
   const rrhsUiRefreshers = [];
   let rrhsLastDayType = null;
   let rrhsLastOverrideSignature = null;
+  const RRHS_DAY_TYPE_CACHE_KEY = "rrhs_day_type_cache_v1";
 
   // In-memory simulation overrides (reset on refresh)
   const rrhsSim = {
     dayType: null, // "A" | "B" | null
     nowMinutes: null // number (0..1439) | null
+  };
+
+  const rrhsDayTypeState = {
+    value: null,      // "A" | "B" | null
+    targetDate: null, // YYYY-MM-DD | null
+    inFlight: false,
+    lastError: null
   };
 
   function rrhsRunInBackground(fn, timeoutMs = 2000) {
@@ -146,6 +160,121 @@
       }
     } catch (e) {}
     setTimeout(fn, 0);
+  }
+
+  function rrhsTodayIsoDate() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function rrhsGetDayTypeApiConfig() {
+    const fromWindow =
+      (typeof window !== "undefined" &&
+        window.RRHS_DAY_TYPE_API_CONFIG &&
+        typeof window.RRHS_DAY_TYPE_API_CONFIG === "object")
+        ? window.RRHS_DAY_TYPE_API_CONFIG
+        : null;
+    const merged = Object.assign({}, RRHS_DAY_TYPE_API_DEFAULT, fromWindow || {});
+    merged.endpoint = String(merged.endpoint || "").trim();
+    merged.baseUrl = String(merged.baseUrl || "").trim();
+    merged.username = String(merged.username || "").trim();
+    merged.password = String(merged.password || "").trim();
+    const timeout = Number(merged.requestTimeoutMs);
+    merged.requestTimeoutMs = Number.isFinite(timeout) && timeout > 0 ? Math.floor(timeout) : 8000;
+    return merged;
+  }
+
+  function rrhsHydrateDayTypeFromStorage() {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      const raw = window.localStorage.getItem(RRHS_DAY_TYPE_CACHE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return;
+      const dayType = String(parsed.dayType || "").trim().toUpperCase();
+      const targetDate = String(parsed.targetDate || "").trim();
+      if ((dayType !== "A" && dayType !== "B") || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return;
+      rrhsDayTypeState.value = dayType;
+      rrhsDayTypeState.targetDate = targetDate;
+    } catch (e) {}
+  }
+
+  function rrhsPersistDayType(dayType, targetDate) {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      if ((dayType !== "A" && dayType !== "B") || !/^\d{4}-\d{2}-\d{2}$/.test(String(targetDate || ""))) return;
+      window.localStorage.setItem(
+        RRHS_DAY_TYPE_CACHE_KEY,
+        JSON.stringify({ dayType, targetDate, ts: Date.now() })
+      );
+    } catch (e) {}
+  }
+
+  async function rrhsFetchDayTypeForDate(targetDate) {
+    if (rrhsDayTypeState.inFlight) return;
+    const cfg = rrhsGetDayTypeApiConfig();
+    if (!cfg.endpoint || !cfg.baseUrl || !cfg.username || !cfg.password) return;
+
+    rrhsDayTypeState.inFlight = true;
+    try {
+      const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), cfg.requestTimeoutMs) : null;
+      let payload;
+      try {
+        const res = await fetch(cfg.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            username: cfg.username,
+            password: cfg.password,
+            base_url: cfg.baseUrl,
+            target_date: targetDate
+          }),
+          signal: controller ? controller.signal : undefined
+        });
+        if (!res.ok) throw new Error(`DayType API HTTP ${res.status}`);
+        payload = await res.json();
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+
+      const dayTypeRaw = String(payload && payload.day_type ? payload.day_type : "").trim().toUpperCase();
+      const resolvedDate = String(payload && payload.target_date ? payload.target_date : targetDate).trim();
+      if (dayTypeRaw !== "A" && dayTypeRaw !== "B") {
+        throw new Error("DayType API returned invalid day_type");
+      }
+
+      const prevDayType = rrhsDayTypeState.value;
+      const prevDate = rrhsDayTypeState.targetDate;
+      rrhsDayTypeState.value = dayTypeRaw;
+      rrhsDayTypeState.targetDate = resolvedDate;
+      rrhsDayTypeState.lastError = null;
+      rrhsPersistDayType(dayTypeRaw, resolvedDate);
+
+      if (prevDayType !== dayTypeRaw || prevDate !== resolvedDate) {
+        rrhsRefreshEverything("daytype:api");
+      }
+    } catch (e) {
+      rrhsDayTypeState.lastError = e;
+      log("RRHS day-type sync failed", e);
+    } finally {
+      rrhsDayTypeState.inFlight = false;
+    }
+  }
+
+  function rrhsEnsureDayTypeSynced() {
+    if (rrhsSim.dayType === "A" || rrhsSim.dayType === "B") return;
+    const today = rrhsTodayIsoDate();
+    const hasToday = rrhsDayTypeState.targetDate === today &&
+      (rrhsDayTypeState.value === "A" || rrhsDayTypeState.value === "B");
+    if (hasToday || rrhsDayTypeState.inFlight) return;
+    rrhsRunInBackground(() => {
+      rrhsFetchDayTypeForDate(today);
+    });
   }
 
   function rrhsGetOverrideSignature() {
@@ -1196,7 +1325,16 @@
 
   function getTodayDayType() {
     if (rrhsSim.dayType === "A" || rrhsSim.dayType === "B") return rrhsSim.dayType;
-    return isADay() ? "A" : "B";
+    rrhsEnsureDayTypeSynced();
+    const today = rrhsTodayIsoDate();
+    if (
+      rrhsDayTypeState.targetDate === today &&
+      (rrhsDayTypeState.value === "A" || rrhsDayTypeState.value === "B")
+    ) {
+      return rrhsDayTypeState.value;
+    }
+    // Safe fallback until API response arrives.
+    return "B";
   }
 
   function parseTimeToMinutes(hhmm) {
@@ -2888,24 +3026,6 @@
     return RRHS_CLOSED_MESSAGE_HTML;
   }
 
-  function isADay() {
-    const now = new Date();
-    const referenceDate = new Date(REFERENCE_A_DAY + 'T00:00:00');
-    now.setHours(0,0,0,0);
-    referenceDate.setHours(0,0,0,0);
-    let dayCount = 0;
-    const current = new Date(referenceDate);
-
-    while (current < now) {
-      current.setDate(current.getDate() + 1);
-      const dayOfWeek = current.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        dayCount++;
-      }
-    }
-    return dayCount % 2 === 0;
-  }
-
   function checkOrderingWindowBase() {
     if (CHECKOUT_ALWAYS_ALLOW) return true;
     const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
@@ -3045,6 +3165,8 @@
   function boot() {
     try {
       log('RRHS checkout boot');
+      rrhsHydrateDayTypeFromStorage();
+      rrhsEnsureDayTypeSynced();
       initCartChangedListener();
       initEmployeeCheckoutValidation();
       initRoomAutocomplete();
@@ -3090,6 +3212,7 @@
     const inCartOrCheckout = document.querySelector(".ec-cart, .ec-cart-step, .ec-checkout");
     const checkoutButton = document.querySelector('.ec-cart__button--checkout button');
     if (!inCartOrCheckout || !checkoutButton) return;
+    rrhsEnsureDayTypeSynced();
     rrhsRefreshEverything("tick:1m");
   };
 
