@@ -22,10 +22,8 @@
     password: "",
     requestTimeoutMs: 8000
   });
-  // HAC login/switch UI is intentionally disabled for now.
-  // Only day-type sync from HAC API remains active.
   const RRHS_HAC_UI_ENABLED =
-    (typeof window !== "undefined" && window.RRHS_HAC_UI_ENABLED === true) || false;
+    (typeof window !== "undefined" && window.RRHS_HAC_UI_ENABLED === false) ? false : true;
 
   // Emergency bypass (ignores day/period windows).
   const CHECKOUT_ALWAYS_ALLOW = false;
@@ -140,6 +138,7 @@
     hacUsername: "rrhs_hac_username_v1",
     activeStudentId: "rrhs_hac_active_student_id_v1",
     activeStudentName: "rrhs_hac_active_student_name_v1",
+    activeSchedulePayload: "rrhs_hac_active_schedule_payload_v1",
     cacheLocal: "rrhs_hac_cache_v1",
     cacheSession: "rrhs_hac_cache_session_v1"
   });
@@ -216,6 +215,8 @@
     students: [],
     activeStudentId: "",
     activeStudentName: "",
+    activeReportStudentId: "",
+    reportsByStudent: Object.create(null),
     reportByPeriod: Object.create(null),
     sessionPassword: "",
     cachedAt: 0,
@@ -484,6 +485,45 @@
     if (!fresh) rrhsHacState.authenticated = false;
   }
 
+  function rrhsCloneReportByPeriodMap(map) {
+    const input = map && typeof map === "object" ? map : {};
+    const out = Object.create(null);
+    Object.keys(input).forEach((key) => {
+      const raw = input[key];
+      if (!raw) return;
+      if (typeof raw === "string") {
+        out[key] = String(raw);
+        return;
+      }
+      if (typeof raw === "object") {
+        out[key] = {
+          room: String(raw.room == null ? "" : raw.room).trim(),
+          teacher: String(raw.teacher == null ? "" : raw.teacher).trim()
+        };
+      }
+    });
+    return out;
+  }
+
+  function rrhsCloneReportsByStudentMap(map) {
+    const input = map && typeof map === "object" ? map : {};
+    const out = Object.create(null);
+    Object.keys(input).forEach((studentId) => {
+      const entry = input[studentId];
+      if (!entry || typeof entry !== "object") return;
+      out[String(studentId)] = {
+        studentId: String(entry.studentId == null ? studentId : entry.studentId).trim(),
+        studentName: String(entry.studentName == null ? "" : entry.studentName).trim(),
+        reportStudentId: String(entry.reportStudentId == null ? "" : entry.reportStudentId).trim(),
+        report: entry.report && typeof entry.report === "object"
+          ? JSON.parse(JSON.stringify(entry.report))
+          : {},
+        reportByPeriod: rrhsCloneReportByPeriodMap(entry.reportByPeriod)
+      };
+    });
+    return out;
+  }
+
   function rrhsBuildHacCachePayload() {
     return {
       seNumber: rrhsHacState.seNumber,
@@ -491,7 +531,9 @@
       students: Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [],
       activeStudentId: rrhsHacState.activeStudentId,
       activeStudentName: rrhsHacState.activeStudentName,
-      reportByPeriod: Object.assign({}, rrhsHacState.reportByPeriod),
+      activeReportStudentId: rrhsHacState.activeReportStudentId,
+      reportsByStudent: rrhsCloneReportsByStudentMap(rrhsHacState.reportsByStudent),
+      reportByPeriod: rrhsCloneReportByPeriodMap(rrhsHacState.reportByPeriod),
       cachedAt: Date.now()
     };
   }
@@ -546,14 +588,32 @@
     if (cachedSe && rrhsHacState.seNumber && cachedSe !== rrhsHacState.seNumber) return;
 
     const students = Array.isArray(cached.students) ? cached.students : [];
-    const report = cached.reportByPeriod && typeof cached.reportByPeriod === "object"
-      ? cached.reportByPeriod
-      : {};
+    const reportsByStudent = rrhsCloneReportsByStudentMap(cached.reportsByStudent);
+    const report = rrhsCloneReportByPeriodMap(cached.reportByPeriod);
     const cachedAt = Number(cached.cachedAt);
 
     rrhsHacState.students = students;
     rrhsSetActiveStudent(cached.activeStudentId || "", cached.activeStudentName || "");
-    rrhsHacState.reportByPeriod = Object.assign(Object.create(null), report);
+    rrhsHacState.activeReportStudentId = String(cached.activeReportStudentId || "").trim();
+    rrhsHacState.reportsByStudent = reportsByStudent;
+
+    if (rrhsHacState.activeStudentId && !reportsByStudent[rrhsHacState.activeStudentId] && Object.keys(report).length) {
+      reportsByStudent[rrhsHacState.activeStudentId] = {
+        studentId: rrhsHacState.activeStudentId,
+        studentName: rrhsHacState.activeStudentName || "",
+        reportStudentId: String(cached.activeReportStudentId || "").trim(),
+        report: {},
+        reportByPeriod: rrhsCloneReportByPeriodMap(report)
+      };
+    }
+
+    const activeEntry = rrhsHacState.activeStudentId ? reportsByStudent[rrhsHacState.activeStudentId] : null;
+    if (activeEntry && activeEntry.reportByPeriod) {
+      rrhsHacState.reportByPeriod = rrhsCloneReportByPeriodMap(activeEntry.reportByPeriod);
+      rrhsHacState.activeReportStudentId = String(activeEntry.reportStudentId || rrhsHacState.activeReportStudentId || "").trim();
+    } else {
+      rrhsHacState.reportByPeriod = rrhsCloneReportByPeriodMap(report);
+    }
     rrhsHacState.cachedAt = Number.isFinite(cachedAt) ? cachedAt : 0;
     rrhsHacState.authenticated = rrhsIsHacCacheFresh(cachedAt);
     rrhsHacState.cacheStale = !rrhsHacState.authenticated;
@@ -587,6 +647,7 @@
     const name = String(studentName || "").trim();
     rrhsHacState.activeStudentId = id;
     rrhsHacState.activeStudentName = name;
+    if (!id) rrhsHacState.activeReportStudentId = "";
     rrhsPersistHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentId, id);
     rrhsPersistHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentName, name);
   }
@@ -596,6 +657,8 @@
     rrhsHacState.students = [];
     rrhsHacState.activeStudentId = "";
     rrhsHacState.activeStudentName = "";
+    rrhsHacState.activeReportStudentId = "";
+    rrhsHacState.reportsByStudent = Object.create(null);
     rrhsHacState.reportByPeriod = Object.create(null);
     rrhsHacState.sessionPassword = "";
     rrhsHacState.cachedAt = 0;
@@ -603,6 +666,7 @@
     rrhsHacState.lastError = null;
     rrhsPersistHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentId, "");
     rrhsPersistHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeStudentName, "");
+    rrhsPersistHacStorageValue(RRHS_HAC_STORAGE_KEYS.activeSchedulePayload, "");
     try {
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.removeItem(RRHS_HAC_STORAGE_KEYS.cacheLocal);
@@ -822,6 +886,243 @@
     };
   }
 
+  function rrhsGetHacStudentRecordById(studentId) {
+    const sid = String(studentId || "").trim();
+    if (!sid) return null;
+    const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students : [];
+    return students.find((s) => String((s && s.id) || "").trim() === sid) || null;
+  }
+
+  function rrhsBuildSNumber(reportStudentId, fallbackStudentId = "") {
+    const fromReport = String(reportStudentId || "").trim();
+    if (fromReport) {
+      const reportDigits = fromReport.match(/^s?(\d+)$/i);
+      if (reportDigits && reportDigits[1]) return `S${reportDigits[1]}`;
+      return fromReport.toUpperCase();
+    }
+    const fallback = String(fallbackStudentId || "").trim();
+    if (!fallback) return "";
+    const fallbackDigits = fallback.match(/^s?(\d+)$/i);
+    if (fallbackDigits && fallbackDigits[1]) return `S${fallbackDigits[1]}`;
+    return fallback.toUpperCase();
+  }
+
+  function rrhsGetReportCacheEntryForStudent(studentId) {
+    const sid = String(studentId || "").trim();
+    if (!sid) return null;
+    const map = rrhsHacState.reportsByStudent && typeof rrhsHacState.reportsByStudent === "object"
+      ? rrhsHacState.reportsByStudent
+      : Object.create(null);
+    const entry = map[sid];
+    if (!entry || typeof entry !== "object") return null;
+    return entry;
+  }
+
+  function rrhsSetReportCacheEntryForStudent(studentId, entry) {
+    const sid = String(studentId || "").trim();
+    if (!sid || !entry || typeof entry !== "object") return;
+    if (!rrhsHacState.reportsByStudent || typeof rrhsHacState.reportsByStudent !== "object") {
+      rrhsHacState.reportsByStudent = Object.create(null);
+    }
+    rrhsHacState.reportsByStudent[sid] = {
+      studentId: sid,
+      studentName: String(entry.studentName == null ? "" : entry.studentName).trim(),
+      reportStudentId: String(entry.reportStudentId == null ? "" : entry.reportStudentId).trim(),
+      report: entry.report && typeof entry.report === "object"
+        ? JSON.parse(JSON.stringify(entry.report))
+        : {},
+      reportByPeriod: rrhsCloneReportByPeriodMap(entry.reportByPeriod)
+    };
+  }
+
+  function rrhsFindScheduleTextarea() {
+    const areas = Array.from(document.querySelectorAll("textarea"));
+    if (!areas.length) return null;
+    for (let i = 0; i < areas.length; i++) {
+      const area = areas[i];
+      const section = area.closest(".ec-cart-step__section");
+      const subtitle = section ? section.querySelector(".ec-cart-step__subtitle") : null;
+      const subtitleText = String(subtitle && subtitle.textContent ? subtitle.textContent : "").trim().toLowerCase();
+      if (subtitleText && subtitleText.includes("schedule")) return area;
+      const aria = String(area.getAttribute("aria-label") || "").trim().toLowerCase();
+      const placeholder = String(area.getAttribute("placeholder") || "").trim().toLowerCase();
+      if ((aria.includes("leave this blank") || placeholder.includes("leave this blank")) && String(area.name || "").trim() === "textarea") {
+        return area;
+      }
+    }
+    return null;
+  }
+
+  function rrhsHideScheduleTextareaContainers(textarea) {
+    if (!textarea) return;
+    const toHide = [
+      textarea.closest(".ec-cart-step__section"),
+      textarea.closest(".ec-form__row"),
+      textarea.closest(".ec-form__cell"),
+      textarea.closest(".form-control")
+    ].filter(Boolean);
+    toHide.forEach((node) => {
+      node.dataset.rrhsScheduleHidden = "1";
+      node.style.setProperty("display", "none", "important");
+      node.style.setProperty("visibility", "hidden", "important");
+      node.style.setProperty("height", "0", "important");
+      node.style.setProperty("min-height", "0", "important");
+      node.style.setProperty("overflow", "hidden", "important");
+      node.style.setProperty("margin", "0", "important");
+      node.style.setProperty("padding", "0", "important");
+      node.style.setProperty("pointer-events", "none", "important");
+    });
+    textarea.readOnly = true;
+    textarea.tabIndex = -1;
+    textarea.setAttribute("aria-hidden", "true");
+  }
+
+  function rrhsPersistActiveSchedulePayload(payload) {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      if (!payload || typeof payload !== "object") {
+        window.localStorage.removeItem(RRHS_HAC_STORAGE_KEYS.activeSchedulePayload);
+        return;
+      }
+      window.localStorage.setItem(RRHS_HAC_STORAGE_KEYS.activeSchedulePayload, JSON.stringify(payload));
+    } catch (_) {}
+  }
+
+  function rrhsLoadActiveSchedulePayload() {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return null;
+      const raw = String(window.localStorage.getItem(RRHS_HAC_STORAGE_KEYS.activeSchedulePayload) || "").trim();
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rrhsBuildActiveSchedulePayload(studentId) {
+    const sid = String(studentId || rrhsHacState.activeStudentId || "").trim();
+    if (!sid) return null;
+    const entry = rrhsGetReportCacheEntryForStudent(sid);
+    if (!entry || !entry.report || typeof entry.report !== "object") return null;
+    const studentRecord = rrhsGetHacStudentRecordById(sid);
+    const studentName = String(
+      (studentRecord && studentRecord.name) ||
+      entry.studentName ||
+      rrhsHacState.activeStudentName ||
+      sid
+    ).trim();
+    return {
+      sNumber: rrhsBuildSNumber(entry.reportStudentId, sid),
+      studentName,
+      schedule: entry.report
+    };
+  }
+
+  function rrhsWriteSchedulePayloadToTextarea(payload) {
+    const textarea = rrhsFindScheduleTextarea();
+    if (!textarea) return false;
+    rrhsHideScheduleTextareaContainers(textarea);
+    const nextValue = payload && typeof payload === "object"
+      ? JSON.stringify(payload)
+      : "";
+    if (textarea.value !== nextValue) {
+      textarea.value = nextValue;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    return true;
+  }
+
+  function rrhsSyncActiveScheduleTextarea(reason = "") {
+    const payload = rrhsBuildActiveSchedulePayload(rrhsHacState.activeStudentId);
+    if (payload) {
+      rrhsPersistActiveSchedulePayload(payload);
+      rrhsWriteSchedulePayloadToTextarea(payload);
+      console.log("[RRHS HAC debug] schedule payload synced:", {
+        reason: String(reason || ""),
+        sNumber: payload.sNumber,
+        studentName: payload.studentName
+      });
+      return true;
+    }
+    const fromStorage = rrhsLoadActiveSchedulePayload();
+    if (fromStorage) {
+      rrhsWriteSchedulePayloadToTextarea(fromStorage);
+      return true;
+    }
+    rrhsWriteSchedulePayloadToTextarea(null);
+    return false;
+  }
+
+  function rrhsApplyActiveStudentReportFromCache() {
+    const sid = String(rrhsHacState.activeStudentId || "").trim();
+    if (!sid) return false;
+    const entry = rrhsGetReportCacheEntryForStudent(sid);
+    if (!entry) return false;
+    rrhsHacState.reportByPeriod = rrhsCloneReportByPeriodMap(entry.reportByPeriod);
+    rrhsHacState.activeReportStudentId = String(entry.reportStudentId || "").trim();
+    if (!rrhsHacState.activeStudentName) {
+      rrhsHacState.activeStudentName = String(entry.studentName || "").trim();
+    }
+    rrhsSyncActiveScheduleTextarea("active-student");
+    return true;
+  }
+
+  async function rrhsFetchReportsForStudents(username, password, students) {
+    const user = String(username || "").trim();
+    const pass = String(password || "");
+    const list = Array.isArray(students) ? students : [];
+    const tasks = list.map(async (student) => {
+      const sid = String(student && student.id ? student.id : "").trim();
+      if (!sid) return null;
+      const reportStudentId = rrhsResolveReportStudentIdFromRecord(student) || rrhsResolveReportStudentIdFromSelection(sid);
+      if (!reportStudentId) {
+        return { ok: false, studentId: sid, studentName: String(student && student.name ? student.name : sid).trim(), error: "Could not resolve student_id for report." };
+      }
+      try {
+        const reportResp = await rrhsHacPost(
+          "/api/getReport",
+          rrhsBuildGetReportPayload(user, pass, reportStudentId)
+        );
+        return {
+          ok: true,
+          studentId: sid,
+          studentName: String(student && student.name ? student.name : sid).trim(),
+          reportStudentId: String(reportStudentId).trim(),
+          report: reportResp,
+          reportByPeriod: rrhsParseHacReportByPeriod(reportResp)
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          studentId: sid,
+          studentName: String(student && student.name ? student.name : sid).trim(),
+          error: String(err && err.message ? err.message : err || "Failed to retrieve report.")
+        };
+      }
+    });
+    const settled = await Promise.all(tasks);
+    const reportsByStudent = Object.create(null);
+    const errors = [];
+    settled.forEach((item) => {
+      if (!item || !item.studentId) return;
+      if (!item.ok) {
+        errors.push(item);
+        return;
+      }
+      reportsByStudent[item.studentId] = {
+        studentId: item.studentId,
+        studentName: item.studentName,
+        reportStudentId: item.reportStudentId,
+        report: item.report,
+        reportByPeriod: item.reportByPeriod
+      };
+    });
+    return { reportsByStudent, errors };
+  }
+
   function rrhsParseHacReportByPeriod(reportPayload) {
     const out = Object.create(null);
     const headers = Array.isArray(reportPayload && reportPayload.headers)
@@ -935,6 +1236,9 @@
     rrhsDeliverySelection.mode = "hac";
     rrhsDeliverySelection.specialId = null;
 
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
     input.value = scheduled.room;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -982,6 +1286,7 @@
 
     rrhsResetRoomInputVisualState(input, { clearValue: true, dispatchEvents: false });
     const applied = rrhsApplyHacScheduleToDeliveryInput(input);
+    rrhsSyncActiveScheduleTextarea(reason);
     rrhsRefreshEverything(applied ? reason : `${reason}:noop`);
     return applied;
   }
@@ -1044,8 +1349,6 @@
         throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
       }
       rrhsHacState.students = students;
-      rrhsHacState.authenticated = true;
-      rrhsHacState.sessionPassword = pass;
       rrhsSetHacUsername(user);
       console.log("[RRHS HAC debug] students fetched:", students);
 
@@ -1061,26 +1364,39 @@
         rrhsSetActiveStudent(studentId, selected && selected.name ? selected.name : "");
       }
 
-      const reportStudentId = rrhsResolveReportStudentIdFromSelection(rrhsHacState.activeStudentId);
-      if (!reportStudentId) {
-        throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
+      const fetched = await rrhsFetchReportsForStudents(user, pass, students);
+      rrhsHacState.reportsByStudent = Object.create(null);
+      Object.keys(fetched.reportsByStudent).forEach((sid) => {
+        rrhsSetReportCacheEntryForStudent(sid, fetched.reportsByStudent[sid]);
+      });
+      if (fetched.errors.length) {
+        console.warn("[RRHS HAC debug] report prefetch errors:", fetched.errors);
       }
-      const reportResp = await rrhsHacPost(
-        "/api/getReport",
-        rrhsBuildGetReportPayload(user, pass, reportStudentId)
-      );
-      console.log("[RRHS HAC debug] report payload student_id:", reportStudentId);
-      console.log("[RRHS HAC debug] report response body:", reportResp);
-      rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
-      console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
+
+      const availableIds = Object.keys(rrhsHacState.reportsByStudent || {});
+      if (!availableIds.length) {
+        throw new Error("Could not fetch schedule report. Please retry in a few seconds.");
+      }
+      if (!rrhsGetReportCacheEntryForStudent(rrhsHacState.activeStudentId)) {
+        const fallbackId = availableIds[0];
+        const fallbackEntry = rrhsGetReportCacheEntryForStudent(fallbackId);
+        rrhsSetActiveStudent(fallbackId, fallbackEntry && fallbackEntry.studentName ? fallbackEntry.studentName : fallbackId);
+      }
+      if (!rrhsApplyActiveStudentReportFromCache()) {
+        throw new Error("Could not load active student schedule from fetched reports.");
+      }
+
       await rrhsPrimeDayTypeForToday();
+      rrhsHacState.authenticated = true;
+      rrhsHacState.sessionPassword = pass;
       rrhsHacState.cacheStale = false;
       rrhsPersistHacCache();
       rrhsHacState.lastError = null;
       return {
         students: rrhsHacState.students.slice(),
         activeStudentId: rrhsHacState.activeStudentId,
-        reportByPeriod: Object.assign({}, rrhsHacState.reportByPeriod)
+        reportsByStudent: rrhsCloneReportsByStudentMap(rrhsHacState.reportsByStudent),
+        reportByPeriod: rrhsCloneReportByPeriodMap(rrhsHacState.reportByPeriod)
       };
     } catch (err) {
       rrhsHacState.lastError = err;
@@ -1092,94 +1408,65 @@
   }
 
   async function rrhsAuthenticateAndListHacStudents(username, password) {
-    const user = String(username || "").trim();
-    const pass = String(password || "");
-    if (!user || !pass) throw new Error("HAC username and password are required.");
-
-    rrhsHacState.inFlight = true;
-    try {
-      await rrhsHacPost("/api/login", { username: user, password: pass });
-      const studentsResp = await rrhsHacPost("/lookup/students", { username: user, password: pass });
-      const students = Array.isArray(studentsResp && studentsResp.students)
-        ? studentsResp.students
-        : [];
-      if (!students.length) {
-        throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
-      }
-      rrhsHacState.students = students;
-      rrhsHacState.authenticated = true;
-      rrhsHacState.sessionPassword = pass;
-      rrhsSetHacUsername(user);
-      console.log("[RRHS HAC debug] students fetched:", students);
-
-      let studentId = rrhsHacState.activeStudentId;
-      if (studentId && !students.some((s) => String((s && s.id) || "").trim() === String(studentId))) {
-        studentId = "";
-      }
-      if (!studentId && students[0] && students[0].id) {
-        studentId = String(students[0].id);
-      }
-      if (studentId) {
-        const selected = students.find((s) => String(s && s.id ? s.id : "") === studentId) || null;
-        rrhsSetActiveStudent(studentId, selected && selected.name ? selected.name : "");
-      }
-      console.log("[RRHS HAC debug] active student after list:", {
-        activeStudentId: rrhsHacState.activeStudentId,
-        activeStudentName: rrhsHacState.activeStudentName
-      });
-      rrhsHacState.lastError = null;
-      return {
-        students: rrhsHacState.students.slice(),
-        activeStudentId: rrhsHacState.activeStudentId
-      };
-    } catch (err) {
-      rrhsHacState.lastError = err;
-      rrhsClearHacSessionState();
-      throw err;
-    } finally {
-      rrhsHacState.inFlight = false;
-    }
+    const loaded = await rrhsAuthenticateAndLoadHac(username, password);
+    return {
+      students: Array.isArray(loaded && loaded.students) ? loaded.students : [],
+      activeStudentId: String((loaded && loaded.activeStudentId) || "").trim()
+    };
   }
 
   async function rrhsSwitchActiveStudentAndRefresh(username, password, studentId) {
-    const user = String(username || "").trim();
-    const pass = String(password || "");
+    const user = String(username || rrhsHacState.hacUsername || "").trim();
+    const pass = String(password || rrhsHacState.sessionPassword || "");
     const sid = String(studentId || "").trim();
-    if (!user || !pass || !sid) throw new Error("Missing HAC credentials or student.");
+    if (!sid) throw new Error("Missing HAC student.");
 
     rrhsHacState.inFlight = true;
     try {
-      await rrhsHacPost("/lookup/switch", {
-        username: user,
-        password: pass,
-        student_id: sid
-      });
-      const selected = rrhsHacState.students.find((s) => String(s && s.id ? s.id : "") === sid) || null;
+      const selected = rrhsGetHacStudentRecordById(sid);
       rrhsSetActiveStudent(sid, selected && selected.name ? selected.name : "");
 
-      const reportStudentId = rrhsResolveReportStudentIdFromSelection(sid);
-      if (!reportStudentId) {
-        throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
+      let entry = rrhsGetReportCacheEntryForStudent(sid);
+      if (!entry) {
+        if (!user || !pass) {
+          throw new Error("Re-enter HAC password to switch students.");
+        }
+        const reportStudentId = rrhsResolveReportStudentIdFromSelection(sid);
+        if (!reportStudentId) {
+          throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
+        }
+        const reportResp = await rrhsHacPost(
+          "/api/getReport",
+          rrhsBuildGetReportPayload(user, pass, reportStudentId)
+        );
+        rrhsSetReportCacheEntryForStudent(sid, {
+          studentId: sid,
+          studentName: selected && selected.name ? selected.name : sid,
+          reportStudentId,
+          report: reportResp,
+          reportByPeriod: rrhsParseHacReportByPeriod(reportResp)
+        });
+        entry = rrhsGetReportCacheEntryForStudent(sid);
       }
-      const reportResp = await rrhsHacPost(
-        "/api/getReport",
-        rrhsBuildGetReportPayload(user, pass, reportStudentId)
-      );
+
+      if (!entry) throw new Error("Could not load active student schedule.");
+
       console.log("[RRHS HAC debug] switched active student:", {
         activeStudentId: sid,
         activeStudentName: rrhsHacState.activeStudentName,
-        reportStudentId
+        reportStudentId: entry.reportStudentId
       });
-      console.log("[RRHS HAC debug] report response body:", reportResp);
-      rrhsHacState.reportByPeriod = rrhsParseHacReportByPeriod(reportResp);
-      console.log("[RRHS HAC debug] parsed reportByPeriod:", rrhsHacState.reportByPeriod);
+      rrhsApplyActiveStudentReportFromCache();
       await rrhsPrimeDayTypeForToday();
       rrhsHacState.authenticated = true;
-      rrhsHacState.sessionPassword = pass;
+      if (pass) rrhsHacState.sessionPassword = pass;
       rrhsHacState.cacheStale = false;
       rrhsPersistHacCache();
       rrhsHacState.lastError = null;
       return true;
+    } catch (err) {
+      rrhsHacState.lastError = err;
+      throw err;
     } finally {
       rrhsHacState.inFlight = false;
     }
@@ -1397,6 +1684,15 @@
   // Run immediately, on every UI refresh, and on every DOM mutation
   rrhsFillAndHideAddressFields();
   rrhsUiRefreshers.push(rrhsFillAndHideAddressFields);
+
+  function rrhsSyncHiddenScheduleField(reason = "") {
+    const textarea = rrhsFindScheduleTextarea();
+    if (textarea) rrhsHideScheduleTextareaContainers(textarea);
+    rrhsSyncActiveScheduleTextarea(reason || "sync");
+  }
+
+  rrhsSyncHiddenScheduleField("boot");
+  rrhsUiRefreshers.push(rrhsSyncHiddenScheduleField);
 
   const _addrObserver = new MutationObserver(rrhsFillAndHideAddressFields);
   let rrhsAddressObserverStarted = false;
@@ -1951,8 +2247,8 @@
       setModalError("");
       setAuthBusy(true);
       try {
-        await rrhsAuthenticateAndListHacStudents(user, pass);
-        rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
+        await rrhsAuthenticateAndLoadHac(user, pass);
+        rrhsSetHacUiMessage("success", "Authenticated. Student schedules loaded.");
         rrhsSetHacUiMessage("error", "");
         rrhsRefreshHacUiVisibility();
 
@@ -1979,9 +2275,6 @@
             }
           });
           return;
-        }
-        if (rrhsHacState.activeStudentId) {
-          await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
         }
         await afterStudentResolved();
         resolveOnce("saved");
@@ -2050,9 +2343,29 @@
 
   function rrhsEnsureHacAuthPromptForDeliveryPage() {
     if (!RRHS_HAC_UI_ENABLED) return;
-    if (!rrhsIsDeliveryCheckoutPage()) return;
+    if (!rrhsIsDeliveryCheckoutPage()) {
+      rrhsHacState.authModalShownForCurrentView = false;
+      return;
+    }
     rrhsRefreshHacCacheFreshness();
-    // Modal is intentionally triggered on checkout/address Continue, not auto-opened on delivery.
+    if (!rrhsHacState.isSNumber) return;
+    if (rrhsHasPrivilegedEmployeeAccess()) return;
+    const activeEntry = rrhsGetReportCacheEntryForStudent(rrhsHacState.activeStudentId);
+    const hasActiveReport = Boolean(
+      (activeEntry && Object.keys(activeEntry.reportByPeriod || {}).length) ||
+      Object.keys(rrhsHacState.reportByPeriod || {}).length
+    );
+    const needsAuth =
+      !rrhsHacState.authenticated ||
+      rrhsHacState.cacheStale ||
+      !hasActiveReport;
+    if (!needsAuth) return;
+    if (rrhsHacState.authModalShownForCurrentView) return;
+    if (document.getElementById("rrhs-hac-auth-modal")) return;
+    rrhsHacState.authModalShownForCurrentView = true;
+    rrhsOpenHacAuthModal({
+      onResolved: () => {}
+    });
   }
 
   async function rrhsRunInlineHacQueryFromFields() {
@@ -2073,7 +2386,7 @@
     rrhsSetHacUiMessage("error", "");
     rrhsSetHacUiMessage("success", "");
     try {
-      await rrhsAuthenticateAndListHacStudents(user, pass);
+      await rrhsAuthenticateAndLoadHac(user, pass);
       const students = Array.isArray(rrhsHacState.students) ? rrhsHacState.students.slice() : [];
       if (students.length > 1) {
         const picked = await new Promise((resolve) => {
@@ -2088,13 +2401,11 @@
           });
         });
         if (!picked) return false;
-      } else if (rrhsHacState.activeStudentId) {
-        await rrhsSwitchActiveStudentAndRefresh(user, pass, rrhsHacState.activeStudentId);
       }
 
       if (refs.studentSelect) rrhsRenderHacStudentsIntoSelect(refs.studentSelect);
       rrhsRefreshHacUiVisibility();
-      rrhsSetHacUiMessage("success", "Authenticated. Student schedule loaded.");
+      rrhsSetHacUiMessage("success", "Authenticated. Student schedules loaded.");
       refs.passwordInput.value = "";
       await rrhsForceHacAutofillIntoDeliveryInput("hac:inline-save");
       initRoomAutocomplete();
@@ -2262,11 +2573,6 @@
         studentSelect.dataset.rrhsPendingStudentId = selectedId;
         rrhsRenderHacStudentsIntoSelect(studentSelect);
         rrhsSetHacUiMessage("success", "Student selection staged. Click Save to apply.");
-        return;
-      }
-      if (!user || !pass) {
-        rrhsSetHacUiMessage("error", "Re-enter HAC password to switch students.");
-        studentSelect.value = rrhsHacState.activeStudentId || "";
         return;
       }
       studentSelect.disabled = true;
@@ -3713,6 +4019,29 @@
     return { ok: true, message: "" };
   }
 
+  function rrhsAutoOpenDeliveryRoomDropdown(input, reason = "delivery:auto-open") {
+    if (!input) return false;
+    if (!rrhsIsDeliveryCheckoutPage()) return false;
+    if (input.dataset.rrhsRoomDropdownAutoOpened === "1") return false;
+    if (input.dataset.rrhsAllDayRoomLocked === "1") return false;
+    input.dataset.rrhsRoomDropdownAutoOpened = "1";
+    setTimeout(() => {
+      if (!document.body || !document.body.contains(input)) return;
+      if (input.readOnly) return;
+      try {
+        input.focus({ preventScroll: true });
+      } catch (_) {
+        try {
+          input.focus();
+        } catch (_e) {}
+      }
+      input.dispatchEvent(new Event("focus", { bubbles: true }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      console.log("[RRHS HAC debug] room dropdown auto-opened:", reason);
+    }, 100);
+    return true;
+  }
+
   function initRoomAutocomplete() {
     const input0 = document.querySelector('input[name="z7rty2b"]');
     if (!input0 || input0.dataset.autocompleteInit) return;
@@ -3958,12 +4287,15 @@
         const roomLabel = formatRoomLabel(selection.room);
         const teacher = String(selection.teacher || "").trim();
         if (teacher) {
-          const hacSuffix = String(selection.mode || "").trim() === "hac" ? " — autofilled from HAC" : "";
-          showInfo(`Delivering to ${teacher}${hacSuffix} in ${roomLabel}.`);
+          if (String(selection.mode || "").trim() === "hac") {
+            showInfo(`Delivering to ${teacher} in ${roomLabel}. Loaded directly from HAC.`);
+            return;
+          }
+          showInfo(`Delivering to ${teacher} in ${roomLabel}.`);
           return;
         }
         if (String(selection.mode || "").trim() === "hac") {
-          showInfo(`Auto-filled delivery location: ${roomLabel}.`);
+          showInfo(`Delivering to ${roomLabel}. Loaded directly from HAC.`);
           return;
         }
         showError(false);
@@ -4413,6 +4745,8 @@
           log("Room schedule load error", e);
           createModal("Room schedule failed to load. Please refresh and try again.");
         });
+
+      rrhsAutoOpenDeliveryRoomDropdown(input, "init-room-autocomplete");
     };
 
     if (rrhsCartState.ready) {
@@ -4581,9 +4915,9 @@
     }
 
     try {
-      await rrhsAuthenticateAndListHacStudents(user, pass);
+      await rrhsAuthenticateAndLoadHac(user, pass);
       const switchId = selectedId || rrhsHacState.activeStudentId;
-      if (switchId) {
+      if (switchId && switchId !== rrhsHacState.activeStudentId) {
         await rrhsSwitchActiveStudentAndRefresh(user, pass, switchId);
       }
       refs.passwordInput.value = "";
@@ -5402,6 +5736,7 @@
         rrhsRunInBackground(async () => {
           initRoomAutocomplete();
           await rrhsForceHacAutofillIntoDeliveryInput(`ecwid:${reason}`);
+          rrhsAutoOpenDeliveryRoomDropdown(input, `ecwid:${reason}`);
           rrhsRefreshEverything(`ecwid:${reason}`);
         }, 300);
       };
