@@ -2341,26 +2341,17 @@
     }
   }
 
-  function rrhsEnsureHacAuthPromptForDeliveryPage() {
+  function rrhsEnsureHacAuthPromptForDeliveryPage(options = null) {
     if (!RRHS_HAC_UI_ENABLED) return;
+    const opts = options && typeof options === "object" ? options : {};
+    const force = Boolean(opts.force);
     if (!rrhsIsDeliveryCheckoutPage()) {
       rrhsHacState.authModalShownForCurrentView = false;
       return;
     }
     rrhsRefreshHacCacheFreshness();
     if (!rrhsHacState.isSNumber) return;
-    if (rrhsHasPrivilegedEmployeeAccess()) return;
-    const activeEntry = rrhsGetReportCacheEntryForStudent(rrhsHacState.activeStudentId);
-    const hasActiveReport = Boolean(
-      (activeEntry && Object.keys(activeEntry.reportByPeriod || {}).length) ||
-      Object.keys(rrhsHacState.reportByPeriod || {}).length
-    );
-    const needsAuth =
-      !rrhsHacState.authenticated ||
-      rrhsHacState.cacheStale ||
-      !hasActiveReport;
-    if (!needsAuth) return;
-    if (rrhsHacState.authModalShownForCurrentView) return;
+    if (!force && rrhsHacState.authModalShownForCurrentView) return;
     if (document.getElementById("rrhs-hac-auth-modal")) return;
     rrhsHacState.authModalShownForCurrentView = true;
     rrhsOpenHacAuthModal({
@@ -4083,11 +4074,10 @@
           const btn = document.createElement("button");
           btn.type = "button";
           btn.dataset.rrhsHacReconfigureBtn = "true";
-          btn.textContent = "Re-Configure HAC";
+          btn.textContent = "Re-Sync HAC URL";
           btn.style.cssText = "border:1px solid #c9c6c4;background:#fff;color:#222;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;";
           btn.addEventListener("click", () => {
-            rrhsHacState.authModalShownForCurrentView = false;
-            rrhsOpenHacAuthModal();
+            rrhsEnsureHacAuthPromptForDeliveryPage({ force: true });
           });
           row.appendChild(btn);
         }
@@ -5724,6 +5714,7 @@
       const runAttempt = (retriesLeft) => {
         if (ticket !== rrhsDeliveryAutofillTicket) return;
         if (!rrhsIsDeliveryCheckoutPage()) return;
+        rrhsEnsureHacAuthPromptForDeliveryPage();
 
         const input = document.querySelector('input[name="z7rty2b"]');
         if (!input) {
