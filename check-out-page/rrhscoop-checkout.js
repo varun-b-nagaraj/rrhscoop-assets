@@ -16,7 +16,7 @@
   // ---------------------------
   // A/B day source (HAC API).
   const RRHS_DAY_TYPE_API_DEFAULT = Object.freeze({
-    endpoint: "https://hacapi-hh-yu5w.vercel.app/api/getDayType",
+    endpoint: "https://hacapi-hh.vercel.app/api/getDayType",
     baseUrl: "https://accesscenter.roundrockisd.org/",
     username: "",
     password: "",
@@ -129,7 +129,7 @@
   // Legacy toggle kept for compatibility. Employee-id prefix is no longer used for access decisions.
   const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
   const RRHS_HAC_API_DEFAULT = Object.freeze({
-    baseUrl: "https://hacapi-hh-yu5w.vercel.app",
+    baseUrl: "https://hacapi-hh.vercel.app",
     hacBaseUrl: "https://accesscenter.roundrockisd.org/",
     requestTimeoutMs: 10000
   });
