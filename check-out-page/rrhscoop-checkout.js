@@ -22,8 +22,9 @@
     password: "",
     requestTimeoutMs: 8000
   });
+  // HAC schedule sync UI/workflow is temporarily disabled by default.
   const RRHS_HAC_UI_ENABLED =
-    (typeof window !== "undefined" && window.RRHS_HAC_UI_ENABLED === false) ? false : true;
+    (typeof window !== "undefined" && window.RRHS_HAC_UI_ENABLED === true) || false;
 
   // Emergency bypass (ignores day/period windows).
   const CHECKOUT_ALWAYS_ALLOW = false;
