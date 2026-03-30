@@ -2423,6 +2423,20 @@
     return null;
   }
 
+  function rrhsEnsurePersonalEmailNote() {
+    const nodes = document.querySelectorAll(".ec-cart-email__text");
+    if (!nodes.length) return;
+    nodes.forEach((node) => {
+      if (!node || node.querySelector('[data-rrhs-personal-email-note="1"]')) return;
+      const note = document.createElement("div");
+      note.dataset.rrhsPersonalEmailNote = "1";
+      note.style.marginTop = "6px";
+      note.style.fontWeight = "600";
+      note.textContent = "Please use a home/personal email address, not a school email.";
+      node.appendChild(note);
+    });
+  }
+
   function rrhsEnsureHacContactFields() {
     if (!RRHS_HAC_UI_ENABLED) {
       document.querySelectorAll('[data-rrhs-hac-row="true"]').forEach((el) => el.remove());
@@ -5668,6 +5682,7 @@
       rrhsCartChangedListenerAdded = true;
       ecwid.OnCartChanged.add(function(cart) {
         computeCartFlags(cart);
+        rrhsEnsurePersonalEmailNote();
         rrhsEnsureHacContactFields();
         rrhsEnsureHacAuthPromptForDeliveryPage();
         initAddressContinueHacGate();
@@ -5691,6 +5706,7 @@
       rrhsHydrateHacFromStorage();
       rrhsEnsureDayTypeSynced();
       initCartChangedListener();
+      rrhsEnsurePersonalEmailNote();
       rrhsEnsureHacContactFields();
       rrhsEnsureHacAuthPromptForDeliveryPage();
       initAddressContinueHacGate();
