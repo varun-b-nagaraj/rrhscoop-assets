@@ -126,9 +126,6 @@
   ]);
   const RRHS_EMPLOYEE_FIELD_NAME = "pvhvhag";
   const RRHS_EMPLOYEE_STORAGE_KEY = "rrhs_employee_id_v1";
-  const RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID = "e123456";
-  // Legacy toggle kept for compatibility. Employee-id prefix is no longer used for access decisions.
-  const RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED = false;
   const RRHS_HAC_API_DEFAULT = Object.freeze({
     baseUrl: "https://hacapi-hh.vercel.app",
     hacBaseUrl: "https://accesscenter.roundrockisd.org/",
@@ -2642,34 +2639,17 @@
     }
   }
 
-  function rrhsNormalizeEmployeeId(value) {
-    return String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-  }
-
-  function rrhsGetNormalizedEmployeeIdForAccess() {
-    return rrhsNormalizeEmployeeId(rrhsGetEmployeeIdForAccess());
-  }
-
   function rrhsHasPrivilegedEmployeeAccess() {
-    return (
-      rrhsGetNormalizedEmployeeIdForAccess() ===
-      rrhsNormalizeEmployeeId(RRHS_ALL_ROOM_ACCESS_EMPLOYEE_ID)
-    );
+    // Disabled: employee IDs should use the same room/window restrictions as student IDs.
+    return false;
   }
 
   function rrhsGetRoomAccessMode() {
-    // Only one specific employee ID can select any room in the loaded school schedule.
-    return rrhsHasPrivilegedEmployeeAccess() ? "all" : "limited";
+    return "limited";
   }
 
   function rrhsCanBypassOrderingWindowByEmployeeId() {
-    // Exact employee ID bypasses ordering-window restrictions.
-    if (rrhsHasPrivilegedEmployeeAccess()) return true;
-    // Legacy toggle kept disabled by default.
-    if (!RRHS_EMPLOYEE_WINDOW_BYPASS_ENABLED) return false;
+    // Disabled: employee IDs should not bypass ordering-window restrictions.
     return false;
   }
 
