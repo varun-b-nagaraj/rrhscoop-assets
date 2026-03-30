@@ -3361,6 +3361,11 @@
     return null;
   }
 
+  function rrhsIsAlwaysAllowEnabled() {
+    if (CHECKOUT_ALWAYS_ALLOW) return true;
+    return rrhsGetAlwaysAllowOverride() === true;
+  }
+
   function rrhsGetCloseDeltaMinutesOverride() {
     const ss = rrhsGetSessionStorage();
     if (!ss) return null;
@@ -3853,14 +3858,16 @@
 
   function getSelectionValidation() {
     const today = rrhsGetNowDate();
+    const hasPrivilegedAccess = rrhsHasPrivilegedEmployeeAccess();
+    const bypassWindowChecks = hasPrivilegedAccess || rrhsIsAlwaysAllowEnabled();
     const dow = today.getDay();
-    if (dow === 0 || dow === 6) {
+    if (!bypassWindowChecks && (dow === 0 || dow === 6)) {
       return { ok: false, message: "Deliveries are only available on school days." };
     }
-    if (rrhsIsPastLastDeliveryWindow(today)) {
+    if (!bypassWindowChecks && rrhsIsPastLastDeliveryWindow(today)) {
       return { ok: false, message: RRHS_STORE_CLOSED_FOR_DAY_MESSAGE };
     }
-    if (rrhsHasPrivilegedEmployeeAccess()) {
+    if (hasPrivilegedAccess) {
       return { ok: true, message: "" };
     }
 
@@ -3881,36 +3888,42 @@
 
       const todayDay = getTodayDayType();
       rrhsDeliverySelection.dayType = todayDay;
-
-      const allowed = getAllowedPeriodsForDay(todayDay);
-      if (!allowed || allowed.length === 0) {
-        return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
-      }
-
-      const periodCandidate = rrhsGetCurrentOrNextPeriodForToday();
-      if (periodCandidate == null) {
-        return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+      let periodCandidate = Number(
+        rrhsDeliverySelection.period != null
+          ? rrhsDeliverySelection.period
+          : rrhsGetCurrentOrNextPeriodForToday()
+      );
+      if (!Number.isFinite(periodCandidate)) {
+        const fallback = getAllowedPeriodsForDay(todayDay);
+        periodCandidate = Array.isArray(fallback) && fallback.length ? fallback[0] : todayDay === "A" ? 1 : 5;
       }
       rrhsDeliverySelection.period = periodCandidate;
-      if (!allowed.includes(periodCandidate)) {
-        return { ok: false, message: "Please select a room from the list." };
-      }
 
-      const w = getPeriodWindow(periodCandidate);
-      if (!w) return { ok: false, message: "Invalid period selected." };
+      if (!bypassWindowChecks) {
+        const allowed = getAllowedPeriodsForDay(todayDay);
+        if (!allowed || allowed.length === 0) {
+          return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+        }
+        if (!allowed.includes(periodCandidate)) {
+          return { ok: false, message: "Please select a room from the list." };
+        }
 
-      const nowMin = getNowMinutes(today);
-      if (nowMin < w.startMin) {
-        return {
-          ok: false,
-          message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} starts at ${formatMinutes(w.startMin)}.`
-        };
-      }
-      if (nowMin >= w.closeMin) {
-        return {
-          ok: false,
-          message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} closes at ${formatMinutes(w.closeMin)}.`
-        };
+        const w = getPeriodWindow(periodCandidate);
+        if (!w) return { ok: false, message: "Invalid period selected." };
+
+        const nowMin = getNowMinutes(today);
+        if (nowMin < w.startMin) {
+          return {
+            ok: false,
+            message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} starts at ${formatMinutes(w.startMin)}.`
+          };
+        }
+        if (nowMin >= w.closeMin) {
+          return {
+            ok: false,
+            message: `Delivery for ${rrhsFormatPeriodLabel(periodCandidate)} closes at ${formatMinutes(w.closeMin)}.`
+          };
+        }
       }
 
       return { ok: true, message: "" };
@@ -3919,34 +3932,44 @@
     if (rrhsDeliverySelection.mode === "hac" && rrhsDeliverySelection.room) {
       const todayDay = getTodayDayType();
       rrhsDeliverySelection.dayType = todayDay;
-      const allowed = getAllowedPeriodsForDay(todayDay);
-      if (!allowed || allowed.length === 0) {
-        return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+      let period = Number(
+        rrhsDeliverySelection.period != null
+          ? rrhsDeliverySelection.period
+          : rrhsGetCurrentOrNextPeriodForToday()
+      );
+      if (!Number.isFinite(period)) {
+        const fallback = getAllowedPeriodsForDay(todayDay);
+        period = Array.isArray(fallback) && fallback.length ? fallback[0] : todayDay === "A" ? 1 : 5;
       }
-      const periodCandidate = rrhsDeliverySelection.period || rrhsGetCurrentOrNextPeriodForToday();
-      if (!Number.isFinite(Number(periodCandidate))) {
+      if (!Number.isFinite(period)) {
         return { ok: false, message: "Unable to resolve class period for delivery." };
       }
-      const period = Number(periodCandidate);
       rrhsDeliverySelection.period = period;
-      if (!allowed.includes(period)) {
-        return { ok: false, message: "Current class period is outside active ordering windows." };
-      }
 
-      const w = getPeriodWindow(period);
-      if (!w) return { ok: false, message: "Invalid period selected." };
-      const nowMin = getNowMinutes(today);
-      if (nowMin < w.startMin) {
-        return {
-          ok: false,
-          message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
-        };
-      }
-      if (nowMin >= w.closeMin) {
-        return {
-          ok: false,
-          message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
-        };
+      if (!bypassWindowChecks) {
+        const allowed = getAllowedPeriodsForDay(todayDay);
+        if (!allowed || allowed.length === 0) {
+          return { ok: false, message: RRHS_CLOSED_MESSAGE_HTML };
+        }
+        if (!allowed.includes(period)) {
+          return { ok: false, message: "Current class period is outside active ordering windows." };
+        }
+
+        const w = getPeriodWindow(period);
+        if (!w) return { ok: false, message: "Invalid period selected." };
+        const nowMin = getNowMinutes(today);
+        if (nowMin < w.startMin) {
+          return {
+            ok: false,
+            message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
+          };
+        }
+        if (nowMin >= w.closeMin) {
+          return {
+            ok: false,
+            message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
+          };
+        }
       }
 
       const derived = getDerivedScheduleForToday();
@@ -3978,9 +4001,11 @@
     if (!Number.isFinite(period)) {
       return { ok: false, message: "Please select a room from the list." };
     }
-    const allowed = getAllowedPeriodsForDay(todayDay);
-    if (!allowed.includes(period)) {
-      return { ok: false, message: "Please select a room from the list." };
+    if (!bypassWindowChecks) {
+      const allowed = getAllowedPeriodsForDay(todayDay);
+      if (!allowed.includes(period)) {
+        return { ok: false, message: "Please select a room from the list." };
+      }
     }
 
     const room = (ROOM_DATA[teacher] && ROOM_DATA[teacher][period]) || null;
@@ -3994,18 +4019,20 @@
     const w = getPeriodWindow(period);
     if (!w) return { ok: false, message: "Invalid period selected." };
 
-    const nowMin = getNowMinutes(today);
-    if (nowMin < w.startMin) {
-      return {
-        ok: false,
-        message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
-      };
-    }
-    if (nowMin >= w.closeMin) {
-      return {
-        ok: false,
-        message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
-      };
+    if (!bypassWindowChecks) {
+      const nowMin = getNowMinutes(today);
+      if (nowMin < w.startMin) {
+        return {
+          ok: false,
+          message: `Delivery for ${rrhsFormatPeriodLabel(period)} starts at ${formatMinutes(w.startMin)}.`
+        };
+      }
+      if (nowMin >= w.closeMin) {
+        return {
+          ok: false,
+          message: `Delivery for ${rrhsFormatPeriodLabel(period)} closes at ${formatMinutes(w.closeMin)}.`
+        };
+      }
     }
 
     return { ok: true, message: "" };
@@ -5460,7 +5487,8 @@
   function getRestrictionMessage() {
     const now = rrhsGetNowDate();
     const dow = now.getDay();
-    if (dow === 0 || dow === 6) {
+    const alwaysAllowEnabled = rrhsIsAlwaysAllowEnabled();
+    if (!alwaysAllowEnabled && (dow === 0 || dow === 6)) {
       return "Store is closed on weekends.";
     }
 
@@ -5471,7 +5499,7 @@
           : ["all-day delivery items"];
       return `Your cart includes ${parts.join(", ")} along with other items. Items eligible for all-day delivery must be placed separately. Please remove other items and complete them in a separate order, as regular items are only available during active delivery windows.`;
     }
-    if (dow !== 0 && dow !== 6 && rrhsIsPastLastDeliveryWindow(now)) {
+    if (!alwaysAllowEnabled && dow !== 0 && dow !== 6 && rrhsIsPastLastDeliveryWindow(now)) {
       return RRHS_STORE_CLOSED_FOR_DAY_MESSAGE;
     }
 
@@ -5509,9 +5537,7 @@
   }
 
   function checkOrderingWindowBase() {
-    if (CHECKOUT_ALWAYS_ALLOW) return true;
-    const alwaysAllowOverride = rrhsGetAlwaysAllowOverride();
-    if (alwaysAllowOverride === true) return true;
+    if (rrhsIsAlwaysAllowEnabled()) return true;
     const now = rrhsGetNowDate();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
@@ -5530,9 +5556,11 @@
   function checkOrderingWindow() {
     const now = rrhsGetNowDate();
     const day = now.getDay();
-    if (day === 0 || day === 6) return false;
-
-    if (!CHECKOUT_ALWAYS_ALLOW && rrhsGetAlwaysAllowOverride() !== true && rrhsIsPastLastDeliveryWindow(rrhsGetNowDate())) {
+    const alwaysAllowEnabled = rrhsIsAlwaysAllowEnabled();
+    if (!alwaysAllowEnabled && (day === 0 || day === 6)) {
+      return false;
+    }
+    if (!alwaysAllowEnabled && rrhsIsPastLastDeliveryWindow(now)) {
       return false;
     }
     if (rrhsCartState.hasAllDayDelivery && !rrhsCartState.hasRegularItems) return true;
