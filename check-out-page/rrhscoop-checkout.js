@@ -5293,6 +5293,75 @@
     rrhsSyncSauceQtyFields();
   }
 
+  function rrhsGetStoleTypeCheckboxes() {
+    const inStoleModule = Array.from(
+      document.querySelectorAll(
+        '.details-product-option--Stole-Type input.form-control__checkbox[type="checkbox"][name="Stole Type"]'
+      )
+    );
+    if (inStoleModule.length) return inStoleModule;
+    return Array.from(
+      document.querySelectorAll('input.form-control__checkbox[type="checkbox"][name="Stole Type"]')
+    );
+  }
+
+  function rrhsLockQtyFieldFromManualEdits(input) {
+    if (!input || input.dataset.rrhsQtyFieldLocked === "1") return;
+    input.dataset.rrhsQtyFieldLocked = "1";
+    input.readOnly = true;
+    input.setAttribute("readonly", "readonly");
+    input.inputMode = "none";
+    input.autocomplete = "off";
+    input.min = "0";
+    input.max = "5";
+    input.step = "1";
+    input.style.cursor = "not-allowed";
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") return;
+      e.preventDefault();
+    });
+    input.addEventListener("beforeinput", (e) => e.preventDefault());
+    input.addEventListener("input", () => rrhsSyncStoleTypeQtyField());
+    input.addEventListener("paste", (e) => e.preventDefault());
+    input.addEventListener("drop", (e) => e.preventDefault());
+    input.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+  }
+
+  function rrhsSyncStoleTypeQtyField() {
+    const qtyInput =
+      document.getElementById("qty-field") ||
+      document.querySelector('input.form-control__text[type="number"][name="ec-qty"]');
+    if (!qtyInput) return;
+
+    rrhsLockQtyFieldFromManualEdits(qtyInput);
+
+    const checkedCount = rrhsGetStoleTypeCheckboxes().reduce(
+      (count, checkbox) => count + (checkbox && checkbox.checked ? 1 : 0),
+      0
+    );
+    const clamped = Math.max(0, Math.min(5, checkedCount));
+    const nextValue = String(clamped);
+    if (String(qtyInput.value || "") === nextValue) return;
+
+    qtyInput.value = nextValue;
+    qtyInput.setAttribute("value", nextValue);
+    qtyInput.dispatchEvent(new Event("input", { bubbles: true }));
+    qtyInput.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function initStoleTypeQtySync() {
+    const checkboxes = rrhsGetStoleTypeCheckboxes();
+    checkboxes.forEach((checkbox) => {
+      if (!checkbox || checkbox.dataset.rrhsStoleQtyBound === "1") return;
+      checkbox.dataset.rrhsStoleQtyBound = "1";
+      checkbox.addEventListener("change", rrhsSyncStoleTypeQtyField);
+      checkbox.addEventListener("input", rrhsSyncStoleTypeQtyField);
+    });
+
+    rrhsSyncStoleTypeQtyField();
+  }
+
   /* Checkout time restriction and cart state */
   const rrhsCartState = {
     ready: false,
@@ -5671,6 +5740,7 @@
         initRoomAutocomplete();
         initSauceDropdown();
         initSauceQtyFields();
+        initStoleTypeQtySync();
         wrapCheckoutButton();
         manageCheckoutButton();
         updateCheckoutOverlay();
@@ -5695,6 +5765,7 @@
       initRoomAutocomplete();
       initSauceDropdown();
       initSauceQtyFields();
+      initStoleTypeQtySync();
       initRoomContinueButton();
       wrapCheckoutButton();
       if (rrhsIsDeliveryCheckoutPage()) {
