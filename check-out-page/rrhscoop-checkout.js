@@ -41,7 +41,7 @@
 
   // Room filtering (applies to values coming from the schedule CSV).
   // Examples (default):
-  // - Valid: 1003, 1241, 1314, 1430, 2312, 208
+  // - Valid: 1003, 1241, 1314, 1430, 2312, 208, 612, 904
   // - Invalid: 143 (3 digits), 725 (3 digits), Gym (non-numeric)
   const RRHS_ROOM_FILTER = Object.freeze({
     enabled: true,
@@ -50,17 +50,16 @@
     // - `prefixDigits` is how many leading digits to compare against `allowedPrefixes`.
     rules: Object.freeze([
       // 4-digit rooms: 1000s–1500s and 2200s–2500s (prefix is first two digits).
-      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) },
-      // 3-digit rooms: 200s (prefix is first one digit).
-      //{ digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([2]) }
-      // To also allow 700s later, add:
-      // { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([7]) }
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([10, 11, 12, 13, 14, 15, 22, 23, 24, 25]) },
+      // 3-digit rooms: 200s, 600s, and 900s (prefix is first one digit).
+      { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([2, 6, 9]) }
     ])
   });
   const RRHS_STUDENT_ROOM_FILTER = Object.freeze({
     enabled: true,
     rules: Object.freeze([
-      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([11, 12, 13, 14, 15, 22, 23, 24, 25]) }
+      { digits: 4, prefixDigits: 2, allowedPrefixes: Object.freeze([10, 11, 12, 13, 14, 15, 22, 23, 24, 25]) },
+      { digits: 3, prefixDigits: 1, allowedPrefixes: Object.freeze([2, 6, 9]) }
     ])
   });
 
