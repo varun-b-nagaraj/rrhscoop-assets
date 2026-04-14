@@ -63,7 +63,8 @@ File: `check-out-page/rrhs-stole-drawer.js`
 - Looks up assigned stole products from local JSON data (`window.RRHS_STOLE_CONFIG.assignmentData` or built-in defaults).
 - Fetches the live stole product list from Ecwid category `169641234`.
 - Excludes the legacy matrix product with SKU `48_sku_main`.
-- Uses Ecwid Storefront JS to keep only the assigned stole products in the cart, capped at quantity `1` each.
+- Shows assigned stoles first, then requires a checkbox + button click before adding them to cart.
+- Uses Ecwid Storefront JS to remove unauthorized stole products and keep allowed stole products capped at quantity `1` each.
 - If no mapping exists for the entered S-number, all stole products are removed and the drawer shows: `No stole found for you please contact your counselor.`
 
 Example runtime override:
