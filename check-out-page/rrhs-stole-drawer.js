@@ -257,8 +257,8 @@
         transform: translateY(-50%);
         background: #7c2d12;
         color: #fff;
-        border-radius: 10px;
-        padding: 8px 12px;
+        border-radius: 8px;
+        padding: 9px 24px 9px 12px;
         font-size: 12px;
         font-weight: 700;
         white-space: nowrap;
@@ -267,27 +267,7 @@
         transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
         pointer-events: none;
         visibility: visible;
-      }
-      #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
-        content: "";
-        position: absolute;
-        right: -16px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 12px;
-        height: 2px;
-        background: #7c2d12;
-      }
-      #rrhs-stole-drawer .rrhs-stole-drawer__callout::before {
-        content: "";
-        position: absolute;
-        right: -22px;
-        top: 50%;
-        width: 6px;
-        height: 6px;
-        border-top: 2px solid #7c2d12;
-        border-right: 2px solid #7c2d12;
-        transform: translateY(-50%) rotate(45deg);
+        clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
       }
       #rrhs-stole-drawer[data-open="1"] .rrhs-stole-drawer__callout {
         opacity: 0;
@@ -433,21 +413,8 @@
           right: 6px;
           transform: translateY(-100%);
           font-size: 11px;
-        }
-        #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
-          right: 18px;
-          top: auto;
-          bottom: -8px;
-          transform: none;
-          width: 2px;
-          height: 12px;
-          background: #7c2d12;
-        }
-        #rrhs-stole-drawer .rrhs-stole-drawer__callout::before {
-          right: 16px;
-          top: auto;
-          bottom: -14px;
-          transform: rotate(135deg);
+          padding: 8px 12px 20px;
+          clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), 60% calc(100% - 10px), 50% 100%, 40% calc(100% - 10px), 0 calc(100% - 10px));
         }
         #rrhs-stole-drawer {
           top: auto;
