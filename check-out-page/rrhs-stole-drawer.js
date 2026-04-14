@@ -643,27 +643,34 @@
       const cart = await ecwidGetCart();
       const items = Array.isArray(cart.items) ? cart.items : [];
       const allowedIds = new Set((assignedProducts || []).map((product) => product.id));
-      const removals = [];
-      const foundCounts = new Map();
+      const removeIndexSet = new Set();
+      const resetToOneIds = new Set();
+      const groupedByProductId = new Map();
 
       items.forEach((item, index) => {
         if (!isStoleCartItem(item)) return;
         const productId = Number(item && item.product && item.product.id);
-        const currentQty = Math.max(0, Number(item && item.quantity) || 0);
-        const nextCount = (foundCounts.get(productId) || 0) + currentQty;
-        foundCounts.set(productId, nextCount);
-
+        if (!Number.isFinite(productId) || productId <= 0) return;
         if (!allowedIds.has(productId)) {
-          removals.push(index);
+          removeIndexSet.add(index);
           return;
         }
-
-        if (nextCount > 1) {
-          removals.push(index);
-        }
+        const bucket = groupedByProductId.get(productId) || [];
+        bucket.push({
+          index,
+          qty: Math.max(0, Number(item && item.quantity) || 0)
+        });
+        groupedByProductId.set(productId, bucket);
       });
 
-      removals.sort((a, b) => b - a);
+      groupedByProductId.forEach((lines, productId) => {
+        const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
+        if (totalQty <= 1 && lines.length === 1) return;
+        resetToOneIds.add(productId);
+        lines.forEach((line) => removeIndexSet.add(line.index));
+      });
+
+      const removals = Array.from(removeIndexSet).sort((a, b) => b - a);
       for (const index of removals) {
         await ecwidRemoveProduct(index);
       }
@@ -687,9 +694,15 @@
         }
       }
 
+      for (const productId of resetToOneIds) {
+        if ((effectiveCounts.get(productId) || 0) >= 1) continue;
+        await ecwidAddProduct({ id: productId, quantity: 1 });
+      }
+
       log("Cart sync complete", {
         reason,
-        allowed: Array.from(allowedIds)
+        allowed: Array.from(allowedIds),
+        resetToOne: Array.from(resetToOneIds)
       });
     } finally {
       state.isSyncingCart = false;
