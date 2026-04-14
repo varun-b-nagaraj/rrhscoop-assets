@@ -65,20 +65,21 @@
     catalog: [],
     catalogById: new Map(),
     catalogByKey: new Map(),
+    assignedProducts: [],
     selectedProductIds: new Set(),
+    lockedProductIds: new Set(),
     selectedSNumber: "",
     lastStatusKey: "",
     isSyncingCart: false,
     pendingSyncReason: "",
     lookupTimer: null,
-    addRequested: false,
+    requestedAddIds: new Set(),
     refs: {
       root: null,
       toggle: null,
       status: null,
       input: null,
       list: null,
-      confirm: null,
       button: null
     }
   };
@@ -164,8 +165,39 @@
       return;
     }
     items.forEach((product) => {
+      const isLocked = state.lockedProductIds.has(product.id);
+      const isChecked = isLocked || state.selectedProductIds.has(product.id);
       const li = document.createElement("li");
-      li.textContent = product.name;
+      li.className = "rrhs-stole-drawer__item";
+      if (isLocked) li.dataset.locked = "1";
+
+      const label = document.createElement("label");
+      label.className = "rrhs-stole-drawer__item-label";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "rrhs-stole-drawer__item-checkbox";
+      checkbox.checked = isChecked;
+      checkbox.disabled = isLocked;
+      checkbox.setAttribute("aria-label", `Select ${product.name}`);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) state.selectedProductIds.add(product.id);
+        else state.selectedProductIds.delete(product.id);
+        updateActionButtonState();
+      });
+
+      const textWrap = document.createElement("span");
+      textWrap.className = "rrhs-stole-drawer__item-text";
+      textWrap.textContent = product.name;
+
+      const meta = document.createElement("span");
+      meta.className = "rrhs-stole-drawer__item-meta";
+      meta.textContent = isLocked ? "Already in cart (locked)" : "Select to add";
+
+      label.appendChild(checkbox);
+      label.appendChild(textWrap);
+      li.appendChild(label);
+      li.appendChild(meta);
       listEl.appendChild(li);
     });
   }
@@ -184,10 +216,16 @@
   function updateActionButtonState() {
     const button = state.refs.button;
     if (!button) return;
-    const hasAssigned = state.selectedProductIds && state.selectedProductIds.size > 0;
-    const confirmed = !!(state.refs.confirm && state.refs.confirm.checked);
-    button.disabled = !hasAssigned || !confirmed;
+    const addableCount = Array.from(state.selectedProductIds).filter((id) => !state.lockedProductIds.has(id)).length;
+    button.disabled = addableCount <= 0;
     button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+  }
+
+  function syncSelectedProductIdsWithAssigned() {
+    const assignedIds = new Set((state.assignedProducts || []).map((p) => p.id));
+    state.selectedProductIds = new Set(
+      Array.from(state.selectedProductIds).filter((id) => assignedIds.has(id) && !state.lockedProductIds.has(id))
+    );
   }
 
   function injectStyles() {
@@ -239,17 +277,6 @@
         display: grid;
         gap: 10px;
         margin-top: 12px;
-      }
-      #rrhs-stole-drawer .rrhs-stole-drawer__confirm {
-        display: flex;
-        gap: 8px;
-        align-items: flex-start;
-        color: #334155;
-        font-size: 12px;
-        line-height: 1.45;
-      }
-      #rrhs-stole-drawer .rrhs-stole-drawer__confirm input {
-        margin-top: 2px;
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__button {
         height: 42px;
@@ -307,9 +334,40 @@
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__list {
         margin: 10px 0 0;
-        padding-left: 18px;
+        padding-left: 0;
+        list-style: none;
         color: #1e293b;
         font-size: 13px;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item[data-locked="1"] {
+        background: #f8fafc;
+        color: #94a3b8;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        cursor: pointer;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item-checkbox {
+        margin-top: 2px;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item-text {
+        line-height: 1.35;
+        font-size: 13px;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__item-meta {
+        display: block;
+        margin-left: 24px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: #64748b;
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__blocked-note {
         margin: 10px 0 0;
@@ -362,15 +420,11 @@
             placeholder="s123456"
           />
         </label>
-        <p class="rrhs-stole-drawer__hint">Saved immediately. Review your assigned stoles, then confirm before adding them.</p>
+        <p class="rrhs-stole-drawer__hint">Saved immediately. Check the stoles you want added.</p>
         <p class="rrhs-stole-drawer__status" data-tone="neutral"></p>
         <ul class="rrhs-stole-drawer__list"></ul>
         <div class="rrhs-stole-drawer__actions">
-          <label class="rrhs-stole-drawer__confirm" for="rrhs-stole-confirm">
-            <input id="rrhs-stole-confirm" type="checkbox" />
-            <span>I confirmed these are my assigned stoles.</span>
-          </label>
-          <button type="button" class="rrhs-stole-drawer__button" disabled aria-disabled="true">Add assigned stoles to cart</button>
+          <button type="button" class="rrhs-stole-drawer__button" disabled aria-disabled="true">Add selected stoles to cart</button>
         </div>
         <p class="rrhs-stole-drawer__blocked-note">Graduation stoles are locked to counselor-assigned products and capped at one each.</p>
       </div>
@@ -383,7 +437,6 @@
     state.refs.status = root.querySelector(".rrhs-stole-drawer__status");
     state.refs.input = root.querySelector(".rrhs-stole-drawer__input");
     state.refs.list = root.querySelector(".rrhs-stole-drawer__list");
-    state.refs.confirm = root.querySelector("#rrhs-stole-confirm");
     state.refs.button = root.querySelector(".rrhs-stole-drawer__button");
 
     state.refs.toggle.addEventListener("click", () => {
@@ -393,9 +446,15 @@
     state.refs.input.addEventListener("focus", () => setDrawerOpen(true));
     state.refs.input.addEventListener("input", onInputChanged);
     state.refs.input.addEventListener("change", onInputChanged);
-    state.refs.confirm.addEventListener("change", updateActionButtonState);
     state.refs.button.addEventListener("click", () => {
-      state.addRequested = true;
+      state.requestedAddIds = new Set(
+        Array.from(state.selectedProductIds).filter((id) => !state.lockedProductIds.has(id))
+      );
+      if (!state.requestedAddIds.size) {
+        setStatus("Select at least one unlocked stole to add.", "neutral");
+        updateActionButtonState();
+        return;
+      }
       processCurrentStudent("manual-add").catch((err) => {
         console.warn("[RRHS stole] Manual add failed", err);
       });
@@ -408,8 +467,9 @@
     const normalized = normalizeSNumber(raw);
     writeStorage(config.storageKey, normalized);
     state.selectedSNumber = normalized;
-    state.addRequested = false;
-    if (state.refs.confirm) state.refs.confirm.checked = false;
+    state.requestedAddIds = new Set();
+    state.selectedProductIds = new Set();
+    state.lockedProductIds = new Set();
     updateActionButtonState();
 
     if (state.lookupTimer) clearTimeout(state.lookupTimer);
@@ -630,9 +690,26 @@
     });
   }
 
+  async function getLockedAssignedProductIds(assignedProducts) {
+    const assignedIds = new Set((assignedProducts || []).map((p) => p.id));
+    if (!assignedIds.size) return new Set();
+    const cart = await ecwidGetCart();
+    const items = Array.isArray(cart.items) ? cart.items : [];
+    const lockedIds = new Set();
+    items.forEach((item) => {
+      if (!isStoleCartItem(item)) return;
+      const productId = Number(item && item.product && item.product.id);
+      const qty = Math.max(0, Number(item && item.quantity) || 0);
+      if (qty > 0 && assignedIds.has(productId)) lockedIds.add(productId);
+    });
+    return lockedIds;
+  }
+
   async function syncCartToAssignedProducts(assignedProducts, reason, opts) {
     const options = opts && typeof opts === "object" ? opts : {};
-    const addMissing = options.addMissing === true;
+    const addMissingIds = options.addMissingIds instanceof Set
+      ? options.addMissingIds
+      : new Set(Array.isArray(options.addMissingIds) ? options.addMissingIds : []);
     if (state.isSyncingCart) {
       state.pendingSyncReason = reason || "queued";
       return;
@@ -687,11 +764,10 @@
         effectiveCounts.set(productId, Math.min(1, (effectiveCounts.get(productId) || 0) + qty));
       });
 
-      if (addMissing) {
-        for (const product of assignedProducts) {
-          if ((effectiveCounts.get(product.id) || 0) >= 1) continue;
-          await ecwidAddProduct({ id: product.id, quantity: 1 });
-        }
+      for (const productId of addMissingIds) {
+        if (!allowedIds.has(productId)) continue;
+        if ((effectiveCounts.get(productId) || 0) >= 1) continue;
+        await ecwidAddProduct({ id: productId, quantity: 1 });
       }
 
       for (const productId of resetToOneIds) {
@@ -709,7 +785,9 @@
       if (state.pendingSyncReason) {
         const nextReason = state.pendingSyncReason;
         state.pendingSyncReason = "";
-        syncCartToAssignedProducts(resolveAssignedProducts(state.selectedSNumber), nextReason, { addMissing: state.addRequested });
+        syncCartToAssignedProducts(resolveAssignedProducts(state.selectedSNumber), nextReason, {
+          addMissingIds: state.requestedAddIds
+        });
       }
     }
   }
@@ -739,7 +817,9 @@
       if (state.pendingSyncReason) {
         const nextReason = state.pendingSyncReason;
         state.pendingSyncReason = "";
-        syncCartToAssignedProducts(resolveAssignedProducts(state.selectedSNumber), nextReason, { addMissing: state.addRequested });
+        syncCartToAssignedProducts(resolveAssignedProducts(state.selectedSNumber), nextReason, {
+          addMissingIds: state.requestedAddIds
+        });
       }
     }
   }
@@ -760,43 +840,54 @@
     }
 
     if (!sNumber) {
+      state.assignedProducts = [];
       state.selectedProductIds = new Set();
+      state.lockedProductIds = new Set();
+      state.requestedAddIds = new Set();
       renderAssignedList([]);
       setStatus("Enter your S-number to add your assigned graduation stoles.", "neutral");
-      state.addRequested = false;
-      if (state.refs.confirm) state.refs.confirm.checked = false;
       updateActionButtonState();
       await removeAllStolesFromCart(`${reason}:empty`);
       return;
     }
 
     const assignedProducts = resolveAssignedProducts(sNumber);
-    state.selectedProductIds = new Set(assignedProducts.map((product) => product.id));
-    renderAssignedList(assignedProducts);
+    state.assignedProducts = assignedProducts;
 
     if (!assignedProducts.length) {
+      state.selectedProductIds = new Set();
+      state.lockedProductIds = new Set();
+      state.requestedAddIds = new Set();
+      renderAssignedList([]);
       setStatus(config.missingStudentMessage, "error");
-      state.addRequested = false;
-      if (state.refs.confirm) state.refs.confirm.checked = false;
       updateActionButtonState();
       await removeAllStolesFromCart(`${reason}:missing`);
       return;
     }
 
+    state.lockedProductIds = await getLockedAssignedProductIds(assignedProducts);
+    syncSelectedProductIdsWithAssigned();
+    renderAssignedList(assignedProducts);
     updateActionButtonState();
 
-    if (state.addRequested) {
+    if (state.requestedAddIds.size) {
       setStatus("Adding your assigned stoles to cart.", "success");
-      await syncCartToAssignedProducts(assignedProducts, reason, { addMissing: true });
-      state.addRequested = false;
-      if (state.refs.confirm) state.refs.confirm.checked = false;
+      await syncCartToAssignedProducts(assignedProducts, reason, { addMissingIds: state.requestedAddIds });
+      state.requestedAddIds = new Set();
+      state.lockedProductIds = await getLockedAssignedProductIds(assignedProducts);
+      syncSelectedProductIdsWithAssigned();
+      renderAssignedList(assignedProducts);
       updateActionButtonState();
       setStatus(`Assigned stoles are locked in your cart: ${assignedProducts.map((product) => product.name).join(", ")}`, "success");
       return;
     }
 
-    await syncCartToAssignedProducts(assignedProducts, `${reason}:enforce`, { addMissing: false });
-    setStatus(`Assigned stoles loaded. Check the box and click the button to add: ${assignedProducts.map((product) => product.name).join(", ")}`, "success");
+    await syncCartToAssignedProducts(assignedProducts, `${reason}:enforce`, { addMissingIds: [] });
+    state.lockedProductIds = await getLockedAssignedProductIds(assignedProducts);
+    syncSelectedProductIdsWithAssigned();
+    renderAssignedList(assignedProducts);
+    updateActionButtonState();
+    setStatus("Assigned stoles loaded. Check the ones you want and click Add selected stoles to cart.", "success");
   }
 
   function bindEcwidEvents() {
