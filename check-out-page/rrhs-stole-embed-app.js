@@ -168,19 +168,40 @@
       const allowed = new Set(state.assigned.map((x) => x.id));
       const cart = await cartGet();
       const items = Array.isArray(cart.items) ? cart.items : [];
-      const group = new Map(); const removeIdx = [];
+      const group = new Map();
+      const removeIdx = new Set();
+      const resetIds = new Set();
       items.forEach((it, i) => {
         const id = Number(it && it.product && it.product.id);
         const qty = Math.max(0, Number(it && it.quantity) || 0);
         if (!state.catalogById.has(id)) return;
-        if (!allowed.has(id)) { removeIdx.push(i); return; }
+        if (!allowed.has(id)) { removeIdx.add(i); return; }
         const g = group.get(id) || { total: 0, idx: [] };
         g.total += qty; g.idx.push(i); group.set(id, g);
       });
-      group.forEach((g) => { if (!(g.total <= 1 && g.idx.length === 1)) g.idx.forEach((i) => removeIdx.push(i)); });
-      removeIdx.sort((a, b) => b - a);
-      for (const i of removeIdx) await cartRemove(i);
-      for (const [id, g] of group.entries()) if (g.total >= 1) await cartAdd(id, 1);
+
+      group.forEach((g, id) => {
+        if (g.total <= 1 && g.idx.length === 1) return;
+        resetIds.add(id);
+        g.idx.forEach((i) => removeIdx.add(i));
+      });
+
+      const removeList = Array.from(removeIdx).sort((a, b) => b - a);
+      for (const i of removeList) await cartRemove(i);
+
+      const refreshed = removeList.length ? await cartGet() : cart;
+      const refreshedItems = Array.isArray(refreshed.items) ? refreshed.items : [];
+      const present = new Set();
+      refreshedItems.forEach((it) => {
+        const id = Number(it && it.product && it.product.id);
+        const qty = Math.max(0, Number(it && it.quantity) || 0);
+        if (allowed.has(id) && qty > 0) present.add(id);
+      });
+
+      for (const id of resetIds) {
+        if (present.has(id)) continue;
+        await cartAdd(id, 1);
+      }
     } finally { state.syncing = false; }
   }
 
@@ -253,6 +274,7 @@
     if (window.Ecwid && Ecwid.OnCartChanged && typeof Ecwid.OnCartChanged.add === "function") {
       Ecwid.OnCartChanged.add(() => {
         if (!state.assigned.length) return;
+        if (state.syncing) return;
         enforce().then(readLocked).then(renderRows).catch(() => {});
       });
     }
