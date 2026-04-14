@@ -246,6 +246,38 @@
         transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
         will-change: transform;
       }
+      #rrhs-stole-drawer .rrhs-stole-drawer__callout {
+        position: absolute;
+        right: calc(100% - 8px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: #7c2d12;
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 8px 20px rgba(124, 45, 18, 0.28);
+        opacity: 1;
+        transition: opacity 180ms ease;
+        pointer-events: none;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
+        content: "";
+        position: absolute;
+        right: -7px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-top: 7px solid transparent;
+        border-bottom: 7px solid transparent;
+        border-left: 7px solid #7c2d12;
+      }
+      #rrhs-stole-drawer[data-open="1"] .rrhs-stole-drawer__callout {
+        opacity: 0;
+      }
       #rrhs-stole-drawer[data-open="0"] {
         transform: translate3d(calc(100% - 42px), -50%, 0);
       }
@@ -380,6 +412,22 @@
         color: #b45309;
       }
       @media (max-width: 640px) {
+        #rrhs-stole-drawer .rrhs-stole-drawer__callout {
+          top: -12px;
+          right: 6px;
+          transform: translateY(-100%);
+          font-size: 11px;
+        }
+        #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
+          right: 14px;
+          top: auto;
+          bottom: -7px;
+          transform: none;
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-top: 7px solid #7c2d12;
+          border-bottom: 0;
+        }
         #rrhs-stole-drawer {
           top: auto;
           bottom: 20px;
@@ -405,6 +453,7 @@
     root.id = "rrhs-stole-drawer";
     root.dataset.open = "0";
     root.innerHTML = `
+      <div class="rrhs-stole-drawer__callout">Order stoles here</div>
       <button type="button" class="rrhs-stole-drawer__toggle" aria-expanded="false" aria-label="Open stole drawer">‹</button>
       <div class="rrhs-stole-drawer__panel">
         <p class="rrhs-stole-drawer__title">${config.drawerTitle}</p>
