@@ -462,7 +462,6 @@
     state.catalog = normalized;
     state.catalogById = new Map(normalized.map((item) => [item.id, item]));
     state.catalogByKey = new Map(normalized.map((item) => [item.key, item]));
-    disableManualStolePurchaseUi();
   }
 
   async function ensureCatalog() {
@@ -731,82 +730,6 @@
     }
   }
 
-  function disableManualStolePurchaseUi() {
-    if (!state.catalog.length) return;
-
-    const currentPath = String(window.location && window.location.pathname ? window.location.pathname : "");
-    let onStoleProductPage = false;
-
-    state.catalog.forEach((product) => {
-      if (product.url) {
-        try {
-          if (currentPath === new URL(product.url, window.location.origin).pathname) {
-            onStoleProductPage = true;
-          }
-        } catch (_err) {}
-      }
-      if (!product.url) return;
-
-      const selector = `a[href="${product.url}"], a[href*="-p${product.id}"]`;
-      const links = Array.from(document.querySelectorAll(selector));
-      links.forEach((link) => {
-        const container =
-          link.closest(".grid-product, .product-card, .ec-product, .ec-store__product, .ins-product, article, li, .ec-grid__cell") ||
-          link.parentElement;
-        if (!container) return;
-
-        const buttons = Array.from(
-          container.querySelectorAll('button, a[role="button"], .ec-add-to-cart, .grid-product__buy-now')
-        );
-        buttons.forEach((button) => {
-          if (!button || button.dataset.rrhsStoleLocked === "1") return;
-          const text = normalizeText(button.textContent || "");
-          if (
-            text.includes("add to bag") ||
-            text.includes("buy now") ||
-            text.includes("add to cart") ||
-            text.includes("add")
-          ) {
-            button.dataset.rrhsStoleLocked = "1";
-            button.setAttribute("aria-disabled", "true");
-            button.disabled = true;
-            button.style.pointerEvents = "none";
-            button.style.opacity = "0.45";
-            button.title = "Use the S-number drawer to add assigned graduation stoles.";
-          }
-        });
-
-        if (!container.querySelector(".rrhs-stole-lock-note")) {
-          const note = document.createElement("div");
-          note.className = "rrhs-stole-lock-note";
-          note.textContent = "Use the S-number drawer to add assigned graduation stoles.";
-          container.appendChild(note);
-        }
-      });
-    });
-
-    if (onStoleProductPage) {
-      Array.from(
-        document.querySelectorAll('button, .details-product-purchase__add-buttons button, .ec-add-to-cart')
-      ).forEach((button) => {
-        if (!button || button.dataset.rrhsStoleLocked === "1") return;
-        const text = normalizeText(button.textContent || "");
-        if (
-          text.includes("add to bag") ||
-          text.includes("buy now") ||
-          text.includes("add to cart") ||
-          text.includes("add")
-        ) {
-          button.dataset.rrhsStoleLocked = "1";
-          button.setAttribute("aria-disabled", "true");
-          button.disabled = true;
-          button.style.pointerEvents = "none";
-          button.style.opacity = "0.45";
-        }
-      });
-    }
-  }
-
   async function processCurrentStudent(reason) {
     try {
       await ensureCatalog();
@@ -815,8 +738,6 @@
       setStatus("Could not load graduation stole data right now.", "error");
       return;
     }
-
-    disableManualStolePurchaseUi();
 
     const sNumber = normalizeSNumber(state.selectedSNumber || readStorage(config.storageKey));
     state.selectedSNumber = sNumber;
@@ -878,15 +799,6 @@
         });
       }
 
-      if (
-        window.Ecwid &&
-        window.Ecwid.OnPageSwitch &&
-        typeof window.Ecwid.OnPageSwitch.add === "function"
-      ) {
-        window.Ecwid.OnPageSwitch.add(() => {
-          disableManualStolePurchaseUi();
-        });
-      }
     });
   }
 
@@ -908,7 +820,6 @@
   if (runtime && typeof runtime.onDomChanged === "function") {
     runtime.onDomChanged(() => {
       if (!document.getElementById("rrhs-stole-drawer")) createDrawer();
-      disableManualStolePurchaseUi();
     }, { runNow: false });
   }
 
