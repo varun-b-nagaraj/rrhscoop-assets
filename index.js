@@ -25,16 +25,18 @@
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
   const inventoryGuard = new URL('check-out-page/rrhs-inventory-guard.js', base).href;
+  const stoleDrawer = new URL('check-out-page/rrhs-stole-drawer.js', base).href;
   const icedTeaGate = new URL('order-validate/rrhs-iced-tea-gate.js', base).href;
   const agent = new URL('agent/rrhscoop-assistant.js', base).href;
 
-  // Load runtime -> visuals -> checkout -> inventory guard -> iced tea gate -> agent
+  // Load runtime -> visuals -> checkout -> inventory guard -> stole drawer -> iced tea gate -> agent
   // (sequential to keep deterministic ordering)
   loadScript(runtime)
     .catch(() => {})
     .then(() => loadScript(visuals).catch(() => {}))
     .then(() => loadScript(checkout).catch(() => {}))
     .then(() => loadScript(inventoryGuard).catch(() => {}))
+    .then(() => loadScript(stoleDrawer).catch(() => {}))
     .then(() => loadScript(icedTeaGate).catch(() => {}))
     .then(() => loadScript(agent).catch(() => {}));
 
