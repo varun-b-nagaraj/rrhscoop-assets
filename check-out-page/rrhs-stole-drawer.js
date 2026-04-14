@@ -205,10 +205,11 @@
         align-items: stretch;
         width: min(88vw, 376px);
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        transition: transform 180ms ease;
+        transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform;
       }
       #rrhs-stole-drawer[data-open="0"] {
-        transform: translate3d(calc(100% - 18px), -50%, 0);
+        transform: translate3d(calc(100% - 42px), -50%, 0);
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__panel {
         flex: 1 1 auto;
@@ -222,8 +223,8 @@
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__toggle {
         align-self: center;
-        width: 38px;
-        min-width: 38px;
+        width: 42px;
+        min-width: 42px;
         height: 72px;
         border: 0;
         border-radius: 14px 0 0 14px;
@@ -327,7 +328,7 @@
           transform: translate3d(0, 0, 0);
         }
         #rrhs-stole-drawer[data-open="0"] {
-          transform: translate3d(calc(100% - 18px), 0, 0);
+          transform: translate3d(calc(100% - 42px), 0, 0);
         }
         #rrhs-stole-drawer .rrhs-stole-drawer__toggle {
           height: 60px;
@@ -346,6 +347,7 @@
     root.id = "rrhs-stole-drawer";
     root.dataset.open = "0";
     root.innerHTML = `
+      <button type="button" class="rrhs-stole-drawer__toggle" aria-expanded="false" aria-label="Open stole drawer">‹</button>
       <div class="rrhs-stole-drawer__panel">
         <p class="rrhs-stole-drawer__title">${config.drawerTitle}</p>
         <label class="rrhs-stole-drawer__field" for="rrhs-stole-s-number-input">
@@ -372,7 +374,6 @@
         </div>
         <p class="rrhs-stole-drawer__blocked-note">Graduation stoles are locked to counselor-assigned products and capped at one each.</p>
       </div>
-      <button type="button" class="rrhs-stole-drawer__toggle" aria-expanded="false" aria-label="Open stole drawer">‹</button>
     `;
 
     document.body.appendChild(root);
