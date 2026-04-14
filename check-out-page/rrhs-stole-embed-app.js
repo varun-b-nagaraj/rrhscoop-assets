@@ -24,6 +24,7 @@
     assigned: [],
     selectedIds: new Set(),
     lockedIds: new Set(),
+    lockMissCount: new Map(),
     syncing: false
   };
 
@@ -151,14 +152,36 @@
 
   async function readLocked() {
     const ids = new Set(state.assigned.map((x) => x.id));
-    const locked = new Set();
+    const currentlyPresent = new Set();
     const cart = await cartGet();
     (Array.isArray(cart.items) ? cart.items : []).forEach((it) => {
       const id = Number(it && it.product && it.product.id);
       const qty = Math.max(0, Number(it && it.quantity) || 0);
-      if (qty > 0 && ids.has(id)) locked.add(id);
+      if (qty > 0 && ids.has(id)) currentlyPresent.add(id);
     });
-    state.lockedIds = locked;
+
+    const nextLocked = new Set();
+    ids.forEach((id) => {
+      if (currentlyPresent.has(id)) {
+        state.lockMissCount.set(id, 0);
+        nextLocked.add(id);
+        return;
+      }
+
+      if (state.lockedIds.has(id)) {
+        const misses = Number(state.lockMissCount.get(id) || 0) + 1;
+        state.lockMissCount.set(id, misses);
+        if (misses < 3) {
+          nextLocked.add(id);
+        } else {
+          state.lockMissCount.set(id, 0);
+        }
+      } else {
+        state.lockMissCount.set(id, 0);
+      }
+    });
+
+    state.lockedIds = nextLocked;
   }
 
   async function enforce() {
@@ -251,6 +274,9 @@
       const sNum = nS(els.input.value);
       if (!sNum) { setStatus("Enter your S-number.", "error"); return; }
       setStatus("Loading your stole options...", "");
+      state.lockedIds = new Set();
+      state.lockMissCount = new Map();
+      state.selectedIds = new Set();
       if (!state.catalogById.size) await fetchCatalog();
       state.assigned = resolveAssigned(sNum);
       if (!state.assigned.length) { els.main.style.display = "none"; setStatus("No stole found for you please contact your counselor.", "error"); return; }
