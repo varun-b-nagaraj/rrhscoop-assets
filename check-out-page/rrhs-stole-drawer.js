@@ -77,6 +77,7 @@
     refs: {
       root: null,
       toggle: null,
+      callout: null,
       status: null,
       input: null,
       list: null,
@@ -206,6 +207,9 @@
     const root = state.refs.root;
     if (!root) return;
     root.dataset.open = isOpen ? "1" : "0";
+    if (state.refs.callout) {
+      state.refs.callout.setAttribute("aria-hidden", isOpen ? "true" : "false");
+    }
     if (state.refs.toggle) {
       state.refs.toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
       state.refs.toggle.setAttribute("aria-label", isOpen ? "Close stole drawer" : "Open stole drawer");
@@ -248,35 +252,47 @@
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__callout {
         position: absolute;
-        right: calc(100% - 8px);
+        right: calc(100% + 8px);
         top: 50%;
         transform: translateY(-50%);
         background: #7c2d12;
         color: #fff;
         border-radius: 10px;
-        padding: 8px 10px;
+        padding: 8px 12px;
         font-size: 12px;
         font-weight: 700;
         white-space: nowrap;
         box-shadow: 0 8px 20px rgba(124, 45, 18, 0.28);
         opacity: 1;
-        transition: opacity 180ms ease;
+        transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
         pointer-events: none;
+        visibility: visible;
       }
       #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
         content: "";
         position: absolute;
-        right: -7px;
+        right: -16px;
         top: 50%;
         transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        border-top: 7px solid transparent;
-        border-bottom: 7px solid transparent;
-        border-left: 7px solid #7c2d12;
+        width: 12px;
+        height: 2px;
+        background: #7c2d12;
+      }
+      #rrhs-stole-drawer .rrhs-stole-drawer__callout::before {
+        content: "";
+        position: absolute;
+        right: -22px;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-top: 2px solid #7c2d12;
+        border-right: 2px solid #7c2d12;
+        transform: translateY(-50%) rotate(45deg);
       }
       #rrhs-stole-drawer[data-open="1"] .rrhs-stole-drawer__callout {
         opacity: 0;
+        visibility: hidden;
+        transform: translate(-6px, -50%);
       }
       #rrhs-stole-drawer[data-open="0"] {
         transform: translate3d(calc(100% - 42px), -50%, 0);
@@ -419,14 +435,19 @@
           font-size: 11px;
         }
         #rrhs-stole-drawer .rrhs-stole-drawer__callout::after {
-          right: 14px;
+          right: 18px;
           top: auto;
-          bottom: -7px;
+          bottom: -8px;
           transform: none;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-top: 7px solid #7c2d12;
-          border-bottom: 0;
+          width: 2px;
+          height: 12px;
+          background: #7c2d12;
+        }
+        #rrhs-stole-drawer .rrhs-stole-drawer__callout::before {
+          right: 16px;
+          top: auto;
+          bottom: -14px;
+          transform: rotate(135deg);
         }
         #rrhs-stole-drawer {
           top: auto;
@@ -482,6 +503,7 @@
     document.body.appendChild(root);
 
     state.refs.root = root;
+    state.refs.callout = root.querySelector(".rrhs-stole-drawer__callout");
     state.refs.toggle = root.querySelector(".rrhs-stole-drawer__toggle");
     state.refs.status = root.querySelector(".rrhs-stole-drawer__status");
     state.refs.input = root.querySelector(".rrhs-stole-drawer__input");
