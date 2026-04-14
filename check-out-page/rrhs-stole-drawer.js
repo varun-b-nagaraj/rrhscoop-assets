@@ -36,7 +36,7 @@
     },
     excludedSkus: ["48_sku_main"],
     excludedProductIds: [],
-    drawerTitle: "Enter your S-number to add the correct stoles to cart. — Testing only, The RRHS CO-OP will sell stoles online starting next year.",
+    drawerTitle: "Enter your S-number to add the correct stoles to cart. — Testing only, The RRHS CO-OP E-commerce will sell stoles online starting next year.",
     missingStudentMessage: "No stole found for you please contact your counselor."
   });
 
