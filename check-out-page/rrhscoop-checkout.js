@@ -4508,9 +4508,7 @@
               return { id: `alpha_office_${n}`, label, roomValue: label };
             });
 
-          const locations = rrhsGetSpecialDeliveryFlatOptions().filter(
-            (o) => !String(o.id || "").startsWith("alpha_office_")
-          );
+          const locations = Array.isArray(specialCfg.locations) ? specialCfg.locations : [];
 
           const alphaGroupMatches = !q || (alphaGroupLabel && alphaGroupLabel.toLowerCase().includes(qLower));
           const alphaChildMatches = alphaChildren.filter((c) => {
