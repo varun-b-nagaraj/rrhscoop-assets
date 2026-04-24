@@ -86,6 +86,38 @@
         label: "Library",
         roomValue: "Library"
       })
+    ]),
+    groups: Object.freeze([
+      Object.freeze({
+        id: "career_fair",
+        label: "Career Fair",
+        locations: Object.freeze([
+          Object.freeze({ id: "career_fair_a_plus_federal_credit_union", label: "A+ Federal Credit Union", roomValue: "A+ Federal Credit Union" }),
+          Object.freeze({ id: "career_fair_aqua_tots_round_rock", label: "Aqua-Tots Round Rock", roomValue: "Aqua-Tots Round Rock" }),
+          Object.freeze({ id: "career_fair_aquatic_division_city_of_austin", label: "Aquatic Division for the City of Austin", roomValue: "Aquatic Division for the City of Austin" }),
+          Object.freeze({ id: "career_fair_austin_park", label: "Austin Park", roomValue: "Austin Park" }),
+          Object.freeze({ id: "career_fair_brushy_creek_mud", label: "Brushy Creek MUD", roomValue: "Brushy Creek MUD" }),
+          Object.freeze({ id: "career_fair_ch_customs_family_barbershop", label: "CH Customs Family Barbershop", roomValue: "CH Customs Family Barbershop" }),
+          Object.freeze({ id: "career_fair_chick_fil_a", label: "Chick Fil A", roomValue: "Chick Fil A" }),
+          Object.freeze({ id: "career_fair_city_of_round_rock_aquatics", label: "City of Round Rock Aquatics", roomValue: "City of Round Rock Aquatics" }),
+          Object.freeze({ id: "career_fair_emler_swim_school", label: "Emler Swim School", roomValue: "Emler Swim School" }),
+          Object.freeze({ id: "career_fair_gotham_gifts", label: "Gotham Gifts", roomValue: "Gotham Gifts" }),
+          Object.freeze({ id: "career_fair_i_am_ready_swim", label: "I Am Ready Swim", roomValue: "I Am Ready Swim" }),
+          Object.freeze({ id: "career_fair_ibm_protech_training", label: "IBM & PROTECH TRAINING", roomValue: "IBM & PROTECH TRAINING" }),
+          Object.freeze({ id: "career_fair_kalahari_resorts_and_conventions", label: "Kalahari Resorts and Conventions", roomValue: "Kalahari Resorts and Conventions" }),
+          Object.freeze({ id: "career_fair_mi_mundo_coffeehouse_roasted", label: "Mi Mundo Coffeehouse & Roasted", roomValue: "Mi Mundo Coffeehouse & Roasted" }),
+          Object.freeze({ id: "career_fair_next_day_access", label: "Next Day Access", roomValue: "Next Day Access" }),
+          Object.freeze({ id: "career_fair_party_chaos", label: "Party Chaos", roomValue: "Party Chaos" }),
+          Object.freeze({ id: "career_fair_shoe_carnival_rr_outlets", label: "Shoe Carnival - RR Outlets", roomValue: "Shoe Carnival - RR Outlets" }),
+          Object.freeze({ id: "career_fair_typhoon_texas_waterpark", label: "Typhoon Texas Waterpark", roomValue: "Typhoon Texas Waterpark" }),
+          Object.freeze({ id: "career_fair_us_army", label: "U.S. Army", roomValue: "U.S. Army" }),
+          Object.freeze({ id: "career_fair_usaf_recruiting", label: "USAF Recruiting", roomValue: "USAF Recruiting" }),
+          Object.freeze({ id: "career_fair_wendys", label: "Wendy's", roomValue: "Wendy's" }),
+          Object.freeze({ id: "career_fair_whataburger", label: "Whataburger", roomValue: "Whataburger" }),
+          Object.freeze({ id: "career_fair_whataburger_unit_1226", label: "Whataburger unit 1226", roomValue: "Whataburger unit 1226" }),
+          Object.freeze({ id: "career_fair_ymca_of_central_texas", label: "YMCA of Central Texas", roomValue: "YMCA of Central Texas" })
+        ])
+      })
     ])
   });
 
@@ -3026,6 +3058,29 @@
           const roomValue = String(l.roomValue || label);
           return Object.freeze({ id, label, roomValue });
         });
+      const groupRaw = Array.isArray(raw.groups)
+        ? raw.groups
+        : RRHS_SPECIAL_DELIVERY.groups;
+      const groups = groupRaw
+        .filter((g) => g && typeof g === "object")
+        .map((g) => {
+          const id = String(g.id || g.label || "group");
+          const label = String(g.label || id);
+          const groupLocationsRaw = Array.isArray(g.locations) ? g.locations : [];
+          const groupLocations = groupLocationsRaw
+            .filter((l) => l && typeof l === "object")
+            .map((l) => {
+              const locationId = String(l.id || l.label || l.roomValue || "location");
+              const locationLabel = String(l.label || l.roomValue || locationId);
+              const roomValue = String(l.roomValue || locationLabel);
+              return Object.freeze({ id: locationId, label: locationLabel, roomValue });
+            });
+          return Object.freeze({
+            id,
+            label,
+            locations: Object.freeze(groupLocations)
+          });
+        });
 
       return Object.freeze({
         enabled,
@@ -3036,7 +3091,8 @@
           rooms: Object.freeze(alphaRooms),
           roomLabelSuffix: alphaSuffix
         }),
-        locations: Object.freeze(locations)
+        locations: Object.freeze(locations),
+        groups: Object.freeze(groups)
       });
     } catch (e) {}
     return RRHS_SPECIAL_DELIVERY;
@@ -3071,6 +3127,23 @@
           roomValue: String(l.roomValue)
         })
       );
+    });
+
+    const groups = Array.isArray(cfg.groups) ? cfg.groups : [];
+    groups.forEach((g) => {
+      const groupLocations = g && Array.isArray(g.locations) ? g.locations : [];
+      groupLocations.forEach((l) => {
+        if (!l || !l.roomValue) return;
+        out.push(
+          Object.freeze({
+            id: String(l.id || l.label || l.roomValue),
+            label: String(l.label || l.roomValue),
+            roomValue: String(l.roomValue),
+            groupId: String(g.id || ""),
+            groupLabel: String(g.label || "")
+          })
+        );
+      });
     });
 
     return out;
@@ -4452,11 +4525,32 @@
                 const roomLower = String(o.roomValue || "").toLowerCase();
                 return labelLower.includes(qLower) || roomLower.includes(qLower);
               });
+          const groups = Array.isArray(specialCfg.groups) ? specialCfg.groups : [];
+          const groupMatches = groups
+            .map((g) => {
+              const groupLabel = String((g && g.label) || "").trim();
+              const groupLabelMatches = Boolean(q && groupLabel.toLowerCase().includes(qLower));
+              const groupLocations = g && Array.isArray(g.locations) ? g.locations : [];
+              const matches = forceShowAll || !q || groupLabelMatches
+                ? groupLocations
+                : groupLocations.filter((o) => {
+                    const labelLower = String(o.label || "").toLowerCase();
+                    const roomLower = String(o.roomValue || "").toLowerCase();
+                    return labelLower.includes(qLower) || roomLower.includes(qLower);
+                  });
+              return {
+                id: String((g && g.id) || groupLabel || "group"),
+                label: groupLabel,
+                matches
+              };
+            })
+            .filter((g) => g.matches.length > 0);
 
           const anyMatches =
             (alphaEnabled && alphaGroupMatches) ||
             alphaChildMatches.length > 0 ||
-            otherMatches.length > 0;
+            otherMatches.length > 0 ||
+            groupMatches.length > 0;
           if (!anyMatches) return [];
 
           const section = [];
@@ -4468,6 +4562,18 @@
               id: o.id,
               label: o.label,
               roomValue: o.roomValue
+            });
+          });
+
+          groupMatches.forEach((g) => {
+            section.push({ kind: "subheader", label: g.label || "Special" });
+            g.matches.forEach((o) => {
+              section.push({
+                kind: "special",
+                id: o.id,
+                label: o.label,
+                roomValue: o.roomValue
+              });
             });
           });
 
