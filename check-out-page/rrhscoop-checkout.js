@@ -132,8 +132,8 @@
   // Controls which period numbers (1–8) are eligible for ordering, by day type.
   // For B Day, you can write either [1,2] meaning "base" -> 5/6, or [5,6] explicitly.
   const RRHS_ORDERING_PERIOD_MATRIX = Object.freeze({
-    A: [1, 2, 4],
-    B: [5, 6, 8]
+    A: [],
+    B: []
   });
 
   // Base origin used for product links shown in modals/tooltips.
