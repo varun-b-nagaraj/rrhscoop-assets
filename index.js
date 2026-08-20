@@ -28,16 +28,24 @@
   const stoleDrawer = new URL('check-out-page/rrhs-stole-drawer.js', base).href;
   const icedTeaGate = new URL('order-validate/rrhs-iced-tea-gate.js', base).href;
   const agent = new URL('agent/rrhscoop-assistant.js', base).href;
+  const stoleDrawerEnabled = false;
+  const assistantEnabled = false;
 
-  // Load runtime -> visuals -> checkout -> inventory guard -> stole drawer -> iced tea gate -> agent
-  // (sequential to keep deterministic ordering)
+  function loadOptionalScript(enabled, src) {
+    if (!enabled) return Promise.resolve();
+    return loadScript(src).catch(() => {});
+  }
+
+  // Load runtime -> visuals -> checkout -> inventory guard -> optional stole drawer
+  // -> iced tea gate -> optional assistant (sequential to keep deterministic ordering).
+  // The optional scripts and their implementations remain available for future use.
   loadScript(runtime)
     .catch(() => {})
     .then(() => loadScript(visuals).catch(() => {}))
     .then(() => loadScript(checkout).catch(() => {}))
     .then(() => loadScript(inventoryGuard).catch(() => {}))
-    .then(() => loadScript(stoleDrawer).catch(() => {}))
+    .then(() => loadOptionalScript(stoleDrawerEnabled, stoleDrawer))
     .then(() => loadScript(icedTeaGate).catch(() => {}))
-    .then(() => loadScript(agent).catch(() => {}));
+    .then(() => loadOptionalScript(assistantEnabled, agent));
 
 })();
