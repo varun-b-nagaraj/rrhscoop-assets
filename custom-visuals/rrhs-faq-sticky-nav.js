@@ -20,9 +20,10 @@
 
   let frame = null;
   let nav = null;
+  let navHost = null;
   let metrics = null;
   let ticking = false;
-  let stickyActive = false;
+  let hostNavEnabled = null;
 
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -30,31 +31,34 @@
     style.id = STYLE_ID;
     style.textContent = `
       #${NAV_ID} {
-        position: fixed !important;
+        position: absolute !important;
         z-index: 2147482500 !important;
-        top: ${TOP_OFFSET}px !important;
+        top: var(--rrhs-faq-nav-top, 0px) !important;
         left: max(32px, calc((100vw - 1240px) / 2)) !important;
         width: 250px !important;
-        max-height: calc(100vh - ${TOP_OFFSET + 24}px) !important;
-        overflow: auto !important;
         box-sizing: border-box !important;
         padding: 18px !important;
         border: 1px solid rgba(36,26,23,.14) !important;
         border-radius: 0 !important;
         color: #241a17 !important;
         background: #fbf8f2 !important;
-        box-shadow: 0 12px 30px rgba(36,26,23,.07) !important;
+        box-shadow: none !important;
         opacity: 0 !important;
         visibility: hidden !important;
         pointer-events: none !important;
-        transform: translateY(8px) !important;
-        transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important;
+        transform: none !important;
+        transition: none !important;
       }
-      #${NAV_ID}.is-visible {
+      #${NAV_ID}.is-ready {
         opacity: 1 !important;
         visibility: visible !important;
         pointer-events: auto !important;
-        transform: translateY(0) !important;
+      }
+      #${NAV_ID}.is-fixed {
+        position: fixed !important;
+        top: ${TOP_OFFSET}px !important;
+        max-height: calc(100vh - ${TOP_OFFSET + 24}px) !important;
+        overflow: auto !important;
       }
       #${NAV_ID} p {
         margin: 0 0 14px !important;
@@ -81,22 +85,38 @@
         text-align: left !important;
         text-transform: none !important;
         cursor: pointer !important;
+        transition: color .2s ease, background .2s ease, padding-left .2s ease !important;
       }
-      #${NAV_ID} button:hover,
-      #${NAV_ID} button.is-active {
+      #${NAV_ID} .rrhs-faq-host-filter-list {
+        display: grid !important;
+        gap: 7px !important;
+      }
+      #${NAV_ID} .rrhs-faq-host-filter-list button:hover {
+        color: #6e1f2a !important;
+        background: #ebe6da !important;
+        padding-left: 14px !important;
+      }
+      #${NAV_ID} .rrhs-faq-host-filter-list button.is-active {
         color: #fff !important;
-        background: #4d111c !important;
+        background: #6e1f2a !important;
       }
-      #${NAV_ID} button[data-target="contact"] {
-        margin-top: 16px !important;
+      #${NAV_ID} .rrhs-faq-host-contact {
+        margin-top: 18px !important;
         padding-top: 16px !important;
         border-top: 1px solid rgba(36,26,23,.14) !important;
-        color: #4d111c !important;
       }
-      #${NAV_ID} button[data-target="contact"]:hover,
-      #${NAV_ID} button[data-target="contact"].is-active {
-        color: #fff !important;
-        border-top-color: #4d111c !important;
+      #${NAV_ID} .rrhs-faq-host-contact button {
+        display: inline-flex !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        color: #6e1f2a !important;
+        background: transparent !important;
+        font-size: 11px !important;
+        letter-spacing: .08em !important;
+        text-transform: uppercase !important;
+      }
+      #${NAV_ID} .rrhs-faq-host-contact button:hover {
+        color: #4d111c !important;
       }
       @media (max-width: 920px) {
         #${NAV_ID} { display: none !important; }
@@ -110,34 +130,63 @@
     element.id = NAV_ID;
     element.dataset.rrhsFaqHostOwned = "1";
     element.setAttribute("aria-label", "FAQ quick navigation");
-    element.innerHTML = `<p>Browse by topic</p>${topics.map(([target, label, count], index) => `
-      <button type="button" data-target="${target}"${index === 0 ? ' class="is-active"' : ""}>
-        <span>${label}</span><span>${count}</span>
-      </button>
-    `).join("")}`;
-    document.body.appendChild(element);
+    const host = frame && frame.parentElement ? frame.parentElement : document.body;
+    host.insertBefore(element, frame || null);
     return element;
   }
 
-  function updateVisibility() {
-    ticking = false;
-    if (!frame || !nav || !metrics) return;
-    const rect = frame.getBoundingClientRect();
-    const start = rect.top + Number(metrics.stickyStart || metrics.faqTop || 0);
-    const end = rect.top + Number(metrics.contactTop || metrics.height || rect.height);
-    const visible = !window.matchMedia("(max-width: 920px)").matches &&
-      start <= TOP_OFFSET && end > TOP_OFFSET + nav.offsetHeight + 24;
-    nav.classList.toggle("is-visible", visible);
-    if (visible !== stickyActive) {
-      stickyActive = visible;
-      frame.contentWindow.postMessage({ type: "rrhs-faq-sticky-active", active: visible }, "*");
-    }
+  function populateNav(element) {
+    const filters = topics.slice(0, -1);
+    const contact = topics[topics.length - 1];
+    element.innerHTML = `<p>Browse by topic</p><div class="rrhs-faq-host-filter-list">${filters.map(([target, label, count], index) => `
+      <button type="button" data-target="${target}"${index === 0 ? ' class="is-active"' : ""}>
+        <span>${label}</span><span>${count}</span>
+      </button>
+    `).join("")}</div><div class="rrhs-faq-host-contact">
+      <button type="button" data-target="${contact[0]}"><span>${contact[1]}</span><span>${contact[2]}</span></button>
+    </div>`;
   }
 
-  function scheduleVisibility() {
+  function setIframeMenuHidden(hidden) {
+    if (!frame || !frame.contentWindow || hidden === hostNavEnabled) return;
+    hostNavEnabled = hidden;
+    frame.contentWindow.postMessage({ type: "rrhs-faq-host-nav-active", active: hidden }, "*");
+    frame.contentWindow.postMessage({ type: "rrhs-faq-sticky-active", active: hidden }, "*");
+  }
+
+  function updatePosition() {
+    ticking = false;
+    if (!frame || !nav || !metrics) return;
+    const mobile = window.matchMedia("(max-width: 920px)").matches;
+    setIframeMenuHidden(!mobile);
+    if (mobile) {
+      nav.classList.remove("is-ready", "is-fixed");
+      return;
+    }
+
+    const frameRect = frame.getBoundingClientRect();
+    const hostRect = (navHost || frame.parentElement || document.body).getBoundingClientRect();
+    const stickyStart = Number(metrics.stickyStart || metrics.faqTop || 0);
+    const contactTop = Number(metrics.contactTop || metrics.height || frameRect.height);
+    const navHeight = nav.offsetHeight;
+    const startInViewport = frameRect.top + stickyStart;
+    const endInViewport = frameRect.top + contactTop;
+    const startInHost = frameRect.top - hostRect.top + stickyStart;
+    const endInHost = frameRect.top - hostRect.top + contactTop - navHeight - 24;
+
+    if (startInViewport <= TOP_OFFSET && endInViewport > TOP_OFFSET + navHeight + 24) {
+      nav.classList.add("is-fixed");
+    } else {
+      nav.classList.remove("is-fixed");
+      nav.style.setProperty("--rrhs-faq-nav-top", `${Math.max(0, endInViewport <= TOP_OFFSET + navHeight + 24 ? endInHost : startInHost)}px`);
+    }
+    nav.classList.add("is-ready");
+  }
+
+  function schedulePosition() {
     if (ticking) return;
     ticking = true;
-    requestAnimationFrame(updateVisibility);
+    requestAnimationFrame(updatePosition);
   }
 
   function bindNav() {
@@ -167,17 +216,24 @@
     } else {
       nav = existingNav || createNav();
     }
+    navHost = frame.parentElement || document.body;
+    if (nav.parentElement !== navHost) navHost.insertBefore(nav, frame);
+    if (nav.dataset.rrhsFaqHostMarkup !== "1") {
+      populateNav(nav);
+      nav.dataset.rrhsFaqHostMarkup = "1";
+    }
+    if (getComputedStyle(navHost).position === "static") navHost.style.position = "relative";
     bindNav();
     if (frame.dataset.rrhsFaqHostBound !== "1") {
       frame.dataset.rrhsFaqHostBound = "1";
       frame.addEventListener("load", () => {
         metrics = null;
-        stickyActive = false;
+        hostNavEnabled = null;
         frame.contentWindow.postMessage({ type: "rrhs-faq-request-height" }, "*");
       });
     }
     frame.contentWindow.postMessage({ type: "rrhs-faq-request-height" }, "*");
-    scheduleVisibility();
+    schedulePosition();
   }
 
   window.addEventListener("message", (event) => {
@@ -189,15 +245,15 @@
         stickyStart: Math.min(760, height * .12),
         contactTop: Math.max(0, height - 900)
       };
-      scheduleVisibility();
+      schedulePosition();
     }
     if (event.data.type === "rrhs-faq-metrics") {
       metrics = event.data;
-      scheduleVisibility();
+      schedulePosition();
     }
   });
-  window.addEventListener("scroll", scheduleVisibility, { passive: true });
-  window.addEventListener("resize", scheduleVisibility);
+  window.addEventListener("scroll", schedulePosition, { passive: true });
+  window.addEventListener("resize", schedulePosition);
 
   const scheduleInit = () => requestAnimationFrame(init);
   scheduleInit();
