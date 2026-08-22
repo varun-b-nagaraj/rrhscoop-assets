@@ -316,7 +316,8 @@
     style.textContent = `
       @media screen and (min-width: 900px) {
         .rrhs-balanced-hero .ins-tile__wrap,
-        .rrhs-balanced-hero .grid-container-item > .flex.relative.flex-col {
+        .rrhs-balanced-hero .grid-container-item > .flex.relative.flex-col,
+        .rrhs-balanced-hero__content {
           justify-content: center !important;
         }
 
@@ -344,6 +345,12 @@
           margin-top: 48px !important;
         }
       }
+
+      @media screen and (min-width: 1200px) {
+        .rrhs-balanced-hero__content {
+          transform: translateX(clamp(24px, 3vw, 56px));
+        }
+      }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -356,8 +363,12 @@
       const headlineText = headline
         ? headline.textContent.replace(/\s+/g, " ").trim().toUpperCase()
         : "";
+      const isTargetHero = headlineText === HERO_HEADLINE;
 
-      tile.classList.toggle("rrhs-balanced-hero", headlineText === HERO_HEADLINE);
+      tile.classList.toggle("rrhs-balanced-hero", isTargetHero);
+      if (headline && headline.parentElement) {
+        headline.parentElement.classList.toggle("rrhs-balanced-hero__content", isTargetHero);
+      }
     });
   }
 
