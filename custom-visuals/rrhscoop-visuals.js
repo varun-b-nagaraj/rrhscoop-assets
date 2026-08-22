@@ -24,13 +24,14 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "5";
+  const ASSET_VERSION = "6";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
     "ins-tile__category-item-169641959": assetUrl("beverage.png"),
     "ins-tile__category-item-189782257": assetUrl("merch.png"),
-    "ins-tile__category-item-194772751": assetUrl("supplies.png")
+    "ins-tile__category-item-194772751": assetUrl("supplies.png"),
+    "ins-tile__category-item-196956751": assetUrl("cfa.png")
   };
   const PHOTO_MAP = {
     "ins-tile__category-item-169641499": assetUrl("category-backgrounds/food.jpg"),
@@ -46,8 +47,11 @@
       photo: PHOTO_MAP["ins-tile__category-item-169641499"],
       background: "#221817",
       foreground: "#faf8f4",
-      wash: "rgb(20 20 20 / 0.48)",
+      wash: "rgb(20 20 20 / 0.72)",
+      hoverWash: "rgb(20 20 20 / 0.24)",
       labelBackground: "rgb(20 20 20 / 0.78)",
+      hoverLabelBackground: "rgb(20 20 20 / 0.72)",
+      photoOpacity: "0.2",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-169641959": {
@@ -55,8 +59,11 @@
       photo: PHOTO_MAP["ins-tile__category-item-169641959"],
       background: "#6e1f2a",
       foreground: "#faf8f4",
-      wash: "rgb(110 31 42 / 0.48)",
+      wash: "rgb(110 31 42 / 0.7)",
+      hoverWash: "rgb(110 31 42 / 0.24)",
       labelBackground: "rgb(110 31 42 / 0.84)",
+      hoverLabelBackground: "rgb(110 31 42 / 0.74)",
+      photoOpacity: "0.18",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-189782257": {
@@ -64,8 +71,11 @@
       photo: PHOTO_MAP["ins-tile__category-item-189782257"],
       background: "#2a2a28",
       foreground: "#faf8f4",
-      wash: "rgb(42 42 40 / 0.44)",
+      wash: "rgb(42 42 40 / 0.7)",
+      hoverWash: "rgb(42 42 40 / 0.24)",
       labelBackground: "rgb(42 42 40 / 0.76)",
+      hoverLabelBackground: "rgb(42 42 40 / 0.68)",
+      photoOpacity: "0.18",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-194772751": {
@@ -73,17 +83,23 @@
       photo: PHOTO_MAP["ins-tile__category-item-194772751"],
       background: "#ebebe2",
       foreground: "#6e1f2a",
-      wash: "rgb(235 235 226 / 0.66)",
+      wash: "rgb(235 235 226 / 0.78)",
+      hoverWash: "rgb(235 235 226 / 0.32)",
       labelBackground: "rgb(235 235 226 / 0.9)",
+      hoverLabelBackground: "rgb(235 235 226 / 0.82)",
+      photoOpacity: "0.2",
       visualFilter: "brightness(0) saturate(100%) invert(14%) sepia(40%) saturate(2515%) hue-rotate(326deg) brightness(90%) contrast(87%)"
     },
     "ins-tile__category-item-196956751": {
-      image: null,
+      image: IMAGE_MAP["ins-tile__category-item-196956751"],
       photo: PHOTO_MAP["ins-tile__category-item-196956751"],
       background: "#faf8f4",
       foreground: "#6e1f2a",
-      wash: "rgb(250 248 244 / 0.62)",
+      wash: "rgb(250 248 244 / 0.8)",
+      hoverWash: "rgb(250 248 244 / 0.28)",
       labelBackground: "rgb(250 248 244 / 0.9)",
+      hoverLabelBackground: "rgb(250 248 244 / 0.78)",
+      photoOpacity: "0.18",
       visualFilter: "none",
       isCfa: true
     }
@@ -159,6 +175,7 @@
         z-index: 1;
         background: var(--rrhs-card-wash, rgb(20 20 20 / 0.42));
         pointer-events: none;
+        transition: background 420ms ease;
       }
 
       .rrhs-category-cards .ins-tile__category-image,
@@ -184,9 +201,11 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        opacity: 0.96;
+        opacity: var(--rrhs-card-photo-opacity, 0.2);
         transform: scale(1.01);
-        transition: transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
+        transition:
+          opacity 420ms ease,
+          transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
       }
 
       .rrhs-category-card__visual {
@@ -201,16 +220,18 @@
         filter: var(--rrhs-card-visual-filter, brightness(0) invert(1));
         pointer-events: none;
         transform: scale(0.96);
-        transition: transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
+        transition:
+          opacity 420ms ease,
+          transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
       }
 
       .rrhs-category-card--cfa .rrhs-category-card__visual {
-        inset: 14%;
-        width: 72%;
-        height: 72%;
+        inset: 22% 11% 31%;
+        width: 78%;
+        height: 47%;
         object-fit: contain;
-        filter: brightness(1.08) contrast(1.08) saturate(1.3);
-        mix-blend-mode: multiply;
+        filter: none;
+        mix-blend-mode: normal;
       }
 
       .rrhs-category-cards .ins-tile__category-content {
@@ -226,6 +247,7 @@
         background: var(--rrhs-card-label-bg, rgb(20 20 20 / 0.78)) !important;
         text-align: left !important;
         color: inherit !important;
+        transition: background 420ms ease;
       }
 
       .rrhs-category-cards .ins-tile__category-name {
@@ -255,12 +277,24 @@
 
       .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__visual,
       .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__visual {
-        transform: scale(1.025);
+        opacity: 0.74;
+        transform: scale(0.98);
       }
 
       .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__photo,
       .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__photo {
+        opacity: 1;
         transform: scale(1.065);
+      }
+
+      .rrhs-category-cards .ins-tile__category-link:hover::before,
+      .rrhs-category-cards .ins-tile__category-link:focus-visible::before {
+        background: var(--rrhs-card-hover-wash, rgb(20 20 20 / 0.24));
+      }
+
+      .rrhs-category-cards .ins-tile__category-link:hover .ins-tile__category-content,
+      .rrhs-category-cards .ins-tile__category-link:focus-visible .ins-tile__category-content {
+        background: var(--rrhs-card-hover-label-bg, rgb(20 20 20 / 0.72)) !important;
       }
 
       .rrhs-category-cards .ins-tile__category-link:hover .ins-tile__category-name::after,
@@ -405,7 +439,10 @@
     item.style.setProperty("--rrhs-card-bg", config.background);
     item.style.setProperty("--rrhs-card-fg", config.foreground);
     item.style.setProperty("--rrhs-card-wash", config.wash);
+    item.style.setProperty("--rrhs-card-hover-wash", config.hoverWash);
     item.style.setProperty("--rrhs-card-label-bg", config.labelBackground);
+    item.style.setProperty("--rrhs-card-hover-label-bg", config.hoverLabelBackground);
+    item.style.setProperty("--rrhs-card-photo-opacity", config.photoOpacity);
     item.style.setProperty("--rrhs-card-visual-filter", config.visualFilter);
     item.style.setProperty("--rrhs-card-delay", `${index * 85}ms`);
     item.classList.toggle("rrhs-category-card--cfa", Boolean(config.isCfa));
