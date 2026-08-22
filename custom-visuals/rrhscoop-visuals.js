@@ -69,6 +69,11 @@
         grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         gap: clamp(12px, 1.6vw, 22px) !important;
         align-items: stretch !important;
+        width: min(1480px, calc(100vw - 96px)) !important;
+        max-width: none !important;
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
       }
 
       .rrhs-category-cards .ins-tile__category-item {
@@ -102,6 +107,7 @@
         min-height: 0 !important;
         overflow: hidden !important;
         color: var(--rrhs-card-fg, #f1eee8) !important;
+        background: var(--rrhs-card-bg, #141414) !important;
         isolation: isolate;
       }
 
@@ -139,19 +145,6 @@
         object-fit: contain;
         filter: brightness(1.2) contrast(1.1) saturate(1.5);
         mix-blend-mode: multiply;
-      }
-
-      .rrhs-category-cards .ins-tile__category-link::after {
-        content: "";
-        position: absolute;
-        z-index: 1;
-        inset: 38% 0 0;
-        background: linear-gradient(to bottom, transparent, rgb(20 20 20 / 0.56));
-        pointer-events: none;
-      }
-
-      .rrhs-category-cards .rrhs-category-card--cfa .ins-tile__category-link::after {
-        background: linear-gradient(to bottom, transparent, rgb(110 31 42 / 0.08));
       }
 
       .rrhs-category-cards .ins-tile__category-content {
@@ -213,6 +206,9 @@
       @media screen and (max-width: 1099px) {
         .rrhs-category-cards {
           grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          width: 100% !important;
+          left: auto;
+          transform: none;
         }
 
         .rrhs-category-cards .ins-tile__category-item {
