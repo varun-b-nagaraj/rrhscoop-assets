@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "6";
+  const ASSET_VERSION = "7";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -51,7 +51,7 @@
       hoverWash: "rgb(20 20 20 / 0.24)",
       labelBackground: "rgb(20 20 20 / 0.78)",
       hoverLabelBackground: "rgb(20 20 20 / 0.72)",
-      photoOpacity: "0.2",
+      photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-169641959": {
@@ -63,7 +63,7 @@
       hoverWash: "rgb(110 31 42 / 0.24)",
       labelBackground: "rgb(110 31 42 / 0.84)",
       hoverLabelBackground: "rgb(110 31 42 / 0.74)",
-      photoOpacity: "0.18",
+      photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-189782257": {
@@ -75,7 +75,7 @@
       hoverWash: "rgb(42 42 40 / 0.24)",
       labelBackground: "rgb(42 42 40 / 0.76)",
       hoverLabelBackground: "rgb(42 42 40 / 0.68)",
-      photoOpacity: "0.18",
+      photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-194772751": {
@@ -87,7 +87,7 @@
       hoverWash: "rgb(235 235 226 / 0.32)",
       labelBackground: "rgb(235 235 226 / 0.9)",
       hoverLabelBackground: "rgb(235 235 226 / 0.82)",
-      photoOpacity: "0.2",
+      photoOpacity: "0",
       visualFilter: "brightness(0) saturate(100%) invert(14%) sepia(40%) saturate(2515%) hue-rotate(326deg) brightness(90%) contrast(87%)"
     },
     "ins-tile__category-item-196956751": {
@@ -99,7 +99,7 @@
       hoverWash: "rgb(250 248 244 / 0.28)",
       labelBackground: "rgb(250 248 244 / 0.9)",
       hoverLabelBackground: "rgb(250 248 244 / 0.78)",
-      photoOpacity: "0.18",
+      photoOpacity: "0",
       visualFilter: "none",
       isCfa: true
     }
@@ -277,8 +277,8 @@
 
       .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__visual,
       .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__visual {
-        opacity: 0.74;
-        transform: scale(0.98);
+        opacity: 0;
+        transform: scale(0.94);
       }
 
       .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__photo,
@@ -304,7 +304,6 @@
 
       .rrhs-category-cards .ins-tile__category-item:hover,
       .rrhs-category-cards .ins-tile__category-item:focus-within {
-        transform: translateY(-8px);
         box-shadow: 0 22px 45px rgb(20 20 20 / 0.16);
       }
 
