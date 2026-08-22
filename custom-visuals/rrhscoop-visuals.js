@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "15";
+  const ASSET_VERSION = "16";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -599,6 +599,82 @@
     });
   }
 
+  function ensureScrollHeaderStyles() {
+    if (document.getElementById("rrhs-scroll-header-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-scroll-header-styles";
+    style.textContent = `
+      .rrhs-scroll-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1000 !important;
+        background: var(--ins-color-background, #faf8f4) !important;
+        transform: translateY(0);
+        transition:
+          transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 260ms ease;
+        will-change: transform;
+      }
+
+      .rrhs-scroll-header--hidden {
+        transform: translateY(-110%) !important;
+      }
+
+      .rrhs-scroll-header--scrolled {
+        box-shadow: 0 10px 28px rgb(20 20 20 / 0.08);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .rrhs-scroll-header {
+          transition: none !important;
+        }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  let scrollHeaderState = null;
+
+  function initScrollHeader() {
+    ensureScrollHeaderStyles();
+
+    const header = document.querySelector(".ins-header");
+    if (!header) return;
+
+    header.classList.add("rrhs-scroll-header");
+
+    if (scrollHeaderState && scrollHeaderState.header === header) return;
+
+    scrollHeaderState = {
+      header,
+      lastY: Math.max(0, window.scrollY || window.pageYOffset || 0),
+      ticking: false
+    };
+
+    const updateHeader = () => {
+      const currentY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+      const delta = currentY - scrollHeaderState.lastY;
+      const shouldHide = currentY > 120 && delta > 6;
+      const shouldShow = delta < -3 || currentY <= 16;
+
+      header.classList.toggle("rrhs-scroll-header--scrolled", currentY > 12);
+      if (shouldHide) header.classList.add("rrhs-scroll-header--hidden");
+      if (shouldShow) header.classList.remove("rrhs-scroll-header--hidden");
+
+      scrollHeaderState.lastY = currentY;
+      scrollHeaderState.ticking = false;
+    };
+
+    window.addEventListener("scroll", () => {
+      if (!scrollHeaderState || scrollHeaderState.header !== header || scrollHeaderState.ticking) return;
+      scrollHeaderState.ticking = true;
+      requestAnimationFrame(updateHeader);
+    }, { passive: true });
+
+    updateHeader();
+  }
+
   function ensureMinimalMarqueeStyles() {
     if (document.getElementById("rrhs-minimal-marquee-styles")) return;
 
@@ -817,6 +893,7 @@
   function boot() {
     try {
       logContext();
+      initScrollHeader();
       balanceHeroLayout();
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
