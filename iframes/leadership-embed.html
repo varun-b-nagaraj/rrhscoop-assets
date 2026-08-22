@@ -1,20 +1,21 @@
 <!-- Paste this entire block into the RRHS CO-OP Leadership page. -->
 <style>
-  #rrhs-leadership-frame { height: 4550px; }
+  #rrhs-leadership-frame { height: 4490px; }
   @media (max-width: 900px) {
-    #rrhs-leadership-frame { height: 5100px; }
+    #rrhs-leadership-frame { height: 5995px; }
   }
   @media (max-width: 620px) {
-    #rrhs-leadership-frame { height: 7600px; }
+    #rrhs-leadership-frame { height: 7870px; }
   }
 </style>
 <iframe
   id="rrhs-leadership-frame"
   title="RRHS CO-OP Departments and Leadership"
-  src="https://rrhscoop-assets.vercel.app/iframes/leadership.html?v=2"
+  src="https://rrhscoop-assets.vercel.app/iframes/leadership.html?v=4"
   scrolling="no"
   loading="eager"
-  height="4550"
+  height="4490"
+  onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-leadership-height'){f.style.height=Math.ceil(e.data.height)+'px';}if(e.data.type==='rrhs-leadership-scroll'){window.scrollTo({top:window.pageYOffset+f.getBoundingClientRect().top+e.data.top-90,behavior:'smooth'});}});}f.contentWindow.postMessage({type:'rrhs-leadership-request-height'},'*');"
   style="display:block;width:100%;border:0;margin:0;padding:0;background:#fbf8f2;overflow:hidden;"
 ></iframe>
 <script>
