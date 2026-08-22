@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RRHS CO-OP FAQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --maroon: #6e1f2a;
+      --maroon-deep: #4d111c;
+      --cream: #f3ecdf;
+      --paper: #fbf8f2;
+      --ink: #241a17;
+      --muted: #70635e;
+      --line: rgba(36, 26, 23, .14);
+      --soft: #ebe6da;
+      --max: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--cream); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--cream);
+      font-family: "DM Sans", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    img { display: block; width: 100%; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2 { font-family: "DM Serif Display", Georgia, serif; font-weight: 400; }
+    .wrap { width: min(calc(100% - 64px), var(--max)); margin: 0 auto; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 19px;
+      color: var(--maroon);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 28px; height: 2px; background: currentColor; }
+
+    .hero { padding: 92px 0 72px; overflow: hidden; background: var(--cream); }
+    .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; align-items: end; gap: 70px; }
+    .hero h1 { max-width: 830px; margin-bottom: 0; font-size: clamp(58px, 7vw, 100px); line-height: .9; letter-spacing: -.05em; }
+    .hero h1 span { color: var(--maroon); }
+    .hero-copy { max-width: 500px; margin: 0 0 5px; color: var(--muted); font-size: 18px; line-height: 1.72; }
+    .hero-tools { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; margin-top: 46px; padding: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.48); }
+    .search-field { position: relative; display: flex; align-items: center; min-height: 54px; border-bottom: 1px solid var(--line); }
+    .search-field svg { width: 20px; height: 20px; margin: 0 15px 0 2px; fill: none; stroke: var(--maroon); stroke-width: 1.8; }
+    .search-field input { width: 100%; min-width: 0; padding: 15px 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 16px; }
+    .search-field input::placeholder { color: #998e89; }
+    .search-field:focus-within { border-bottom-color: var(--maroon); }
+    .hero-count { margin: 0; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .hero-strip { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 38px; border: 1px solid var(--line); border-right: 0; }
+    .hero-strip div { padding: 22px 24px; border-right: 1px solid var(--line); background: rgba(255,255,255,.32); }
+    .hero-strip strong { display: block; margin-bottom: 4px; color: var(--maroon); font-family: "DM Serif Display", Georgia, serif; font-size: 34px; font-weight: 400; line-height: 1; }
+    .hero-strip span { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+
+    .faq-section { padding: 76px 0 110px; background: var(--paper); }
+    .faq-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 76px; align-items: start; }
+    .side-nav { position: sticky; top: 24px; padding: 18px; border: 1px solid var(--line); background: rgba(251,248,242,.94); backdrop-filter: blur(10px); }
+    .side-nav p { margin: 0 0 14px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    .filter-list { display: grid; gap: 7px; }
+    .filter-button {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 39px;
+      padding: 9px 10px;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: color .2s ease, background .2s ease, padding-left .2s ease;
+    }
+    .filter-button:hover { color: var(--maroon); background: var(--soft); padding-left: 14px; }
+    .filter-button[aria-pressed="true"] { color: #fff; background: var(--maroon); }
+    .filter-button span:last-child { opacity: .64; font-size: 10px; }
+    .quick-contact { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .quick-contact a { display: inline-flex; color: var(--maroon); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+
+    .faq-topline { display: flex; justify-content: space-between; align-items: end; gap: 28px; margin-bottom: 28px; }
+    .faq-topline h2 { margin-bottom: 0; font-size: clamp(42px, 4.8vw, 68px); line-height: .96; letter-spacing: -.04em; }
+    .faq-topline button { padding: 0 0 3px; border: 0; border-bottom: 1px solid currentColor; color: var(--maroon); background: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+    .faq-group { margin-bottom: 50px; scroll-margin-top: 34px; }
+    .faq-group[hidden] { display: none; }
+    .faq-group-head { display: grid; grid-template-columns: .55fr 1fr; gap: 40px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+    .faq-group h3 { margin-bottom: 0; color: var(--maroon); font-size: 28px; line-height: 1.08; letter-spacing: -.025em; }
+    .faq-group-head p { margin-bottom: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+    .faq-items { border-bottom: 1px solid var(--line); }
+    .faq-item { border-top: 1px solid var(--line); }
+    .faq-item[hidden] { display: none; }
+    .faq-question {
+      display: grid;
+      grid-template-columns: 1fr 34px;
+      gap: 20px;
+      align-items: center;
+      width: 100%;
+      min-height: 66px;
+      padding: 20px 0;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .faq-question span:first-child { font-size: 14px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+    .faq-icon { position: relative; width: 30px; height: 30px; justify-self: end; }
+    .faq-icon::before, .faq-icon::after { content: ""; position: absolute; top: 14px; left: 7px; width: 16px; height: 2px; background: var(--maroon); transition: transform .2s ease; }
+    .faq-icon::after { transform: rotate(90deg); }
+    .faq-item.is-open .faq-icon::after { transform: rotate(0deg); }
+    .faq-answer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s ease; }
+    .faq-item.is-open .faq-answer { grid-template-rows: 1fr; }
+    .faq-answer-inner { overflow: hidden; }
+    .faq-answer p { max-width: 770px; margin: 0; padding: 0 54px 24px 0; color: var(--muted); font-size: 15px; line-height: 1.78; }
+    mark { color: inherit; background: rgba(110,31,42,.13); }
+
+    .empty-state { padding: 64px 24px; border: 1px solid var(--line); text-align: center; background: #fff; }
+    .empty-state[hidden] { display: none; }
+    .empty-state h3 { margin-bottom: 8px; font-family: "DM Serif Display", Georgia, serif; font-size: 34px; font-weight: 400; }
+    .empty-state p { margin-bottom: 20px; color: var(--muted); }
+    .empty-state button { min-height: 44px; padding: 12px 18px; border: 0; color: #fff; background: var(--maroon); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+
+    .contact { padding: 102px 0 110px; color: #fff; background: linear-gradient(145deg, var(--maroon), var(--maroon-deep)); }
+    .contact .eyebrow { color: #f0c9cf; }
+    .contact-grid { display: grid; grid-template-columns: .82fr 1.18fr; gap: 78px; align-items: start; }
+    .contact h2 { margin-bottom: 22px; font-size: clamp(46px, 5.7vw, 82px); line-height: .92; letter-spacing: -.045em; }
+    .contact-copy { max-width: 430px; margin-bottom: 34px; color: rgba(255,255,255,.76); font-size: 16px; line-height: 1.72; }
+    .contact-list { display: grid; gap: 13px; color: rgba(255,255,255,.82); font-size: 14px; line-height: 1.5; }
+    .contact-list strong { display: block; color: #f0c9cf; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+    .contact-list a { text-decoration: none; }
+    .contact-form { display: grid; gap: 14px; padding: 24px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); }
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .field { display: grid; gap: 8px; }
+    .field label { color: #f0c9cf; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid rgba(255,255,255,.22);
+      color: #fff;
+      background: rgba(255,255,255,.08);
+      padding: 12px 13px;
+      outline: 0;
+    }
+    .field textarea { min-height: 146px; resize: vertical; }
+    .field input::placeholder, .field textarea::placeholder { color: rgba(255,255,255,.48); }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: #f0c9cf; box-shadow: 0 0 0 3px rgba(255,255,255,.1); }
+    .field select option { color: var(--ink); background: #fff; }
+    .honeypot { display: none; }
+    .form-actions { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+    .form-actions button { min-height: 54px; padding: 15px 24px; border: 0; color: var(--maroon); background: #fff; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+    .form-actions button:disabled { opacity: .58; cursor: wait; }
+    .form-status { margin: 0; color: rgba(255,255,255,.78); font-size: 12px; line-height: 1.55; }
+    .form-status a { color: #fff; font-weight: 700; }
+
+    @media (max-width: 920px) {
+      .hero-grid, .faq-layout, .contact-grid, .faq-group-head { grid-template-columns: 1fr; gap: 34px; }
+      .side-nav { position: static; }
+      .filter-list { grid-template-columns: repeat(2, 1fr); }
+      .hero-tools { grid-template-columns: 1fr; }
+      .contact-grid { gap: 48px; }
+    }
+    @media (max-width: 680px) {
+      .wrap { width: min(calc(100% - 36px), var(--max)); }
+      .hero { padding-top: 66px; }
+      .hero h1 { font-size: clamp(55px, 17vw, 78px); }
+      .hero-strip, .form-row, .filter-list { grid-template-columns: 1fr; }
+      .faq-section, .contact { padding-top: 76px; padding-bottom: 84px; }
+      .faq-topline { display: block; }
+      .faq-topline button { margin-top: 18px; }
+      .faq-answer p { padding-right: 0; }
+      .contact-form { padding: 18px; }
+      .form-actions { align-items: stretch; flex-direction: column; }
+      .form-actions button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Support</p>
+          <h1>Frequently asked <span>questions.</span></h1>
+        </div>
+        <p class="hero-copy">Answers about ordering, pickup, delivery, merchandise, payments, student-run operations, and how the CO-OP works.</p>
+      </div>
+      <div class="hero-tools">
+        <label class="search-field">
+          <span class="sr-only">Search FAQs</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input id="faq-search" type="search" placeholder="Search questions, orders, delivery, returns..." autocomplete="off">
+        </label>
+        <p class="hero-count" id="faq-count" aria-live="polite"></p>
+      </div>
+      <div class="hero-strip" aria-label="Support highlights">
+        <div><strong>3-5</strong><span>School-day processing</span></div>
+        <div><strong>Free</strong><span>Pickup and school delivery</span></div>
+        <div><strong>Students</strong><span>Run the store systems</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="faq-section" id="faq">
+    <div class="wrap faq-layout">
+      <aside class="side-nav" aria-label="FAQ categories">
+        <p>Browse by topic</p>
+        <div class="filter-list" id="filter-list"></div>
+        <div class="quick-contact"><a href="#contact">Still need help?</a></div>
+      </aside>
+      <div>
+        <div class="faq-topline">
+          <h2>Find an answer fast.</h2>
+          <button id="expand-all" type="button">Expand all</button>
+        </div>
+        <div id="faq-groups"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <h3>No matching answers.</h3>
+          <p>Try a broader search or send the CO-OP team your question below.</p>
+          <button type="button" id="clear-search">Clear search</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <section class="contact" id="contact">
+    <div class="wrap contact-grid">
+      <div>
+        <p class="eyebrow">Contact</p>
+        <h2>Still have a question?</h2>
+        <p class="contact-copy">Send the CO-OP team the details and include an order number if you have one. The store is student-run, so replies may follow the school schedule.</p>
+        <div class="contact-list">
+          <div><strong>Email</strong><a href="mailto:rrhs_coop_store@roundrockisd.org">rrhs_coop_store@roundrockisd.org</a></div>
+          <div><strong>Phone</strong><span>512-464-6109</span></div>
+          <div><strong>Location</strong><span>Round Rock High School, 201 Deep Wood Dr.</span></div>
+        </div>
+      </div>
+
+      <form class="contact-form" id="contact-form" action="https://formsubmit.co/ajax/rrhs_coop_store@roundrockisd.org" method="POST">
+        <input type="hidden" name="_subject" value="New RRHS CO-OP FAQ question">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
+        <input class="honeypot" type="text" name="_honey" tabindex="-1" autocomplete="off">
+        <div class="form-row">
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" placeholder="Your name" required>
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="topic">Topic</label>
+            <select id="topic" name="topic" required>
+              <option value="">Choose a topic</option>
+              <option>Order help</option>
+              <option>Pickup or delivery</option>
+              <option>Merchandise</option>
+              <option>Returns or damaged item</option>
+              <option>Student projects</option>
+              <option>General question</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="order">Order number</label>
+            <input id="order" name="order_number" type="text" placeholder="Optional">
+          </div>
+        </div>
+        <div class="field">
+          <label for="message">Question</label>
+          <textarea id="message" name="message" placeholder="Tell us what you need help with..." required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit">Send question</button>
+          <p class="form-status" id="form-status" aria-live="polite">This sends to rrhs_coop_store@roundrockisd.org through FormSubmit.</p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <script src="faq.js?v=1"></script>
+</body>
+</html>

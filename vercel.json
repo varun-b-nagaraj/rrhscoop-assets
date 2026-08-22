@@ -9,6 +9,14 @@
       "destination": "/iframes/leadership/embed.html"
     },
     {
+      "source": "/iframes/faq.html",
+      "destination": "/iframes/faq/index.html"
+    },
+    {
+      "source": "/iframes/faq-embed.html",
+      "destination": "/iframes/faq/embed.html"
+    },
+    {
       "source": "/iframes/assets/(.*)",
       "destination": "/iframes/leadership/assets/$1"
     },
