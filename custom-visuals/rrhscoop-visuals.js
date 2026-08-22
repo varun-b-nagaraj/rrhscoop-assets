@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "16";
+  const ASSET_VERSION = "17";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -43,6 +43,7 @@
   const PROJECT_IMAGE_MAP = {
     systems: assetUrl("project-backgrounds/systems.jpg")
   };
+  const HEADER_LOGO_URL = assetUrl("rrhs-header-logo.webp");
 
   const CATEGORY_CARD_MAP = {
     "ins-tile__category-item-169641499": {
@@ -625,6 +626,27 @@
         box-shadow: 0 10px 28px rgb(20 20 20 / 0.08);
       }
 
+      .ins-header__logo-inner.rrhs-header-logo-link {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+      }
+
+      .rrhs-header-logo-mark {
+        display: block;
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+        flex: 0 0 auto;
+      }
+
+      @media screen and (max-width: 699px) {
+        .rrhs-header-logo-mark {
+          width: 30px;
+          height: 30px;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .rrhs-scroll-header {
           transition: none !important;
@@ -673,6 +695,25 @@
     }, { passive: true });
 
     updateHeader();
+  }
+
+  function initHeaderLogo() {
+    const logoLink = document.querySelector(".ins-header__logo-inner");
+    if (!logoLink || logoLink.querySelector(".rrhs-header-logo-mark")) return;
+
+    logoLink.href = "/";
+    logoLink.target = "_self";
+    logoLink.classList.add("rrhs-header-logo-link");
+    logoLink.setAttribute("aria-label", "RRHS Co-Op home");
+
+    const mark = document.createElement("img");
+    mark.className = "rrhs-header-logo-mark";
+    mark.src = HEADER_LOGO_URL;
+    mark.alt = "";
+    mark.decoding = "async";
+    mark.loading = "eager";
+
+    logoLink.insertBefore(mark, logoLink.firstChild);
   }
 
   function ensureMinimalMarqueeStyles() {
@@ -894,6 +935,7 @@
     try {
       logContext();
       initScrollHeader();
+      initHeaderLogo();
       balanceHeroLayout();
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
