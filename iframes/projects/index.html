@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="projects.css?v=4">
+  <link rel="stylesheet" href="projects.css?v=3">
 </head>
 <body>
   <header class="hero">
@@ -69,13 +69,13 @@
           <input id="project-search" type="search" placeholder="Search projects, skills, or systems…" autocomplete="off">
           <kbd>⌘ K</kbd>
         </label>
-        <div class="select-row" aria-label="Project filter menus">
-          <div class="custom-select nav-select" id="status-filter">
+        <div class="select-row">
+          <div class="custom-select" id="status-filter">
             <span class="custom-select-label">Stage</span>
             <div class="custom-select-control">
               <button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
                 <span class="custom-select-value">All stages</span>
-                <svg class="custom-select-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4"></path></svg>
+                <svg viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1.25 5 5 5-5"></path></svg>
               </button>
               <div class="custom-select-menu" role="listbox" aria-label="Filter by project stage" hidden>
                 <button type="button" role="option" data-value="all" aria-selected="true">All stages</button>
@@ -87,12 +87,12 @@
               </div>
             </div>
           </div>
-          <div class="custom-select nav-select" id="project-sort">
+          <div class="custom-select" id="project-sort">
             <span class="custom-select-label">Sort</span>
             <div class="custom-select-control">
               <button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
                 <span class="custom-select-value">Featured</span>
-                <svg class="custom-select-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4"></path></svg>
+                <svg viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1.25 5 5 5-5"></path></svg>
               </button>
               <div class="custom-select-menu" role="listbox" aria-label="Sort projects" hidden>
                 <button type="button" role="option" data-value="featured" aria-selected="true">Featured</button>
@@ -136,7 +136,6 @@
     <div id="local-dialog-content"></div>
   </dialog>
 
-  <script src="dropdowns.js?v=1"></script>
-  <script src="projects.js?v=4"></script>
+  <script src="projects.js?v=3"></script>
 </body>
 </html>
