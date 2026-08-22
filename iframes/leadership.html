@@ -59,14 +59,6 @@
       padding: 92px 0 82px;
       background: var(--cream);
     }
-    .hero::before, .hero::after {
-      content: "";
-      position: absolute;
-      background: var(--sand);
-      opacity: .72;
-    }
-    .hero::before { width: 30%; height: 34px; right: 0; top: 0; }
-    .hero::after { width: 42%; height: 18px; left: 0; bottom: 0; }
     .hero-grid {
       display: grid;
       grid-template-columns: 1.15fr .85fr;
@@ -87,24 +79,6 @@
       font-size: 18px;
       line-height: 1.7;
     }
-    .jump-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 42px;
-    }
-    .jump-links a {
-      padding: 10px 15px;
-      border: 1px solid rgba(110, 31, 42, .25);
-      border-radius: 999px;
-      color: var(--maroon);
-      background: rgba(255, 255, 255, .38);
-      font-size: 12px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: background .2s ease, color .2s ease;
-    }
-    .jump-links a:hover { color: #fff; background: var(--maroon); }
 
     .executives {
       padding: 92px 0 104px;
@@ -226,8 +200,6 @@
       .exec-photo { height: auto; aspect-ratio: 1 / .88; }
       .department { grid-template-columns: 1fr; gap: 22px; padding: 38px 0; }
       .leaders { grid-column: auto; }
-      .jump-links { gap: 8px; }
-      .jump-links a { padding: 9px 12px; }
     }
 
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -243,9 +215,6 @@
         </div>
         <p class="hero-copy">The RRHS CO-OP is run by students across eight departments. Together, these teams manage the people, products, technology, finances, inventory, marketing, and food-service operations that keep the store moving.</p>
       </div>
-      <nav class="jump-links" aria-label="Jump to a department">
-        <a href="#hr">HR</a><a href="#finance">Finance</a><a href="#product">Product</a><a href="#lightspeed">Lightspeed</a><a href="#marketing">Marketing</a><a href="#kiosk">Cafeteria Kiosk</a><a href="#inventory">Inventory</a><a href="#chickfila">Chick-fil-A</a>
-      </nav>
     </div>
   </header>
 
