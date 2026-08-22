@@ -19,6 +19,61 @@
     "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
+  const HERO_HEADLINE = "BUILT FOR DRAGONS";
+
+  function ensureHeroLayoutStyles() {
+    if (document.getElementById("rrhs-hero-layout-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-hero-layout-styles";
+    style.textContent = `
+      @media screen and (min-width: 900px) {
+        .rrhs-balanced-hero .ins-tile__wrap,
+        .rrhs-balanced-hero .grid-container-item > .flex.relative.flex-col {
+          justify-content: center !important;
+        }
+
+        .rrhs-balanced-hero .ins-tile__tagline,
+        .rrhs-balanced-hero .ins-tile__headline,
+        .rrhs-balanced-hero .ins-tile__footer {
+          width: 48% !important;
+        }
+
+        .rrhs-balanced-hero .ins-tile__tagline {
+          flex: 0 0 auto !important;
+        }
+
+        .rrhs-balanced-hero .ins-tile__spacer {
+          display: none !important;
+        }
+
+        .rrhs-balanced-hero .ins-tile__headline:not(:first-child),
+        .rrhs-balanced-hero .ins-tile__footer:not(:first-child) .ins-tile__description {
+          margin-top: 48px !important;
+        }
+
+        .rrhs-balanced-hero .ins-tile__footer:not(:first-child) .ins-tile__buttons,
+        .rrhs-balanced-hero .ins-tile__buttons:not(:first-child) {
+          margin-top: 48px !important;
+        }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function balanceHeroLayout() {
+    ensureHeroLayoutStyles();
+
+    document.querySelectorAll(".ins-tile--cover").forEach((tile) => {
+      const headline = tile.querySelector(".ins-tile__headline");
+      const headlineText = headline
+        ? headline.textContent.replace(/\s+/g, " ").trim().toUpperCase()
+        : "";
+
+      tile.classList.toggle("rrhs-balanced-hero", headlineText === HERO_HEADLINE);
+    });
+  }
+
   function ensureMinimalMarqueeStyles() {
     if (document.getElementById("rrhs-minimal-marquee-styles")) return;
 
@@ -205,6 +260,7 @@
   function boot() {
     try {
       logContext();
+      balanceHeroLayout();
       fixMinimalMarqueeWidth();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
