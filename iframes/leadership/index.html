@@ -490,7 +490,8 @@
           var target = document.querySelector(link.getAttribute("href"));
           if (target) {
             event.preventDefault();
-            window.parent.postMessage({ type: "rrhs-leadership-scroll", top: target.offsetTop }, "*");
+            var executiveOffset = target.id === "executive" ? 96 : 0;
+            window.parent.postMessage({ type: "rrhs-leadership-scroll", top: target.offsetTop + executiveOffset }, "*");
           }
         });
       });
@@ -556,7 +557,10 @@
         if (event.data.type === "rrhs-leadership-request-height") sendHeight();
         if (event.data.type === "rrhs-leadership-jump") {
           var target = document.getElementById(event.data.target);
-          if (target) window.parent.postMessage({ type: "rrhs-leadership-scroll", top: target.offsetTop }, "*");
+          if (target) {
+            var executiveOffset = target.id === "executive" ? 96 : 0;
+            window.parent.postMessage({ type: "rrhs-leadership-scroll", top: target.offsetTop + executiveOffset }, "*");
+          }
         }
       });
       window.addEventListener("load", sendHeight);
