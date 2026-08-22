@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "7";
+  const ASSET_VERSION = "8";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -578,6 +578,89 @@
     });
   }
 
+  const COUNTER_HEADLINE = "MORE THAN A SCHOOL STORE.";
+
+  function ensureCounterSectionStyles() {
+    if (document.getElementById("rrhs-counter-section-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-counter-section-styles";
+    style.textContent = `
+      @media screen and (min-width: 900px) {
+        .rrhs-counter-section {
+          min-height: var(--cover-height, 720px) !important;
+        }
+
+        .rrhs-counter-section .ins-tile__wrap,
+        .rrhs-counter-section .grid-container-item > .flex.relative.flex-col,
+        .rrhs-counter-section__content {
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          min-height: var(--cover-height, 720px) !important;
+          height: auto !important;
+          margin-top: 0 !important;
+          padding-top: 60px !important;
+          padding-bottom: 60px !important;
+        }
+
+        .rrhs-counter-section .ins-tile__tagline,
+        .rrhs-counter-section .ins-tile__headline,
+        .rrhs-counter-section .ins-tile__footer {
+          width: min(46%, 620px) !important;
+          margin-left: auto !important;
+          margin-right: 0 !important;
+          text-align: left !important;
+        }
+
+        .rrhs-counter-section .ins-tile__spacer {
+          display: none !important;
+        }
+
+        .rrhs-counter-section .ins-tile__headline:not(:first-child) {
+          margin-top: 24px !important;
+        }
+
+        .rrhs-counter-section .ins-tile__footer:not(:first-child),
+        .rrhs-counter-section .ins-tile__footer:not(:first-child) .ins-tile__description {
+          margin-top: 28px !important;
+        }
+
+        .rrhs-counter-section .ins-tile__footer:not(:first-child) .ins-tile__buttons,
+        .rrhs-counter-section .ins-tile__buttons:not(:first-child) {
+          margin-top: 34px !important;
+        }
+      }
+
+      @media screen and (max-width: 899px) {
+        .rrhs-counter-section__content {
+          justify-content: center !important;
+        }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function alignCounterSection() {
+    ensureCounterSectionStyles();
+
+    document.querySelectorAll(".ins-tile__headline").forEach((headline) => {
+      const headlineText = headline.textContent.replace(/\s+/g, " ").trim().toUpperCase();
+      const isTargetSection = headlineText === COUNTER_HEADLINE;
+      const tile =
+        headline.closest(".ins-tile") ||
+        headline.closest(".grid-container-item") ||
+        headline.closest("section");
+
+      if (!tile) return;
+
+      tile.classList.toggle("rrhs-counter-section", isTargetSection);
+      if (headline.parentElement) {
+        headline.parentElement.classList.toggle("rrhs-counter-section__content", isTargetSection);
+      }
+    });
+  }
+
   function ensureMinimalMarqueeStyles() {
     if (document.getElementById("rrhs-minimal-marquee-styles")) return;
 
@@ -767,6 +850,7 @@
     try {
       logContext();
       balanceHeroLayout();
+      alignCounterSection();
       fixMinimalMarqueeWidth();
       initCategoryCards();
       initCategoryImageSwap();
