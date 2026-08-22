@@ -19,6 +19,41 @@
     "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
+  function ensureMinimalMarqueeStyles() {
+    if (document.getElementById("rrhs-minimal-marquee-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-minimal-marquee-styles";
+    style.textContent = `
+      .rrhs-full-width-marquee > .section__animation > .section__container {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .rrhs-full-width-marquee > .section__animation > .section__container > .section__content {
+        width: 100% !important;
+        max-width: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function fixMinimalMarqueeWidth() {
+    ensureMinimalMarqueeStyles();
+
+    document
+      .querySelectorAll(".ins-tile--feature-list.ins-tile--minimal")
+      .forEach((tile) => {
+        const body = tile.querySelector(".ins-tile__body");
+        const isTextOnlyMarquee =
+          body &&
+          !body.classList.contains("ins-tile__body--has-icon") &&
+          body.querySelectorAll(":scope > .ins-tile__item").length > 1;
+
+        tile.classList.toggle("rrhs-full-width-marquee", Boolean(isTextOnlyMarquee));
+      });
+  }
+
   function logContext() {
     if (!RRHS_DEBUG) return;
     log("=== RRHS VISUALS DEBUG START ===");
@@ -170,6 +205,7 @@
   function boot() {
     try {
       logContext();
+      fixMinimalMarqueeWidth();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
   }
