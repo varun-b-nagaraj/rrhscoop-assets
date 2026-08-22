@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RRHS CO-OP Departments &amp; Leadership</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --maroon: #6e1f2a;
+      --maroon-deep: #4d111c;
+      --cream: #f3ecdf;
+      --paper: #fbf8f2;
+      --sand: #ded0b8;
+      --ink: #241a17;
+      --muted: #6f625d;
+      --line: rgba(36, 26, 23, .14);
+      --max: 1220px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "DM Sans", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; }
+    .wrap { width: min(calc(100% - 64px), var(--max)); margin: 0 auto; }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--maroon);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      display: inline-block;
+      width: 28px;
+      height: 2px;
+      margin: 0 12px 3px 0;
+      background: currentColor;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2 { font-family: "DM Serif Display", Georgia, serif; font-weight: 400; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 92px 0 82px;
+      background: var(--cream);
+    }
+    .hero::before, .hero::after {
+      content: "";
+      position: absolute;
+      background: var(--sand);
+      opacity: .72;
+    }
+    .hero::before { width: 30%; height: 34px; right: 0; top: 0; }
+    .hero::after { width: 42%; height: 18px; left: 0; bottom: 0; }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      align-items: end;
+      gap: 72px;
+    }
+    .hero h1 {
+      max-width: 800px;
+      margin-bottom: 0;
+      font-size: clamp(52px, 6.2vw, 88px);
+      line-height: .94;
+      letter-spacing: -.045em;
+    }
+    .hero-copy {
+      max-width: 510px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.7;
+    }
+    .jump-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 42px;
+    }
+    .jump-links a {
+      padding: 10px 15px;
+      border: 1px solid rgba(110, 31, 42, .25);
+      border-radius: 999px;
+      color: var(--maroon);
+      background: rgba(255, 255, 255, .38);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background .2s ease, color .2s ease;
+    }
+    .jump-links a:hover { color: #fff; background: var(--maroon); }
+
+    .executives {
+      padding: 92px 0 104px;
+      color: #fff;
+      background:
+        radial-gradient(circle at 95% 5%, rgba(255,255,255,.09), transparent 26%),
+        linear-gradient(145deg, var(--maroon), var(--maroon-deep));
+    }
+    .executives .eyebrow { color: #f1cfd4; }
+    .section-head {
+      display: grid;
+      grid-template-columns: 1fr .78fr;
+      align-items: end;
+      gap: 56px;
+      margin-bottom: 48px;
+    }
+    .section-head h2 {
+      margin-bottom: 0;
+      font-size: clamp(42px, 5vw, 68px);
+      line-height: .98;
+      letter-spacing: -.035em;
+    }
+    .section-intro {
+      margin-bottom: 4px;
+      color: rgba(255,255,255,.76);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .exec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .exec-card {
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(5px);
+    }
+    .exec-photo { width: 100%; aspect-ratio: 1 / .88; object-fit: cover; object-position: center 30%; }
+    .exec-card:first-child .exec-photo { object-position: center 36%; }
+    .exec-body { padding: 27px 27px 30px; }
+    .role {
+      margin-bottom: 9px;
+      color: #f0bdc5;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .exec-card h3 { margin-bottom: 16px; font-size: 25px; line-height: 1.12; letter-spacing: -.025em; }
+    .exec-bio { margin-bottom: 0; color: rgba(255,255,255,.79); font-size: 14px; line-height: 1.72; }
+
+    .departments { padding: 102px 0 116px; background: var(--paper); }
+    .departments .section-head { color: var(--ink); }
+    .departments .section-intro { color: var(--muted); }
+    .department-list { border-top: 1px solid var(--line); }
+    .department {
+      display: grid;
+      grid-template-columns: .72fr 1.15fr 1fr;
+      gap: 50px;
+      padding: 48px 0;
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 24px;
+    }
+    .department-number {
+      margin-bottom: 10px;
+      color: var(--maroon);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .department h3 { margin-bottom: 0; font-size: clamp(27px, 3vw, 38px); line-height: 1.05; letter-spacing: -.035em; }
+    .department-copy { margin-bottom: 0; color: var(--muted); font-size: 15px; line-height: 1.75; }
+    .leaders { display: grid; gap: 12px; }
+    .leader {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      min-height: 74px;
+      padding: 13px 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .initials {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--maroon);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .leader-role { margin-bottom: 4px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+    .leader-name { margin-bottom: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
+
+    .closing { padding: 78px 0 84px; text-align: center; background: var(--cream); }
+    .closing-mark { width: 38px; height: 3px; margin: 0 auto 22px; background: var(--maroon); }
+    .closing h2 { margin-bottom: 16px; font-size: clamp(36px, 4vw, 54px); letter-spacing: -.03em; }
+    .closing p { max-width: 680px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.7; }
+
+    @media (max-width: 900px) {
+      .hero-grid, .section-head { grid-template-columns: 1fr; gap: 26px; }
+      .exec-grid { grid-template-columns: 1fr; }
+      .exec-card { display: grid; grid-template-columns: 280px 1fr; }
+      .exec-photo { height: 100%; aspect-ratio: auto; }
+      .department { grid-template-columns: .75fr 1.25fr; gap: 28px 40px; }
+      .leaders { grid-column: 2; }
+    }
+
+    @media (max-width: 620px) {
+      .wrap { width: min(calc(100% - 36px), var(--max)); }
+      .hero { padding: 70px 0 62px; }
+      .hero h1 { font-size: clamp(47px, 15vw, 66px); }
+      .hero-copy { font-size: 16px; }
+      .executives, .departments { padding: 72px 0 80px; }
+      .exec-card { display: block; }
+      .exec-photo { height: auto; aspect-ratio: 1 / .88; }
+      .department { grid-template-columns: 1fr; gap: 22px; padding: 38px 0; }
+      .leaders { grid-column: auto; }
+      .jump-links { gap: 8px; }
+      .jump-links a { padding: 9px 12px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">2026–2027 RRHS CO-OP</p>
+          <h1>Meet the teams behind the store.</h1>
+        </div>
+        <p class="hero-copy">The RRHS CO-OP is run by students across eight departments. Together, these teams manage the people, products, technology, finances, inventory, marketing, and food-service operations that keep the store moving.</p>
+      </div>
+      <nav class="jump-links" aria-label="Jump to a department">
+        <a href="#hr">HR</a><a href="#finance">Finance</a><a href="#product">Product</a><a href="#lightspeed">Lightspeed</a><a href="#marketing">Marketing</a><a href="#kiosk">Cafeteria Kiosk</a><a href="#inventory">Inventory</a><a href="#chickfila">Chick-fil-A</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="executives" aria-labelledby="executive-title">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Executive Team</p>
+          <h2 id="executive-title">Leadership with a store-wide view.</h2>
+        </div>
+        <p class="section-intro">The executive team sets the direction of the CO-OP, connects the departments, and supports the student leaders responsible for the store’s day-to-day work.</p>
+      </div>
+      <div class="exec-grid">
+        <article class="exec-card">
+          <img class="exec-photo" src="assets/varun-nagaraj.jpg" alt="Varun Bhadurgatte Nagaraj">
+          <div class="exec-body">
+            <p class="role">Chief Executive Officer</p>
+            <h3>Varun Bhadurgatte Nagaraj</h3>
+            <p class="exec-bio">Hey, I’m Varun! I’m the CEO of the RRHS CO-OP, and it’s my third year working here. Last year, I was the Lightspeed Director, where I had a great time working with so many amazing people and helping with different projects around the CO-OP. One of my favorite parts of being here has been getting to meet new people, work together as a team, and see all of our ideas come to life. I’m excited for everything we have planned this year and to see what the CO-OP can accomplish!</p>
+          </div>
+        </article>
+        <article class="exec-card">
+          <img class="exec-photo" src="assets/ashwini-yelaru.jpg" alt="Ashwini Yeluru">
+          <div class="exec-body">
+            <p class="role">Chief Operations Officer</p>
+            <h3>Ashwini Yeluru</h3>
+            <p class="exec-bio">Hello! My name is Ashwini, and I am the COO this year for the RRHS CO-OP. This is my second year working for the school store after being a 2025–2026 general employee. I’m a junior, planning on majoring in business in the future. I am incredibly excited and grateful for the opportunity to help the CO-OP grow and accomplish great things this year!</p>
+          </div>
+        </article>
+        <article class="exec-card">
+          <img class="exec-photo" src="assets/eric-chaverria.webp" alt="Eric Chaverria">
+          <div class="exec-body">
+            <p class="role">Sponsor</p>
+            <h3>Eric Chaverria</h3>
+            <p class="exec-bio">Hi there! My name is Mr. Eric Chaverria, and I’ve proudly sponsored the Round Rock High School CO-OP since its founding. As a teacher and mentor, I’ve guided students through real-world experiences that connect classroom learning with career exploration. From day one, I’ve believed in the power of collaboration, professionalism, and growth. The CO-OP isn’t just a club—it’s a launchpad for future leaders. I’m honored to help shape that journey every step of the way.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <main class="departments" aria-labelledby="departments-title">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Our Departments</p>
+          <h2 id="departments-title">Eight teams. One CO-OP.</h2>
+        </div>
+        <p class="section-intro">Each department owns a different part of the student-store experience. Meet the directors and managers leading the work in 2026–2027.</p>
+      </div>
+
+      <div class="department-list">
+        <article class="department" id="hr">
+          <div><p class="department-number">Department 01</p><h3>Human Resources</h3></div>
+          <p class="department-copy">HR supports the student team. The department helps coordinate employees, workplace expectations, communication, and the day-to-day people needs of the CO-OP, including customer-service leadership.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">HM</span><div><p class="leader-role">Director</p><p class="leader-name">Hasini Murali</p></div></div>
+            <div class="leader"><span class="initials">MS</span><div><p class="leader-role">Manager</p><p class="leader-name">Maitri Sharma</p></div></div>
+            <div class="leader"><span class="initials">SR</span><div><p class="leader-role">Manager · Customer Service</p><p class="leader-name">Sona Rao</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="finance">
+          <div><p class="department-number">Department 02</p><h3>Finance</h3></div>
+          <p class="department-copy">Finance helps the CO-OP understand its business performance. The team supports financial recordkeeping, sales reporting, budgeting, and the information leaders need to make responsible store decisions.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">HS</span><div><p class="leader-role">Director</p><p class="leader-name">Harshita Singh</p></div></div>
+            <div class="leader"><span class="initials">SI</span><div><p class="leader-role">Manager</p><p class="leader-name">Srinidhi Inam</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="product">
+          <div><p class="department-number">Department 03</p><h3>Product</h3></div>
+          <p class="department-copy">Product shapes what customers find in the store. The department supports product selection, merchandise planning, presentation, and the development of offerings that reflect the RRHS community.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">NK</span><div><p class="leader-role">Director</p><p class="leader-name">Nadine Khatum</p></div></div>
+            <div class="leader"><span class="initials">SG</span><div><p class="leader-role">Manager</p><p class="leader-name">Samantha Gamino</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="lightspeed">
+          <div><p class="department-number">Department 04</p><h3>Lightspeed</h3></div>
+          <p class="department-copy">Lightspeed supports the digital systems behind the store. The team works with the CO-OP’s e-commerce and point-of-sale tools, helping keep products, orders, and the online shopping experience organized.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">HB</span><div><p class="leader-role">Director</p><p class="leader-name">Hasit Bandaru</p></div></div>
+            <div class="leader"><span class="initials">BM</span><div><p class="leader-role">Manager</p><p class="leader-name">Bhuvan Mantrala</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="marketing">
+          <div><p class="department-number">Department 05</p><h3>Marketing</h3></div>
+          <p class="department-copy">Marketing tells the CO-OP’s story. The department supports campaigns, promotions, content, and communication that help students and staff discover products, services, and store updates.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">DS</span><div><p class="leader-role">Director</p><p class="leader-name">Dhriti Saani</p></div></div>
+            <div class="leader"><span class="initials">SV</span><div><p class="leader-role">Manager</p><p class="leader-name">Sai Vaddula</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="kiosk">
+          <div><p class="department-number">Department 06</p><h3>Cafeteria Kiosk</h3></div>
+          <p class="department-copy">The Cafeteria Kiosk team brings CO-OP service closer to students during the school day. Its leaders coordinate kiosk readiness, service, and the smooth movement of products through that location.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">DM</span><div><p class="leader-role">Director</p><p class="leader-name">Daniella Mecteaux</p></div></div>
+            <div class="leader"><span class="initials">AC</span><div><p class="leader-role">Manager</p><p class="leader-name">Ananya Chakka</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="inventory">
+          <div><p class="department-number">Department 07</p><h3>Inventory</h3></div>
+          <p class="department-copy">Inventory keeps the store supplied and organized. The department supports stock tracking, counts, replenishment, and product organization so the right items are available when customers need them.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">EK</span><div><p class="leader-role">Director</p><p class="leader-name">Emili Kosik</p></div></div>
+            <div class="leader"><span class="initials">AS</span><div><p class="leader-role">Manager</p><p class="leader-name">Anisha Saravanan</p></div></div>
+          </div>
+        </article>
+
+        <article class="department" id="chickfila">
+          <div><p class="department-number">Department 08</p><h3>Chick-fil-A</h3></div>
+          <p class="department-copy">The Chick-fil-A team manages the CO-OP’s Chick-fil-A service. Its leaders help coordinate preparation, product handling, customer service, and an efficient experience for students and staff.</p>
+          <div class="leaders">
+            <div class="leader"><span class="initials">IN</span><div><p class="leader-role">Director</p><p class="leader-name">Isabella Ngo</p></div></div>
+            <div class="leader"><span class="initials">AP</span><div><p class="leader-role">Manager</p><p class="leader-name">Aasrita Pichikala</p></div></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <footer class="closing">
+    <div class="wrap">
+      <div class="closing-mark"></div>
+      <h2>Student-led. Store-tested.</h2>
+      <p>Every department gives RRHS students real responsibility, practical business experience, and the opportunity to build something that serves their school community.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      function sendHeight() {
+        window.parent.postMessage({ type: "rrhs-leadership-height", height: document.documentElement.scrollHeight }, "*");
+      }
+      window.addEventListener("load", sendHeight);
+      window.addEventListener("resize", sendHeight);
+      if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body);
+      document.fonts && document.fonts.ready.then(sendHeight);
+    }());
+  </script>
+</body>
+</html>
