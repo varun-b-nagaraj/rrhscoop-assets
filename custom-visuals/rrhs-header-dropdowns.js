@@ -220,6 +220,102 @@
         padding-left: 18px !important;
       }
 
+      /* Lightspeed renders its actual dropdown as a sibling of the menu links. */
+      .ins-header .ins-header__dropdown,
+      .ins-header .ins-header__dropdown * {
+        font-family: "DM Sans", Arial, sans-serif !important;
+        font-style: normal !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+      }
+
+      .ins-header .ins-header__dropdown {
+        perspective: none !important;
+      }
+
+      .ins-header .ins-header__dropdown-wrap {
+        min-width: 220px !important;
+        margin-top: 15px !important;
+        border: 1px solid rgba(20,20,20,.14) !important;
+        border-radius: 0 !important;
+        background: var(--rrhs-nav-light) !important;
+        box-shadow: 0 18px 38px rgba(20,20,20,.09) !important;
+        overflow: hidden !important;
+        animation: none !important;
+        transform: none !important;
+      }
+
+      .ins-header .ins-header__dropdown-bg {
+        border-radius: 0 !important;
+        background: var(--rrhs-nav-light) !important;
+        background-image: none !important;
+      }
+
+      .ins-header .ins-header__dropdown-inner {
+        min-width: 220px !important;
+        padding: 20px 14px !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        column-gap: 0 !important;
+      }
+
+      .ins-header .ins-header__dropdown-link,
+      .ins-header .ins-header__dropdown-link-wrapper {
+        min-width: 190px !important;
+        max-width: 268px !important;
+        min-height: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+      }
+
+      .ins-header .ins-header__dropdown-link-title {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        min-height: 44px !important;
+        padding: 11px 16px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        color: var(--rrhs-nav-dark) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        line-height: 1.45 !important;
+        text-align: left !important;
+        text-decoration: none !important;
+        transition: color 180ms ease, background 180ms ease !important;
+      }
+
+      .ins-header .ins-header__dropdown-link-title > p,
+      .ins-header .ins-header__dropdown-link-text {
+        margin: 0 !important;
+        padding: 0 !important;
+        color: inherit !important;
+        font: inherit !important;
+        line-height: inherit !important;
+        white-space: nowrap !important;
+      }
+
+      .ins-header .ins-header__dropdown-link-title::before {
+        display: none !important;
+        content: none !important;
+      }
+
+      .ins-header .ins-header__dropdown-link-title:hover,
+      .ins-header .ins-header__dropdown-link-title:focus-visible,
+      .ins-header .ins-header__dropdown-link-title--active {
+        color: #fff !important;
+        background: var(--rrhs-nav-maroon) !important;
+        outline: 0 !important;
+      }
+
+      .ins-header .ins-header__dropdown-link-arrow {
+        color: inherit !important;
+      }
+
       @media screen and (max-width: 980px) {
         .ins-header__menu-wrap .ins-header__menu-inner {
           align-items: stretch !important;
@@ -307,86 +403,23 @@
   }
 
   function enhanceLink(link) {
-    if (!link || link.getAttribute(INIT_ATTR) === "1") return;
+    if (!link) return;
+
+    link.querySelectorAll(`:scope > .${PANEL_CLASS}`).forEach((panel) => panel.remove());
+    if (link.getAttribute(INIT_ATTR) === "1") return;
 
     const title = link.querySelector(":scope > .ins-header__menu-link-title");
     if (!title) return;
 
     const label = normalizeLabel(title.getAttribute("aria-label") || title.textContent);
     const data = MENU_DATA[label];
-    let panel = findExistingPanel(link);
+    if (!data) return;
 
-    if (!panel && data) {
-      panel = createPanel(data);
-      link.appendChild(panel);
-    }
-    if (!panel) return;
-
-    panel.classList.add(PANEL_CLASS);
     const icon = title.querySelector(".ins-header__menu-link-icon");
     if (icon) {
       icon.replaceChildren();
       icon.setAttribute("aria-hidden", "true");
     }
-    if (!panel.id) panel.id = `rrhs-header-dropdown-${label.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "menu"}`;
-    title.setAttribute("aria-haspopup", "true");
-    title.setAttribute("aria-expanded", "false");
-    title.setAttribute("aria-controls", panel.id);
-
-    link.addEventListener("mouseenter", () => {
-      if (window.matchMedia(MOBILE_QUERY).matches) return;
-      closeOtherLinks(link);
-      link.classList.add(OPEN_CLASS);
-      title.setAttribute("aria-expanded", "true");
-    });
-
-    link.addEventListener("mouseleave", () => {
-      if (window.matchMedia(MOBILE_QUERY).matches) return;
-      link.classList.remove(OPEN_CLASS);
-      title.setAttribute("aria-expanded", "false");
-    });
-
-    link.addEventListener("focusin", () => {
-      if (window.matchMedia(MOBILE_QUERY).matches) return;
-      closeOtherLinks(link);
-      link.classList.add(OPEN_CLASS);
-      title.setAttribute("aria-expanded", "true");
-    });
-
-    link.addEventListener("focusout", (event) => {
-      if (window.matchMedia(MOBILE_QUERY).matches) return;
-      if (link.contains(event.relatedTarget)) return;
-      link.classList.remove(OPEN_CLASS);
-      title.setAttribute("aria-expanded", "false");
-    });
-
-    title.addEventListener("click", (event) => {
-      if (!window.matchMedia(MOBILE_QUERY).matches) return;
-      event.preventDefault();
-      const nextOpen = !link.classList.contains(MOBILE_OPEN_CLASS);
-      closeOtherLinks(link);
-      link.classList.toggle(MOBILE_OPEN_CLASS, nextOpen);
-      title.setAttribute("aria-expanded", String(nextOpen));
-    });
-
-    title.addEventListener("keydown", (event) => {
-      if (!["ArrowDown", "Enter", " "].includes(event.key)) return;
-      event.preventDefault();
-      closeOtherLinks(link);
-      const openClass = window.matchMedia(MOBILE_QUERY).matches ? MOBILE_OPEN_CLASS : OPEN_CLASS;
-      link.classList.add(openClass);
-      title.setAttribute("aria-expanded", "true");
-      const firstItem = panel.querySelector("a, button, [tabindex]:not([tabindex='-1'])");
-      if (firstItem) firstItem.focus();
-    });
-
-    panel.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      link.classList.remove(OPEN_CLASS, MOBILE_OPEN_CLASS);
-      title.setAttribute("aria-expanded", "false");
-      title.focus();
-    });
 
     link.setAttribute(INIT_ATTR, "1");
   }
