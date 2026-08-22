@@ -1,5 +1,8 @@
 <!-- Paste this entire block into the RRHS CO-OP FAQ page. -->
 <style>
+  #rrhs-faq-wrap {
+    position: relative;
+  }
   #rrhs-faq-frame {
     display: block;
     width: 100%;
@@ -10,16 +13,109 @@
     background: #f3ecdf;
     overflow: hidden;
   }
+  #rrhs-faq-sticky-nav {
+    position: fixed;
+    z-index: 2147482500;
+    left: max(18px, calc((100vw - 1240px) / 2));
+    top: 112px;
+    width: 250px;
+    padding: 18px;
+    border: 1px solid rgba(36,26,23,.14);
+    background: rgba(251,248,242,.96);
+    box-sizing: border-box;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-14px);
+    transition: opacity .22s ease, transform .22s ease, visibility .22s ease;
+  }
+  #rrhs-faq-sticky-nav.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+  #rrhs-faq-sticky-nav p {
+    margin: 0 0 14px;
+    color: #6e1f2a;
+    font: 700 10px/1.2 Arial, sans-serif;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  #rrhs-faq-sticky-nav button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 39px;
+    padding: 9px 10px;
+    border: 0;
+    color: #70635e;
+    background: transparent;
+    font: 700 12px/1.2 Arial, sans-serif;
+    text-align: left;
+    cursor: pointer;
+  }
+  #rrhs-faq-sticky-nav button:hover,
+  #rrhs-faq-sticky-nav button.is-active {
+    color: #fff;
+    background: #6e1f2a;
+  }
+  #rrhs-faq-sticky-nav .help {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(36,26,23,.14);
+  }
   @media (max-width: 760px) {
     #rrhs-faq-frame { height: 8200px; }
+    #rrhs-faq-sticky-nav { display: none; }
   }
 </style>
-<iframe
-  id="rrhs-faq-frame"
-  title="RRHS CO-OP Frequently Asked Questions"
-  src="https://rrhscoop-assets.vercel.app/iframes/faq/index.html?v=2"
-  scrolling="no"
-  loading="eager"
-  height="6200"
-  onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-faq-height')f.style.height=Math.ceil(e.data.height)+'px';});}f.contentWindow.postMessage({type:'rrhs-faq-request-height'},'*');"
-></iframe>
+<div id="rrhs-faq-wrap">
+  <nav id="rrhs-faq-sticky-nav" aria-label="FAQ quick navigation">
+    <p>Browse by topic</p>
+    <button type="button" data-target="faq" class="is-active"><span>All topics</span><span>45</span></button>
+    <button type="button" data-target="group-top"><span>Top Questions</span><span>5</span></button>
+    <button type="button" data-target="group-about"><span>About the CO-OP</span><span>5</span></button>
+    <button type="button" data-target="group-shopping"><span>Shopping &amp; Products</span><span>5</span></button>
+    <button type="button" data-target="group-ordering"><span>Ordering</span><span>5</span></button>
+    <button type="button" data-target="group-pickup"><span>Pickup &amp; Delivery</span><span>5</span></button>
+    <button type="button" data-target="group-payments"><span>Payments</span><span>5</span></button>
+    <button type="button" data-target="group-returns"><span>Returns &amp; Problems</span><span>5</span></button>
+    <button type="button" data-target="group-students"><span>Students &amp; Projects</span><span>5</span></button>
+    <button type="button" data-target="group-privacy"><span>Privacy &amp; Website</span><span>5</span></button>
+    <button class="help" type="button" data-target="contact"><span>Still need help?</span><span>↓</span></button>
+  </nav>
+  <iframe
+    id="rrhs-faq-frame"
+    title="RRHS CO-OP Frequently Asked Questions"
+    src="https://rrhscoop-assets.vercel.app/iframes/faq/index.html?v=3"
+    scrolling="no"
+    loading="eager"
+    height="6200"
+    onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-faq-height')f.style.height=Math.ceil(e.data.height)+'px';if(e.data.type==='rrhs-faq-scroll-to')window.scrollTo({top:f.getBoundingClientRect().top+window.pageYOffset+Number(e.data.top||0),behavior:'smooth'});});}f.contentWindow.postMessage({type:'rrhs-faq-request-height'},'*');"
+  ></iframe>
+</div>
+<script>
+  (function () {
+    var wrap = document.getElementById("rrhs-faq-wrap");
+    var frame = document.getElementById("rrhs-faq-frame");
+    var nav = document.getElementById("rrhs-faq-sticky-nav");
+    if (!wrap || !frame || !nav) return;
+    var buttons = Array.prototype.slice.call(nav.querySelectorAll("button[data-target]"));
+    function setVisible() {
+      var rect = wrap.getBoundingClientRect();
+      var visible = rect.top < 130 && rect.bottom > 520;
+      nav.classList.toggle("is-visible", visible);
+    }
+    buttons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        buttons.forEach(function (other) { other.classList.remove("is-active"); });
+        button.classList.add("is-active");
+        frame.contentWindow.postMessage({ type: "rrhs-faq-scroll-to-id", id: button.dataset.target }, "*");
+      });
+    });
+    window.addEventListener("scroll", setVisible, { passive: true });
+    window.addEventListener("resize", setVisible);
+    setVisible();
+  }());
+</script>

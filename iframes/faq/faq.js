@@ -6,7 +6,7 @@ const faqGroups = [
     title: "Top Questions",
     intro: "The questions most customers usually need before placing or checking an order.",
     items: [
-      ["How long will my order take?", "Most orders are processed within about 3-5 school days, excluding school holidays. Delivery or shipping time happens after processing."],
+      ["How long will my order take?", "Most orders are typically processed within about 20 minutes during active store operations. Timing can vary around school schedules, order volume, inventory checks, and student availability."],
       ["Can I return or exchange my order?", "All sales are generally final. If the CO-OP made a fulfillment error or your product arrived damaged or defective, contact the team promptly for assistance."],
       ["Can my order be delivered to me at school?", "Current RRHS students and staff may use available free in-school delivery options. Provide accurate recipient and location information when ordering."],
       ["Do you accept cash?", "The CO-OP's published payment policy describes the store as cashless. Use an accepted card or supported digital payment method."],
@@ -120,6 +120,7 @@ const clearSearch = document.getElementById("clear-search");
 const expandAllButton = document.getElementById("expand-all");
 const contactForm = document.getElementById("contact-form");
 const formStatus = document.getElementById("form-status");
+const quickContactLink = document.querySelector(".quick-contact a");
 
 let activeCategory = "all";
 let expandedAll = false;
@@ -152,7 +153,7 @@ function renderFilters() {
       activeCategory = button.dataset.filter;
       render();
       const target = activeCategory === "all" ? document.getElementById("faq") : document.getElementById(`group-${activeCategory}`);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToElement(target);
     });
   });
 }
@@ -236,6 +237,13 @@ function notifyHeight() {
   });
 }
 
+function scrollToElement(target) {
+  if (!target) return;
+  const top = Math.max(0, Math.round(target.getBoundingClientRect().top + window.scrollY - 18));
+  window.parent.postMessage({ type: "rrhs-faq-scroll-to", top }, "*");
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 searchInput.addEventListener("input", () => {
   expandedAll = false;
   render();
@@ -245,6 +253,12 @@ expandAllButton.addEventListener("click", () => {
   expandedAll = !expandedAll;
   render();
 });
+if (quickContactLink) {
+  quickContactLink.addEventListener("click", event => {
+    event.preventDefault();
+    scrollToElement(document.getElementById("contact"));
+  });
+}
 
 contactForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -271,6 +285,9 @@ contactForm.addEventListener("submit", async event => {
 
 window.addEventListener("message", event => {
   if (event.data && event.data.type === "rrhs-faq-request-height") notifyHeight();
+  if (event.data && event.data.type === "rrhs-faq-scroll-to-id") {
+    scrollToElement(document.getElementById(event.data.id));
+  }
 });
 window.addEventListener("load", notifyHeight);
 window.addEventListener("resize", notifyHeight);
