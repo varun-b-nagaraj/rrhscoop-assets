@@ -186,7 +186,7 @@
       gap: 15px;
       width: 100%;
       min-height: 74px;
-      padding: 13px 16px;
+      padding: 13px 16px 13px 73px;
       border: 1px solid var(--line);
       background: #fff;
       cursor: pointer;
@@ -195,6 +195,9 @@
     }
     .leader > div { min-width: 0; opacity: 1; white-space: nowrap; transition: opacity .18s ease, width .3s ease; }
     .initials {
+      position: absolute;
+      top: 50%;
+      left: 14px;
       display: grid;
       place-items: center;
       width: 44px;
@@ -206,6 +209,8 @@
       font-size: 12px;
       font-weight: 700;
       letter-spacing: .04em;
+      transform: translateY(-50%);
+      transition: color .18s ease, background .18s ease;
     }
     .leader-role { margin-bottom: 4px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
     .leader-name { margin-bottom: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
@@ -214,14 +219,12 @@
       height: 74px;
       min-height: 74px;
       max-height: 74px;
-      padding: 13px;
+      padding: 13px 0;
       gap: 0;
-      justify-content: center;
       flex: 0 0 74px;
       border-color: rgba(110, 31, 42, .24);
       transform: none;
     }
-    .leaders.is-active .leader + .leader { border-top-color: transparent; }
     .leaders.is-active .leader > div { width: 0; opacity: 0; pointer-events: none; }
     .leaders.is-active .initials {
       width: 44px;
@@ -229,10 +232,11 @@
       min-width: 44px;
       min-height: 44px;
       flex: 0 0 44px;
-      transform: none;
+      transform: translateY(-50%);
     }
-    .leaders.is-active .leader.is-selected { z-index: 3; color: #fff; background: var(--maroon); }
-    .leaders.is-active .leader.is-selected .initials { color: var(--maroon); background: #fff; }
+    .leaders.is-active .leader.is-selected { z-index: 3; }
+    .leaders.is-active.is-settled .leader.is-selected { color: #fff; background: var(--maroon); }
+    .leaders.is-active.is-settled .leader.is-selected .initials { color: var(--maroon); background: #fff; }
     .leader-profile {
       position: absolute;
       z-index: 1;
@@ -491,6 +495,7 @@
         });
       });
       document.querySelectorAll(".leaders").forEach(function (list) {
+        var settleTimer;
         var department = list.closest(".department").querySelector("h3").textContent.trim();
         var profile = document.createElement("div");
         profile.className = "leader-profile";
@@ -501,7 +506,15 @@
         function selectLeader(leader) {
           var role = leader.querySelector(".leader-role").textContent.trim();
           var name = leader.querySelector(".leader-name").textContent.trim();
+          var wasActive = list.classList.contains("is-active");
           list.classList.add("is-active");
+          if (!wasActive) {
+            list.classList.remove("is-settled");
+            window.clearTimeout(settleTimer);
+            settleTimer = window.setTimeout(function () {
+              if (list.classList.contains("is-active")) list.classList.add("is-settled");
+            }, 360);
+          }
           list.querySelectorAll(".leader").forEach(function (item) {
             var selected = item === leader;
             item.classList.toggle("is-selected", selected);
@@ -513,7 +526,9 @@
         }
 
         function closeProfile() {
+          window.clearTimeout(settleTimer);
           list.classList.remove("is-active");
+          list.classList.remove("is-settled");
           list.querySelectorAll(".leader").forEach(function (item) {
             item.classList.remove("is-selected");
             item.setAttribute("aria-expanded", "false");
