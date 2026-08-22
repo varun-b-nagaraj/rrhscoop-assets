@@ -104,8 +104,63 @@ h1, h2, h3, p, dl, dd { margin-top: 0; }
 .search-field:focus-within { border-bottom-color: var(--maroon); }
 .search-field kbd { padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); background: var(--paper); font: 600 10px "DM Sans", sans-serif; white-space: nowrap; }
 .select-row { display: flex; gap: 12px; margin: 18px 0; }
-.select-row label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.select-row select { min-height: 38px; padding: 7px 34px 7px 11px; border: 1px solid var(--line); border-radius: 0; color: var(--ink); background: var(--paper); font-size: 12px; font-weight: 600; text-transform: none; }
+.custom-select { display: flex; align-items: center; gap: 8px; }
+.custom-select-label { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.custom-select-control { position: relative; min-width: 166px; }
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.custom-select-trigger:hover { border-color: rgba(110,31,42,.4); background: #fff; }
+.custom-select-trigger:focus-visible { outline: 0; border-color: var(--maroon); box-shadow: 0 0 0 3px rgba(110,31,42,.12); }
+.custom-select-trigger svg { width: 11px; height: 8px; flex: 0 0 auto; fill: none; stroke: var(--maroon); stroke-width: 1.7; transition: transform .2s ease; }
+.custom-select.is-open .custom-select-trigger { border-color: var(--maroon); background: #fff; box-shadow: 0 0 0 3px rgba(110,31,42,.08); }
+.custom-select.is-open .custom-select-trigger svg { transform: rotate(180deg); }
+.custom-select-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  width: 100%;
+  min-width: 190px;
+  padding: 7px;
+  border: 1px solid rgba(110,31,42,.2);
+  background: #fff;
+  box-shadow: 0 18px 38px rgba(36,26,23,.14);
+}
+.custom-select-menu[hidden] { display: none; }
+.custom-select-menu button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 30px 9px 11px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.custom-select-menu button:hover,
+.custom-select-menu button:focus-visible { color: #fff; background: var(--maroon); outline: 0; }
+.custom-select-menu button[aria-selected="true"] { color: #fff; background: var(--maroon); }
+.custom-select-menu button[aria-selected="true"]::after { content: "✓"; position: absolute; right: 11px; font-size: 11px; }
 .category-filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .category-filters button { min-height: 36px; padding: 8px 14px; border: 1px solid rgba(110,31,42,.2); border-radius: 999px; color: var(--maroon); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; transition: color .18s ease, background .18s ease, transform .18s ease; }
 .category-filters button:hover { transform: translateY(-1px); }
@@ -206,8 +261,9 @@ h1, h2, h3, p, dl, dd { margin-top: 0; }
   .project-tools { padding: 15px; }
   .search-field kbd { display: none; }
   .select-row { align-items: stretch; }
-  .select-row label { flex: 1; flex-direction: column; align-items: flex-start; }
-  .select-row select { width: 100%; }
+  .custom-select { flex: 1; flex-direction: column; align-items: stretch; }
+  .custom-select-control { min-width: 0; }
+  .custom-select-menu { min-width: 100%; }
   .project-grid { grid-template-columns: 1fr; }
   .project-card.is-featured { grid-column: auto; }
   .project-card.is-featured .project-card-button { display: flex; }

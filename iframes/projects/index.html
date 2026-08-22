@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="projects.css?v=1">
+  <link rel="stylesheet" href="projects.css?v=3">
 </head>
 <body>
   <header class="hero">
@@ -70,8 +70,37 @@
           <kbd>⌘ K</kbd>
         </label>
         <div class="select-row">
-          <label><span>Stage</span><select id="status-filter"><option value="all">All stages</option></select></label>
-          <label><span>Sort</span><select id="project-sort"><option value="featured">Featured</option><option value="az">A–Z</option><option value="status">Stage</option></select></label>
+          <div class="custom-select" id="status-filter">
+            <span class="custom-select-label">Stage</span>
+            <div class="custom-select-control">
+              <button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="custom-select-value">All stages</span>
+                <svg viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1.25 5 5 5-5"></path></svg>
+              </button>
+              <div class="custom-select-menu" role="listbox" aria-label="Filter by project stage" hidden>
+                <button type="button" role="option" data-value="all" aria-selected="true">All stages</button>
+                <button type="button" role="option" data-value="Live" aria-selected="false">Live</button>
+                <button type="button" role="option" data-value="Ongoing" aria-selected="false">Ongoing</button>
+                <button type="button" role="option" data-value="In Development" aria-selected="false">In development</button>
+                <button type="button" role="option" data-value="Prototype" aria-selected="false">Prototype</button>
+                <button type="button" role="option" data-value="Concept" aria-selected="false">Concept</button>
+              </div>
+            </div>
+          </div>
+          <div class="custom-select" id="project-sort">
+            <span class="custom-select-label">Sort</span>
+            <div class="custom-select-control">
+              <button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="custom-select-value">Featured</span>
+                <svg viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1.25 5 5 5-5"></path></svg>
+              </button>
+              <div class="custom-select-menu" role="listbox" aria-label="Sort projects" hidden>
+                <button type="button" role="option" data-value="featured" aria-selected="true">Featured</button>
+                <button type="button" role="option" data-value="az" aria-selected="false">A–Z</button>
+                <button type="button" role="option" data-value="status" aria-selected="false">Stage</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="category-filters" id="category-filters" aria-label="Filter by area"></div>
         <div class="tool-meta">
@@ -107,6 +136,6 @@
     <div id="local-dialog-content"></div>
   </dialog>
 
-  <script src="projects.js?v=2"></script>
+  <script src="projects.js?v=3"></script>
 </body>
 </html>

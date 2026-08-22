@@ -231,8 +231,8 @@ const state = { query: "", category: "All", status: "all", sort: "featured" };
 
 const grid = document.getElementById("project-grid");
 const search = document.getElementById("project-search");
-const statusFilter = document.getElementById("status-filter");
-const sort = document.getElementById("project-sort");
+const statusFilterElement = document.getElementById("status-filter");
+const sortElement = document.getElementById("project-sort");
 const categoryFilters = document.getElementById("category-filters");
 const resultCount = document.getElementById("result-count");
 const clearFilters = document.getElementById("clear-filters");
@@ -335,9 +335,88 @@ function resetFilters() {
   state.status = "all";
   state.sort = "featured";
   search.value = "";
-  statusFilter.value = "all";
-  sort.value = "featured";
+  statusDropdown.setValue("all");
+  sortDropdown.setValue("featured");
   render();
+}
+
+function createCustomSelect(element, onChange) {
+  const trigger = element.querySelector(".custom-select-trigger");
+  const menu = element.querySelector(".custom-select-menu");
+  const valueLabel = element.querySelector(".custom-select-value");
+  const options = [...menu.querySelectorAll("[role='option']")];
+
+  function selectedOption() {
+    return options.find(option => option.getAttribute("aria-selected") === "true") || options[0];
+  }
+
+  function close(focusTrigger) {
+    element.classList.remove("is-open");
+    trigger.setAttribute("aria-expanded", "false");
+    menu.hidden = true;
+    if (focusTrigger) trigger.focus();
+  }
+
+  function open(focusOption) {
+    document.querySelectorAll(".custom-select.is-open").forEach(other => {
+      if (other === element) return;
+      other.classList.remove("is-open");
+      other.querySelector(".custom-select-trigger").setAttribute("aria-expanded", "false");
+      other.querySelector(".custom-select-menu").hidden = true;
+    });
+    element.classList.add("is-open");
+    trigger.setAttribute("aria-expanded", "true");
+    menu.hidden = false;
+    if (focusOption) window.requestAnimationFrame(() => selectedOption().focus());
+  }
+
+  function setValue(value, emitChange) {
+    const next = options.find(option => option.dataset.value === value);
+    if (!next) return;
+    options.forEach(option => option.setAttribute("aria-selected", String(option === next)));
+    valueLabel.textContent = next.textContent;
+    if (emitChange) onChange(value);
+  }
+
+  trigger.addEventListener("click", () => {
+    if (element.classList.contains("is-open")) close(false);
+    else open(false);
+  });
+  trigger.addEventListener("keydown", event => {
+    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      open(true);
+    }
+  });
+  options.forEach(option => {
+    option.addEventListener("click", () => {
+      setValue(option.dataset.value, true);
+      close(true);
+    });
+  });
+  menu.addEventListener("keydown", event => {
+    const currentIndex = Math.max(0, options.indexOf(document.activeElement));
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowDown") nextIndex = (currentIndex + 1) % options.length;
+    else if (event.key === "ArrowUp") nextIndex = (currentIndex - 1 + options.length) % options.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = options.length - 1;
+    else if (event.key === "Escape") {
+      event.preventDefault();
+      close(true);
+      return;
+    } else if (event.key === "Tab") {
+      close(false);
+      return;
+    } else return;
+    event.preventDefault();
+    options[nextIndex].focus();
+  });
+  document.addEventListener("click", event => {
+    if (!element.contains(event.target)) close(false);
+  });
+
+  return { setValue: value => setValue(value, false), close };
 }
 
 function notifyHeight() {
@@ -362,16 +441,10 @@ categoryOrder.forEach(category => {
   categoryFilters.appendChild(button);
 });
 
-stageOrder.filter(stage => projects.some(project => project.status === stage)).forEach(stage => {
-  const option = document.createElement("option");
-  option.value = stage;
-  option.textContent = stage;
-  statusFilter.appendChild(option);
-});
+const statusDropdown = createCustomSelect(statusFilterElement, value => { state.status = value; render(); });
+const sortDropdown = createCustomSelect(sortElement, value => { state.sort = value; render(); });
 
 search.addEventListener("input", () => { state.query = search.value; render(); });
-statusFilter.addEventListener("change", () => { state.status = statusFilter.value; render(); });
-sort.addEventListener("change", () => { state.sort = sort.value; render(); });
 clearFilters.addEventListener("click", resetFilters);
 emptyClear.addEventListener("click", resetFilters);
 localClose.addEventListener("click", () => localDialog.close());
