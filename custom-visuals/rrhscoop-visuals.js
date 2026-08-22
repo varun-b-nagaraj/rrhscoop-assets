@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "8";
+  const ASSET_VERSION = "9";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -39,6 +39,9 @@
     "ins-tile__category-item-189782257": assetUrl("category-backgrounds/merchandise.jpg"),
     "ins-tile__category-item-194772751": assetUrl("category-backgrounds/supplies.jpg"),
     "ins-tile__category-item-196956751": assetUrl("category-backgrounds/chick-fil-a.jpg")
+  };
+  const PROJECT_IMAGE_MAP = {
+    systems: assetUrl("project-backgrounds/systems.jpg")
   };
 
   const CATEGORY_CARD_MAP = {
@@ -696,6 +699,66 @@
       });
   }
 
+  function findCardByText(text) {
+    const needle = text.toUpperCase();
+    const candidates = document.querySelectorAll("article, li, .ins-tile__item, .ins-tile__card, .ins-tile__content, div");
+
+    for (const candidate of candidates) {
+      const candidateText = candidate.textContent.replace(/\s+/g, " ").trim().toUpperCase();
+      if (!candidateText.includes(needle)) continue;
+
+      const card =
+        candidate.closest("article") ||
+        candidate.closest("li") ||
+        candidate.closest(".ins-tile__item") ||
+        candidate.closest(".ins-tile__card") ||
+        candidate;
+
+      if (card && card.querySelector("img, picture")) return card;
+    }
+
+    return null;
+  }
+
+  function replaceImageSource(img, url, alt) {
+    if (!img || !url) return;
+
+    const picture = img.closest("picture");
+    if (picture) {
+      picture.querySelectorAll("source").forEach((source) => {
+        source.srcset = url;
+      });
+    }
+
+    img.src = url;
+    img.srcset = url;
+    img.alt = alt;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.dataset.rrhsProjectImage = "systems";
+    img.style.objectFit = "cover";
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.display = "block";
+  }
+
+  function fixProjectCardImages() {
+    const systemsImage = PROJECT_IMAGE_MAP.systems;
+    const alt = "Students working on technology and automation systems";
+    const brokenAltImage = document.querySelector('img[alt="Technology and automation project"]');
+
+    if (brokenAltImage) {
+      replaceImageSource(brokenAltImage, systemsImage, alt);
+      return;
+    }
+
+    const systemsCard = findCardByText("Systems Behind the Store");
+    if (!systemsCard) return;
+
+    const image = systemsCard.querySelector("img");
+    if (image) replaceImageSource(image, systemsImage, alt);
+  }
+
   function logContext() {
     if (!RRHS_DEBUG) return;
     log("=== RRHS VISUALS DEBUG START ===");
@@ -852,6 +915,7 @@
       balanceHeroLayout();
       alignCounterSection();
       fixMinimalMarqueeWidth();
+      fixProjectCardImages();
       initCategoryCards();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
