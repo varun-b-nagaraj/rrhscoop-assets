@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RRHS CO-OP Student Projects</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="projects.css?v=1">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-copy-grid">
+        <div>
+          <p class="eyebrow">RRHS CO-OP Student Projects</p>
+          <h1>Built here.<br><span>Used here.</span></h1>
+        </div>
+        <div class="hero-intro">
+          <p>Students use the CO-OP as a live environment to find problems, build solutions, test them against real operations, and improve what the school community uses every day.</p>
+          <a href="#project-library">Explore the work <span aria-hidden="true">↓</span></a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <img src="assets/hero-collaboration.webp" alt="A team collaborating around laptops" fetchpriority="high">
+        <div class="hero-caption">
+          <span>01</span>
+          <p>Ideas become systems when students can test them in a real store.</p>
+        </div>
+      </div>
+      <dl class="hero-stats" aria-label="Project collection summary">
+        <div><dt>12</dt><dd>Curated case studies</dd></div>
+        <div><dt>5</dt><dd>Areas of work</dd></div>
+        <div><dt>1</dt><dd>Student-run testing ground</dd></div>
+      </dl>
+    </div>
+  </header>
+
+  <section class="method">
+    <div class="wrap method-grid">
+      <div>
+        <p class="eyebrow">How projects happen</p>
+        <h2>Notice it.<br>Build it.<br><span>Run it.</span></h2>
+      </div>
+      <div class="method-steps">
+        <article><span>01</span><div><h3>Find the friction</h3><p>A manual process, a customer need, or an operating constraint becomes the starting point.</p></div></article>
+        <article><span>02</span><div><h3>Build for reality</h3><p>Students design around the store’s actual technology, people, policies, and daily workflow.</p></div></article>
+        <article><span>03</span><div><h3>Test in operation</h3><p>The work is used, measured, refined, and—when it succeeds—made part of how the CO-OP runs.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <main class="library" id="project-library">
+    <div class="wrap">
+      <div class="library-heading">
+        <div>
+          <p class="eyebrow">Project library</p>
+          <h2>Explore the work.</h2>
+        </div>
+        <p>Search by idea, system, or skill. Filter the collection, then open any project for the full story.</p>
+      </div>
+
+      <section class="project-tools" aria-label="Project search and filters">
+        <label class="search-field">
+          <span class="sr-only">Search projects</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input id="project-search" type="search" placeholder="Search projects, skills, or systems…" autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </label>
+        <div class="select-row">
+          <label><span>Stage</span><select id="status-filter"><option value="all">All stages</option></select></label>
+          <label><span>Sort</span><select id="project-sort"><option value="featured">Featured</option><option value="az">A–Z</option><option value="status">Stage</option></select></label>
+        </div>
+        <div class="category-filters" id="category-filters" aria-label="Filter by area"></div>
+        <div class="tool-meta">
+          <p id="result-count" aria-live="polite"></p>
+          <button id="clear-filters" type="button" hidden>Clear filters</button>
+        </div>
+      </section>
+
+      <section class="project-grid" id="project-grid" aria-label="Student projects"></section>
+      <div class="empty-state" id="empty-state" hidden>
+        <span>0</span>
+        <h3>No projects match that search.</h3>
+        <p>Try a broader term or reset the filters.</p>
+        <button type="button" id="empty-clear">Show all projects</button>
+      </div>
+    </div>
+  </main>
+
+  <section class="closing">
+    <div class="wrap closing-inner">
+      <p class="eyebrow">The bigger idea</p>
+      <h2>Not simulations.<br><span>Operating systems.</span></h2>
+      <p>Each project gives students ownership of work with real users, real constraints, and visible outcomes inside their own school.</p>
+      <div class="closing-actions">
+        <a class="primary" href="https://rrhscoop.roundrockisd.org/leadership" target="_top">Meet the leadership</a>
+        <a href="https://rrhscoop.roundrockisd.org/products/pages/about" target="_top">About the CO-OP</a>
+      </div>
+    </div>
+  </section>
+
+  <dialog class="local-dialog" id="local-project-dialog" aria-labelledby="local-dialog-title">
+    <button class="local-close" type="button" aria-label="Close project details">×</button>
+    <div id="local-dialog-content"></div>
+  </dialog>
+
+  <script src="projects.js?v=1"></script>
+</body>
+</html>

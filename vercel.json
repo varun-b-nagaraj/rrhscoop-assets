@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/iframes/leadership.html",
+      "destination": "/iframes/leadership/index.html"
+    },
+    {
+      "source": "/iframes/leadership-embed.html",
+      "destination": "/iframes/leadership/embed.html"
+    },
+    {
+      "source": "/iframes/assets/(.*)",
+      "destination": "/iframes/leadership/assets/$1"
+    },
+    {
       "source": "/v1/chat",
       "destination": "/api/v1/chat/proxy"
     },
