@@ -1,0 +1,15 @@
+/* RRHS CO-OP visual system — keep new storefront visuals on these tokens. */
+:root {
+  --rrhs-maroon: #6e1f2a;
+  --rrhs-beige: #ebebe2;
+  --rrhs-ink: #141414;
+  --rrhs-charcoal: #2a2a28;
+  --rrhs-cream: #f1eee8;
+  --rrhs-paper: #faf8f4;
+
+  --rrhs-font-title: "Raleway", Arial, sans-serif;
+  --rrhs-font-body: "Merriweather", Georgia, serif;
+
+  --rrhs-radius-card: 16px;
+  --rrhs-motion-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}

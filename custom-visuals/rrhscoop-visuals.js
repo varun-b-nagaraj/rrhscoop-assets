@@ -19,6 +19,293 @@
     "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
   };
 
+  const CATEGORY_CARD_MAP = {
+    "ins-tile__category-item-169641499": {
+      image: IMAGE_MAP["ins-tile__category-item-169641499"],
+      background: "#141414",
+      foreground: "#f1eee8"
+    },
+    "ins-tile__category-item-169641959": {
+      image: IMAGE_MAP["ins-tile__category-item-169641959"],
+      background: "#6e1f2a",
+      foreground: "#f1eee8"
+    },
+    "ins-tile__category-item-189782257": {
+      image: IMAGE_MAP["ins-tile__category-item-189782257"],
+      background: "#2a2a28",
+      foreground: "#f1eee8"
+    },
+    "ins-tile__category-item-194772751": {
+      image: IMAGE_MAP["ins-tile__category-item-194772751"],
+      background: "#141414",
+      foreground: "#f1eee8"
+    },
+    "ins-tile__category-item-196956751": {
+      image: null,
+      background: "#ebebe2",
+      foreground: "#6e1f2a",
+      isCfa: true
+    }
+  };
+
+  function ensureThemeTokens() {
+    if (document.getElementById("rrhs-theme-tokens")) return;
+
+    const link = document.createElement("link");
+    link.id = "rrhs-theme-tokens";
+    link.rel = "stylesheet";
+    link.href = `${BASE}/theme-tokens.css?v=1`;
+    (document.head || document.documentElement).appendChild(link);
+  }
+
+  function ensureCategoryCardStyles() {
+    if (document.getElementById("rrhs-category-card-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-category-card-styles";
+    style.textContent = `
+      .rrhs-category-cards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: clamp(12px, 1.6vw, 22px) !important;
+        align-items: stretch !important;
+      }
+
+      .rrhs-category-cards .ins-tile__category-item {
+        width: auto !important;
+        min-width: 0 !important;
+        height: clamp(340px, 30vw, 430px) !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        border-radius: var(--rrhs-radius-card, 16px) !important;
+        background: var(--rrhs-card-bg, #141414) !important;
+        box-shadow: 0 12px 30px rgb(20 20 20 / 0.08);
+        opacity: 0;
+        transform: translateY(32px);
+        transition:
+          opacity 700ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1)),
+          transform 700ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1)),
+          box-shadow 400ms ease;
+        transition-delay: var(--rrhs-card-delay, 0ms);
+      }
+
+      .rrhs-category-cards.rrhs-category-cards--visible .ins-tile__category-item {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .rrhs-category-cards .ins-tile__category-link {
+        position: relative !important;
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        color: var(--rrhs-card-fg, #f1eee8) !important;
+        isolation: isolate;
+      }
+
+      .rrhs-category-cards .ins-tile__category-image,
+      .rrhs-category-cards .ins-tile__image {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+      }
+
+      .rrhs-category-cards picture {
+        display: none !important;
+      }
+
+      .rrhs-category-card__visual {
+        position: absolute;
+        inset: 5%;
+        display: block;
+        width: 90%;
+        height: 90%;
+        object-fit: contain;
+        pointer-events: none;
+        transform: scale(0.96);
+        transition: transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
+      }
+
+      .rrhs-category-card--cfa .rrhs-category-card__visual {
+        inset: 14%;
+        width: 72%;
+        height: 72%;
+        object-fit: contain;
+        filter: brightness(1.2) contrast(1.1) saturate(1.5);
+        mix-blend-mode: multiply;
+      }
+
+      .rrhs-category-cards .ins-tile__category-link::after {
+        content: "";
+        position: absolute;
+        z-index: 1;
+        inset: 38% 0 0;
+        background: linear-gradient(to bottom, transparent, rgb(20 20 20 / 0.56));
+        pointer-events: none;
+      }
+
+      .rrhs-category-cards .rrhs-category-card--cfa .ins-tile__category-link::after {
+        background: linear-gradient(to bottom, transparent, rgb(110 31 42 / 0.08));
+      }
+
+      .rrhs-category-cards .ins-tile__category-content {
+        position: absolute !important;
+        z-index: 2;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: block !important;
+        width: auto !important;
+        margin: 0 !important;
+        padding: 24px 20px !important;
+        background: transparent !important;
+        text-align: left !important;
+        color: inherit !important;
+      }
+
+      .rrhs-category-cards .ins-tile__category-name {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 !important;
+        color: inherit !important;
+        font-family: var(--rrhs-font-title, "Raleway", Arial, sans-serif) !important;
+        font-size: clamp(15px, 1.25vw, 19px) !important;
+        font-weight: 700 !important;
+        line-height: 1.15 !important;
+        letter-spacing: -0.02em !important;
+        text-align: left !important;
+        text-transform: uppercase;
+      }
+
+      .rrhs-category-cards .ins-tile__category-name::after {
+        content: "→";
+        flex: 0 0 auto;
+        font-family: Arial, sans-serif;
+        font-size: 1.25em;
+        font-weight: 400;
+        transition: transform 300ms ease;
+      }
+
+      .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__visual,
+      .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__visual {
+        transform: scale(1.025);
+      }
+
+      .rrhs-category-cards .ins-tile__category-link:hover .ins-tile__category-name::after,
+      .rrhs-category-cards .ins-tile__category-link:focus-visible .ins-tile__category-name::after {
+        transform: translateX(5px);
+      }
+
+      .rrhs-category-cards .ins-tile__category-item:hover,
+      .rrhs-category-cards .ins-tile__category-item:focus-within {
+        transform: translateY(-8px);
+        box-shadow: 0 22px 45px rgb(20 20 20 / 0.16);
+      }
+
+      @media screen and (max-width: 1099px) {
+        .rrhs-category-cards {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+
+        .rrhs-category-cards .ins-tile__category-item {
+          height: 390px !important;
+        }
+      }
+
+      @media screen and (max-width: 699px) {
+        .rrhs-category-cards {
+          grid-template-columns: none !important;
+          grid-auto-flow: column;
+          grid-auto-columns: min(82vw, 300px);
+          justify-content: start !important;
+          overflow-x: auto;
+          padding: 0 4px 16px !important;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: thin;
+        }
+
+        .rrhs-category-cards .ins-tile__category-item {
+          height: 390px !important;
+          scroll-snap-align: start;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .rrhs-category-cards .ins-tile__category-item,
+        .rrhs-category-card__visual,
+        .rrhs-category-cards .ins-tile__category-name::after {
+          opacity: 1;
+          transform: none !important;
+          transition: none !important;
+        }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function revealCategoryCards(collection) {
+    if (collection.dataset.rrhsRevealInit === "1") return;
+    collection.dataset.rrhsRevealInit = "1";
+
+    if (typeof IntersectionObserver !== "function") {
+      collection.classList.add("rrhs-category-cards--visible");
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      collection.classList.add("rrhs-category-cards--visible");
+      observer.disconnect();
+    }, { threshold: 0.18 });
+    observer.observe(collection);
+  }
+
+  function initCategoryCards() {
+    ensureThemeTokens();
+    ensureCategoryCardStyles();
+
+    const firstItem = document.getElementById(Object.keys(CATEGORY_CARD_MAP)[0]);
+    const collection = firstItem && firstItem.closest(".ins-tile__category-collection");
+    if (!collection || collection.dataset.rrhsCardsInit === "1") return;
+
+    const items = Array.from(collection.querySelectorAll(":scope > .ins-tile__category-item"));
+    const isMatchingCollection = items.length >= 4 && items.every((item) => CATEGORY_CARD_MAP[item.id]);
+    if (!isMatchingCollection) return;
+
+    collection.dataset.rrhsCardsInit = "1";
+    collection.classList.add("rrhs-category-cards");
+
+    items.forEach((item, index) => {
+      const config = CATEGORY_CARD_MAP[item.id];
+      const imageContainer = item.querySelector(".ins-tile__image");
+      if (!config || !imageContainer) return;
+
+      const nativeImage = imageContainer.querySelector(".ins-picture--full img, img");
+      const visual = document.createElement("img");
+      visual.className = "rrhs-category-card__visual";
+      visual.src = config.image || (nativeImage && (nativeImage.currentSrc || nativeImage.src));
+      visual.alt = "";
+      visual.loading = index === 0 ? "eager" : "lazy";
+      visual.decoding = "async";
+
+      item.style.setProperty("--rrhs-card-bg", config.background);
+      item.style.setProperty("--rrhs-card-fg", config.foreground);
+      item.style.setProperty("--rrhs-card-delay", `${index * 85}ms`);
+      item.classList.toggle("rrhs-category-card--cfa", Boolean(config.isCfa));
+      imageContainer.appendChild(visual);
+    });
+
+    revealCategoryCards(collection);
+  }
+
   const HERO_HEADLINE = "BUILT FOR DRAGONS";
 
   function ensureHeroLayoutStyles() {
@@ -262,6 +549,7 @@
       logContext();
       balanceHeroLayout();
       fixMinimalMarqueeWidth();
+      initCategoryCards();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
   }
