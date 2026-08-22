@@ -296,6 +296,9 @@ contactForm.addEventListener("submit", async event => {
 
 window.addEventListener("message", event => {
   if (event.data && event.data.type === "rrhs-faq-request-height") notifyHeight();
+  if (event.data && event.data.type === "rrhs-faq-sticky-active") {
+    document.documentElement.classList.toggle("rrhs-host-sticky-active", Boolean(event.data.active));
+  }
   if (event.data && event.data.type === "rrhs-faq-scroll-to-id") {
     scrollToElement(document.getElementById(event.data.id));
   }

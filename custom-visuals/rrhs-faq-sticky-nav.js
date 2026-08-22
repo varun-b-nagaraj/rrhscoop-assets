@@ -22,6 +22,7 @@
   let nav = null;
   let metrics = null;
   let ticking = false;
+  let stickyActive = false;
 
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -41,7 +42,7 @@
         border: 1px solid rgba(36,26,23,.14) !important;
         border-radius: 0 !important;
         color: #241a17 !important;
-        background: rgba(251,248,242,.97) !important;
+        background: #fbf8f2 !important;
         box-shadow: 0 12px 30px rgba(36,26,23,.07) !important;
         opacity: 0 !important;
         visibility: hidden !important;
@@ -124,8 +125,13 @@
     const rect = frame.getBoundingClientRect();
     const start = rect.top + Number(metrics.stickyStart || metrics.faqTop || 0);
     const end = rect.top + Number(metrics.contactTop || metrics.height || rect.height);
-    const visible = start <= TOP_OFFSET && end > TOP_OFFSET + nav.offsetHeight + 24;
+    const visible = !window.matchMedia("(max-width: 920px)").matches &&
+      start <= TOP_OFFSET && end > TOP_OFFSET + nav.offsetHeight + 24;
     nav.classList.toggle("is-visible", visible);
+    if (visible !== stickyActive) {
+      stickyActive = visible;
+      frame.contentWindow.postMessage({ type: "rrhs-faq-sticky-active", active: visible }, "*");
+    }
   }
 
   function scheduleVisibility() {
@@ -166,6 +172,7 @@
       frame.dataset.rrhsFaqHostBound = "1";
       frame.addEventListener("load", () => {
         metrics = null;
+        stickyActive = false;
         frame.contentWindow.postMessage({ type: "rrhs-faq-request-height" }, "*");
       });
     }
