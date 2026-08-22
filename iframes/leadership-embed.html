@@ -1,26 +1,111 @@
 <!-- Paste this entire block into the RRHS CO-OP Leadership page. -->
 <style>
+  #rrhs-leadership-shell {
+    position: relative;
+    display: grid;
+    grid-template: 1fr / 1fr;
+    width: 100%;
+  }
+  #rrhs-leadership-menu,
+  #rrhs-leadership-menu * { box-sizing: border-box; }
   #rrhs-leadership-frame { height: 4790px; }
+  #rrhs-leadership-frame,
+  #rrhs-leadership-menu { grid-area: 1 / 1; }
+  #rrhs-leadership-menu {
+    position: sticky;
+    z-index: 30;
+    top: 112px;
+    align-self: start;
+    width: 172px;
+    margin: 112px 0 0 18px;
+    padding: 12px;
+    border: 1px solid rgba(110,31,42,.18);
+    background: rgba(251,248,242,.96);
+    box-shadow: 0 12px 30px rgba(36,26,23,.1);
+    font-family: Arial,sans-serif;
+    backdrop-filter: blur(8px);
+  }
+  #rrhs-leadership-menu .menu-title {
+    margin: 2px 7px 9px;
+    color: #6e1f2a;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  #rrhs-leadership-menu button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 34px;
+    padding: 7px;
+    border: 0;
+    border-top: 1px solid rgba(36,26,23,.08);
+    color: #3e302c;
+    background: transparent;
+    font: 600 11px/1.2 Arial,sans-serif;
+    text-align: left;
+    cursor: pointer;
+    transition: color .18s ease, background .18s ease, padding-left .18s ease;
+  }
+  #rrhs-leadership-menu button:hover,
+  #rrhs-leadership-menu button:focus-visible {
+    padding-left: 11px;
+    color: #fff;
+    background: #6e1f2a;
+    outline: none;
+  }
+  #rrhs-leadership-menu .menu-short { display: none; }
   @media (max-width: 900px) {
     #rrhs-leadership-frame { height: 6258px; }
   }
+  @media (max-width: 1500px) {
+    #rrhs-leadership-menu { width: 54px; margin-left: 10px; padding: 8px; }
+    #rrhs-leadership-menu .menu-title,
+    #rrhs-leadership-menu .menu-full { display: none; }
+    #rrhs-leadership-menu .menu-short { display: inline; }
+    #rrhs-leadership-menu button { justify-content: center; padding: 7px 2px; text-align: center; }
+    #rrhs-leadership-menu button:hover,
+    #rrhs-leadership-menu button:focus-visible { padding-left: 2px; }
+  }
   @media (max-width: 620px) {
     #rrhs-leadership-frame { height: 8167px; }
+    #rrhs-leadership-menu { top: 76px; width: 46px; margin-left: 5px; padding: 6px; }
+    #rrhs-leadership-menu button { min-height: 32px; font-size: 10px; }
   }
 </style>
+<div id="rrhs-leadership-shell">
+<nav id="rrhs-leadership-menu" aria-label="Leadership section navigation">
+  <p class="menu-title">Jump to</p>
+  <button type="button" data-target="executive"><span class="menu-full">Executive</span><span class="menu-short">EX</span></button>
+  <button type="button" data-target="hr"><span class="menu-full">Human Resources</span><span class="menu-short">HR</span></button>
+  <button type="button" data-target="finance"><span class="menu-full">Finance</span><span class="menu-short">FI</span></button>
+  <button type="button" data-target="product"><span class="menu-full">Product</span><span class="menu-short">PR</span></button>
+  <button type="button" data-target="lightspeed"><span class="menu-full">Lightspeed</span><span class="menu-short">LS</span></button>
+  <button type="button" data-target="marketing"><span class="menu-full">Marketing</span><span class="menu-short">MK</span></button>
+  <button type="button" data-target="kiosk"><span class="menu-full">Cafeteria Kiosk</span><span class="menu-short">CK</span></button>
+  <button type="button" data-target="inventory"><span class="menu-full">Inventory</span><span class="menu-short">IN</span></button>
+  <button type="button" data-target="chickfila"><span class="menu-full">Chick-fil-A</span><span class="menu-short">CFA</span></button>
+</nav>
 <iframe
   id="rrhs-leadership-frame"
   title="RRHS CO-OP Departments and Leadership"
-  src="https://rrhscoop-assets.vercel.app/iframes/leadership.html?v=14"
+  src="https://rrhscoop-assets.vercel.app/iframes/leadership.html?v=15"
   scrolling="no"
   loading="eager"
   height="4790"
   onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-leadership-height'){f.style.height=Math.ceil(e.data.height)+'px';}if(e.data.type==='rrhs-leadership-scroll'){window.scrollTo({top:window.pageYOffset+f.getBoundingClientRect().top+e.data.top-90,behavior:'smooth'});}});}f.contentWindow.postMessage({type:'rrhs-leadership-request-height'},'*');"
   style="display:block;width:100%;border:0;margin:0;padding:0;background:#f3ecdf;overflow:hidden;"
 ></iframe>
+</div>
 <script>
   (function () {
     var frame = document.getElementById("rrhs-leadership-frame");
+    document.querySelectorAll("#rrhs-leadership-menu button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        frame.contentWindow.postMessage({ type: "rrhs-leadership-jump", target: button.dataset.target }, "*");
+      });
+    });
     window.addEventListener("message", function (event) {
       if (event.origin !== "https://rrhscoop-assets.vercel.app") return;
       if (!event.data || event.data.type !== "rrhs-leadership-height") return;

@@ -534,7 +534,12 @@
         });
       });
       window.addEventListener("message", function (event) {
-        if (event.data && event.data.type === "rrhs-leadership-request-height") sendHeight();
+        if (!event.data) return;
+        if (event.data.type === "rrhs-leadership-request-height") sendHeight();
+        if (event.data.type === "rrhs-leadership-jump") {
+          var target = document.getElementById(event.data.target);
+          if (target) window.parent.postMessage({ type: "rrhs-leadership-scroll", top: target.offsetTop }, "*");
+        }
       });
       window.addEventListener("load", sendHeight);
       window.addEventListener("resize", sendHeight);
