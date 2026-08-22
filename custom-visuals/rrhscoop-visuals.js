@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "3";
+  const ASSET_VERSION = "4";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -32,32 +32,59 @@
     "ins-tile__category-item-189782257": assetUrl("merch.png"),
     "ins-tile__category-item-194772751": assetUrl("supplies.png")
   };
+  const PHOTO_MAP = {
+    "ins-tile__category-item-169641499": assetUrl("category-backgrounds/food.jpg"),
+    "ins-tile__category-item-169641959": assetUrl("category-backgrounds/drink.jpg"),
+    "ins-tile__category-item-189782257": assetUrl("category-backgrounds/merchandise.jpg"),
+    "ins-tile__category-item-194772751": assetUrl("category-backgrounds/supplies.jpg"),
+    "ins-tile__category-item-196956751": assetUrl("category-backgrounds/chick-fil-a.jpg")
+  };
 
   const CATEGORY_CARD_MAP = {
     "ins-tile__category-item-169641499": {
       image: IMAGE_MAP["ins-tile__category-item-169641499"],
-      background: "#141414",
-      foreground: "#f1eee8"
+      photo: PHOTO_MAP["ins-tile__category-item-169641499"],
+      background: "#221817",
+      foreground: "#faf8f4",
+      wash: "rgb(20 20 20 / 0.48)",
+      labelBackground: "rgb(20 20 20 / 0.78)",
+      visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-169641959": {
       image: IMAGE_MAP["ins-tile__category-item-169641959"],
+      photo: PHOTO_MAP["ins-tile__category-item-169641959"],
       background: "#6e1f2a",
-      foreground: "#f1eee8"
+      foreground: "#faf8f4",
+      wash: "rgb(110 31 42 / 0.48)",
+      labelBackground: "rgb(110 31 42 / 0.84)",
+      visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-189782257": {
       image: IMAGE_MAP["ins-tile__category-item-189782257"],
+      photo: PHOTO_MAP["ins-tile__category-item-189782257"],
       background: "#2a2a28",
-      foreground: "#f1eee8"
+      foreground: "#faf8f4",
+      wash: "rgb(42 42 40 / 0.44)",
+      labelBackground: "rgb(42 42 40 / 0.76)",
+      visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-194772751": {
       image: IMAGE_MAP["ins-tile__category-item-194772751"],
-      background: "#141414",
-      foreground: "#f1eee8"
+      photo: PHOTO_MAP["ins-tile__category-item-194772751"],
+      background: "#ebebe2",
+      foreground: "#6e1f2a",
+      wash: "rgb(235 235 226 / 0.66)",
+      labelBackground: "rgb(235 235 226 / 0.9)",
+      visualFilter: "brightness(0) saturate(100%) invert(14%) sepia(40%) saturate(2515%) hue-rotate(326deg) brightness(90%) contrast(87%)"
     },
     "ins-tile__category-item-196956751": {
       image: null,
-      background: "#ebebe2",
+      photo: PHOTO_MAP["ins-tile__category-item-196956751"],
+      background: "#faf8f4",
       foreground: "#6e1f2a",
+      wash: "rgb(250 248 244 / 0.62)",
+      labelBackground: "rgb(250 248 244 / 0.9)",
+      visualFilter: "none",
       isCfa: true
     }
   };
@@ -125,6 +152,15 @@
         isolation: isolate;
       }
 
+      .rrhs-category-cards .ins-tile__category-link::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background: var(--rrhs-card-wash, rgb(20 20 20 / 0.42));
+        pointer-events: none;
+      }
+
       .rrhs-category-cards .ins-tile__category-image,
       .rrhs-category-cards .ins-tile__image {
         position: absolute !important;
@@ -140,13 +176,29 @@
         display: none !important;
       }
 
+      .rrhs-category-card__photo {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.96;
+        transform: scale(1.01);
+        transition: transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
+      }
+
       .rrhs-category-card__visual {
         position: absolute;
-        inset: 5%;
+        inset: 14% 10% 24%;
+        z-index: 2;
         display: block;
-        width: 90%;
-        height: 90%;
+        width: 80%;
+        height: 62%;
         object-fit: contain;
+        opacity: 0.88;
+        filter: var(--rrhs-card-visual-filter, brightness(0) invert(1));
         pointer-events: none;
         transform: scale(0.96);
         transition: transform 650ms var(--rrhs-motion-standard, cubic-bezier(0.22, 1, 0.36, 1));
@@ -157,7 +209,7 @@
         width: 72%;
         height: 72%;
         object-fit: contain;
-        filter: brightness(1.2) contrast(1.1) saturate(1.5);
+        filter: brightness(1.08) contrast(1.08) saturate(1.3);
         mix-blend-mode: multiply;
       }
 
@@ -171,7 +223,7 @@
         width: auto !important;
         margin: 0 !important;
         padding: 24px 20px !important;
-        background: transparent !important;
+        background: var(--rrhs-card-label-bg, rgb(20 20 20 / 0.78)) !important;
         text-align: left !important;
         color: inherit !important;
       }
@@ -187,7 +239,7 @@
         font-size: clamp(15px, 1.25vw, 19px) !important;
         font-weight: 700 !important;
         line-height: 1.15 !important;
-        letter-spacing: -0.02em !important;
+        letter-spacing: 0 !important;
         text-align: left !important;
         text-transform: uppercase;
       }
@@ -204,6 +256,11 @@
       .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__visual,
       .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__visual {
         transform: scale(1.025);
+      }
+
+      .rrhs-category-cards .ins-tile__category-link:hover .rrhs-category-card__photo,
+      .rrhs-category-cards .ins-tile__category-link:focus-visible .rrhs-category-card__photo {
+        transform: scale(1.065);
       }
 
       .rrhs-category-cards .ins-tile__category-link:hover .ins-tile__category-name::after,
@@ -250,6 +307,7 @@
 
       @media (prefers-reduced-motion: reduce) {
         .rrhs-category-cards .ins-tile__category-item,
+        .rrhs-category-card__photo,
         .rrhs-category-card__visual,
         .rrhs-category-cards .ins-tile__category-name::after {
           opacity: 1;
@@ -284,7 +342,9 @@
   }
 
   function nativeImageUrl(imageContainer) {
-    const img = imageContainer.querySelector(".ins-picture--full img, img");
+    const img = imageContainer.querySelector(
+      ".ins-picture--full img, img:not(.rrhs-category-card__photo):not(.rrhs-category-card__visual)",
+    );
     if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
 
     const source = imageContainer.querySelector("source[srcset]");
@@ -297,9 +357,29 @@
     return config.image || nativeImageUrl(imageContainer);
   }
 
+  function ensureCardPhoto(imageContainer, config) {
+    if (!config.photo) return;
+
+    let photo = imageContainer.querySelector(":scope > .rrhs-category-card__photo");
+    if (!photo) {
+      photo = document.createElement("img");
+      photo.className = "rrhs-category-card__photo";
+      imageContainer.insertBefore(photo, imageContainer.firstChild);
+    }
+
+    if (photo.getAttribute("src") !== config.photo) photo.src = config.photo;
+    photo.removeAttribute("style");
+    photo.alt = "";
+    photo.loading = "lazy";
+    photo.decoding = "async";
+    photo.dataset.rrhsPhoto = "1";
+  }
+
   function ensureCardVisual(item, config, index) {
     const imageContainer = item.querySelector(".ins-tile__image");
     if (!config || !imageContainer) return;
+
+    ensureCardPhoto(imageContainer, config);
 
     let visual = imageContainer.querySelector(":scope > .rrhs-category-card__visual");
     if (!visual) {
@@ -324,6 +404,9 @@
 
     item.style.setProperty("--rrhs-card-bg", config.background);
     item.style.setProperty("--rrhs-card-fg", config.foreground);
+    item.style.setProperty("--rrhs-card-wash", config.wash);
+    item.style.setProperty("--rrhs-card-label-bg", config.labelBackground);
+    item.style.setProperty("--rrhs-card-visual-filter", config.visualFilter);
     item.style.setProperty("--rrhs-card-delay", `${index * 85}ms`);
     item.classList.toggle("rrhs-category-card--cfa", Boolean(config.isCfa));
   }
