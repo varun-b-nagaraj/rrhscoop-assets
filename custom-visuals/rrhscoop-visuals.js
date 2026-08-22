@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "14";
+  const ASSET_VERSION = "15";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -599,128 +599,6 @@
     });
   }
 
-  const COUNTER_HEADLINE = "MORE THAN A SCHOOL STORE.";
-
-  function ensureCounterSectionStyles() {
-    if (document.getElementById("rrhs-counter-section-styles")) return;
-
-    const style = document.createElement("style");
-    style.id = "rrhs-counter-section-styles";
-    style.textContent = `
-      @media screen and (min-width: 900px) {
-        .rrhs-counter-section {
-          min-height: var(--cover-height, 720px) !important;
-        }
-
-        .rrhs-counter-section .ins-tile__wrap,
-        .rrhs-counter-section .grid-container-item > .flex.relative.flex-col,
-        .rrhs-counter-section__content {
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: center !important;
-          align-items: stretch !important;
-          min-height: var(--cover-height, 720px) !important;
-          height: auto !important;
-          margin-top: 0 !important;
-          padding-top: 60px !important;
-          padding-bottom: 60px !important;
-        }
-
-        .rrhs-counter-section__stack {
-          display: flex !important;
-          flex-direction: column !important;
-          flex: 0 0 auto !important;
-          align-self: flex-end !important;
-          width: clamp(440px, 38vw, 620px) !important;
-          min-width: 440px !important;
-          max-width: 620px !important;
-          margin-left: auto !important;
-          margin-right: 0 !important;
-          gap: 0 !important;
-        }
-
-        .rrhs-counter-section__stack .ins-tile__tagline,
-        .rrhs-counter-section__stack .ins-tile__headline,
-        .rrhs-counter-section__stack .ins-tile__footer {
-          width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          text-align: left !important;
-          max-width: none !important;
-          min-width: 0 !important;
-          white-space: normal !important;
-          overflow-wrap: normal !important;
-          word-break: normal !important;
-          writing-mode: horizontal-tb !important;
-        }
-
-        .rrhs-counter-section .ins-tile__spacer {
-          display: none !important;
-        }
-
-        .rrhs-counter-section__stack .ins-tile__headline {
-          margin-top: 24px !important;
-        }
-
-        .rrhs-counter-section__stack .ins-tile__footer,
-        .rrhs-counter-section__stack .ins-tile__footer .ins-tile__description {
-          margin-top: 28px !important;
-        }
-
-        .rrhs-counter-section__stack .ins-tile__footer .ins-tile__buttons,
-        .rrhs-counter-section__stack .ins-tile__buttons:not(:first-child) {
-          margin-top: 34px !important;
-        }
-      }
-
-      @media screen and (max-width: 899px) {
-        .rrhs-counter-section__stack {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: none !important;
-        }
-
-        .rrhs-counter-section__content {
-          justify-content: center !important;
-        }
-      }
-    `;
-    (document.head || document.documentElement).appendChild(style);
-  }
-
-  function alignCounterSection() {
-    ensureCounterSectionStyles();
-
-    document.querySelectorAll(".ins-tile__headline").forEach((headline) => {
-      const headlineText = headline.textContent.replace(/\s+/g, " ").trim().toUpperCase();
-      const isTargetSection = headlineText === COUNTER_HEADLINE;
-      const tile =
-        headline.closest(".ins-tile") ||
-        headline.closest(".grid-container-item") ||
-        headline.closest("section");
-
-      if (!tile) return;
-
-      tile.classList.toggle("rrhs-counter-section", isTargetSection);
-      const content = headline.parentElement;
-      if (!content) return;
-
-      content.classList.toggle("rrhs-counter-section__content", isTargetSection);
-      if (!isTargetSection || content.querySelector(":scope > .rrhs-counter-section__stack")) return;
-
-      const tagline = content.querySelector(":scope > .ins-tile__tagline");
-      const footer = content.querySelector(":scope > .ins-tile__footer");
-      if (!tagline || !footer) return;
-
-      const stack = document.createElement("div");
-      stack.className = "rrhs-counter-section__stack";
-      content.insertBefore(stack, tagline);
-      stack.appendChild(tagline);
-      stack.appendChild(headline);
-      stack.appendChild(footer);
-    });
-  }
-
   function ensureMinimalMarqueeStyles() {
     if (document.getElementById("rrhs-minimal-marquee-styles")) return;
 
@@ -940,7 +818,6 @@
     try {
       logContext();
       balanceHeroLayout();
-      alignCounterSection();
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
       initCategoryCards();
