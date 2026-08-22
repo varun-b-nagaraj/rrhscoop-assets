@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "11";
+  const ASSET_VERSION = "12";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -629,7 +629,11 @@
         .rrhs-counter-section__stack {
           display: flex !important;
           flex-direction: column !important;
-          width: min(46%, 620px) !important;
+          flex: 0 0 auto !important;
+          align-self: flex-end !important;
+          width: clamp(440px, 38vw, 620px) !important;
+          min-width: 440px !important;
+          max-width: 620px !important;
           margin-left: auto !important;
           margin-right: 0 !important;
           gap: 0 !important;
@@ -642,6 +646,12 @@
           margin-left: 0 !important;
           margin-right: 0 !important;
           text-align: left !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          white-space: normal !important;
+          overflow-wrap: normal !important;
+          word-break: normal !important;
+          writing-mode: horizontal-tb !important;
         }
 
         .rrhs-counter-section .ins-tile__spacer {
@@ -664,6 +674,12 @@
       }
 
       @media screen and (max-width: 899px) {
+        .rrhs-counter-section__stack {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+        }
+
         .rrhs-counter-section__content {
           justify-content: center !important;
         }
