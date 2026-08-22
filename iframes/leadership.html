@@ -195,10 +195,38 @@
     .leader-role { margin-bottom: 4px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
     .leader-name { margin-bottom: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
 
-    .closing { padding: 78px 0 84px; text-align: center; background: var(--cream); }
-    .closing-mark { width: 38px; height: 3px; margin: 0 auto 22px; background: var(--maroon); }
-    .closing h2 { margin-bottom: 16px; font-size: clamp(36px, 4vw, 54px); letter-spacing: -.03em; }
-    .closing p { max-width: 680px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.7; }
+    .closing { padding: 112px 0 118px; text-align: center; background: var(--cream); }
+    .closing .eyebrow { display: inline-flex; align-items: center; margin-bottom: 30px; }
+    .closing h2 {
+      max-width: 940px;
+      margin: 0 auto 28px;
+      font-size: clamp(46px, 5.5vw, 76px);
+      line-height: 1.02;
+      letter-spacing: -.04em;
+      text-transform: uppercase;
+    }
+    .closing-copy { max-width: 710px; margin: 0 auto; color: var(--muted); font-family: Georgia, serif; font-size: 20px; line-height: 1.55; }
+    .closing-actions { display: flex; justify-content: center; gap: 18px; margin-top: 42px; }
+    .closing-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 242px;
+      min-height: 72px;
+      padding: 18px 28px;
+      border: 1px solid rgba(36, 26, 23, .2);
+      color: var(--ink);
+      background: transparent;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .055em;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: transform .2s ease, color .2s ease, background .2s ease;
+    }
+    .closing-button.primary { border-color: var(--maroon); color: #fff; background: var(--maroon); }
+    .closing-button:hover,
+    .closing-button:focus-visible { transform: translateY(-2px); color: #fff; background: var(--maroon-deep); }
 
     @media (max-width: 900px) {
       .hero-grid, .section-head { grid-template-columns: 1fr; gap: 26px; }
@@ -221,6 +249,10 @@
       .leaders { grid-column: auto; }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
+      .closing { padding: 82px 0 88px; }
+      .closing-copy { font-size: 17px; }
+      .closing-actions { flex-direction: column; align-items: stretch; }
+      .closing-button { width: 100%; min-width: 0; }
     }
 
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -369,9 +401,13 @@
 
   <footer class="closing">
     <div class="wrap">
-      <div class="closing-mark"></div>
-      <h2>Student-led. Store-tested.</h2>
-      <p>Every department gives RRHS students real responsibility, practical business experience, and the opportunity to build something that serves their school community.</p>
+      <p class="eyebrow">Explore More</p>
+      <h2>Built by Students.<br>Powered by Departments.</h2>
+      <p class="closing-copy">Every part of the RRHS CO-OP depends on students taking responsibility for real systems, teams, and outcomes.</p>
+      <div class="closing-actions">
+        <a class="closing-button primary" href="https://rrhscoop.roundrockisd.org/products/pages/about" target="_top">About the CO-OP</a>
+        <a class="closing-button" href="https://rrhscoop.roundrockisd.org/student-projects" target="_top">View Student Projects</a>
+      </div>
     </div>
   </footer>
 
