@@ -103,7 +103,15 @@
     .faq-group[hidden] { display: none; }
     .faq-group-head { display: grid; grid-template-columns: .55fr 1fr; gap: 40px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
     .faq-group h3 { margin-bottom: 0; color: var(--maroon); font-size: 28px; line-height: 1.08; letter-spacing: -.025em; }
-    .faq-group-head p { margin-bottom: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+    .faq-group-head p {
+      justify-self: end;
+      max-width: 570px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+      text-align: right;
+    }
     .faq-items { border-bottom: 1px solid var(--line); }
     .faq-item { border-top: 1px solid var(--line); }
     .faq-item[hidden] { display: none; }
@@ -172,6 +180,7 @@
 
     @media (max-width: 920px) {
       .hero-grid, .faq-layout, .contact-grid, .faq-group-head { grid-template-columns: 1fr; gap: 34px; }
+      .faq-group-head p { justify-self: start; max-width: none; text-align: left; }
       .side-nav { position: static; }
       .filter-list { grid-template-columns: repeat(2, 1fr); }
       .hero-tools { grid-template-columns: 1fr; }
