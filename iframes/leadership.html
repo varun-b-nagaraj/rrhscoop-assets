@@ -216,7 +216,7 @@
       justify-content: center;
       flex: 0 0 74px;
       border-color: rgba(110, 31, 42, .24);
-      transform: translateY(calc(var(--leader-index, 0) * -12px));
+      transform: none;
     }
     .leaders.is-active .leader + .leader { border-top-color: transparent; }
     .leaders.is-active .leader > div { width: 0; opacity: 0; pointer-events: none; }
@@ -518,8 +518,7 @@
           window.requestAnimationFrame(sendHeight);
         }
 
-        list.querySelectorAll(".leader").forEach(function (leader, index) {
-          leader.style.setProperty("--leader-index", index);
+        list.querySelectorAll(".leader").forEach(function (leader) {
           leader.tabIndex = 0;
           leader.setAttribute("role", "button");
           leader.setAttribute("aria-expanded", "false");
