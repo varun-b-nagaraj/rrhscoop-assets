@@ -174,7 +174,6 @@
       position: relative;
       display: grid;
       gap: 12px;
-      transition: gap .32s ease;
     }
     .leader {
       position: relative;
@@ -189,9 +188,9 @@
       background: #fff;
       cursor: pointer;
       overflow: hidden;
-      transition: width .36s ease, padding .36s ease, border-color .2s ease, background .2s ease;
+      transition: width .36s ease, height .36s ease, padding .36s ease, transform .36s ease, border-color .2s ease, background .2s ease;
     }
-    .leader > div { min-width: 0; opacity: 1; transition: opacity .18s ease, width .3s ease; }
+    .leader > div { min-width: 0; opacity: 1; white-space: nowrap; transition: opacity .18s ease, width .3s ease; }
     .initials {
       display: grid;
       place-items: center;
@@ -207,12 +206,14 @@
     }
     .leader-role { margin-bottom: 4px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
     .leader-name { margin-bottom: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
-    .leaders.is-active { gap: 0; }
     .leaders.is-active .leader {
       width: 72px;
+      height: 74px;
+      min-height: 74px;
       padding: 13px;
       justify-content: center;
       border-color: rgba(110, 31, 42, .24);
+      transform: translateY(calc(var(--leader-index, 0) * -12px));
     }
     .leaders.is-active .leader + .leader { border-top-color: transparent; }
     .leaders.is-active .leader > div { width: 0; opacity: 0; pointer-events: none; }
@@ -461,6 +462,7 @@
   <script>
     (function () {
       function sendHeight() {
+        if (document.querySelector(".leaders.is-active")) return;
         var height = document.documentElement.scrollHeight;
         document.documentElement.dataset.pageHeight = String(height);
         window.parent.postMessage({ type: "rrhs-leadership-height", height: height }, "*");
@@ -502,9 +504,11 @@
             item.classList.remove("is-selected");
             item.setAttribute("aria-expanded", "false");
           });
+          window.requestAnimationFrame(sendHeight);
         }
 
-        list.querySelectorAll(".leader").forEach(function (leader) {
+        list.querySelectorAll(".leader").forEach(function (leader, index) {
+          leader.style.setProperty("--leader-index", index);
           leader.tabIndex = 0;
           leader.setAttribute("role", "button");
           leader.setAttribute("aria-expanded", "false");
