@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "17";
+  const ASSET_VERSION = "18";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -624,6 +624,11 @@
 
       .rrhs-scroll-header--scrolled {
         box-shadow: 0 10px 28px rgb(20 20 20 / 0.08);
+      }
+
+      #tile-text-Netcra .ins-tile__title .ql-color-marker3,
+      #tile-text-Netcra .ins-tile__title strong {
+        color: #6e1f2a !important;
       }
 
       .ins-header__logo-inner.rrhs-header-logo-link {
