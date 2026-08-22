@@ -139,6 +139,23 @@ const projects = [
     tags: ["Stakeholder Management", "Food Service", "Contracts", "Retail Operations", "POS"]
   },
   {
+    id: "food-trailer",
+    title: "Food Trailer Initiative",
+    category: "Food & Community",
+    status: "In Development",
+    image: "assets/food-trailer.webp",
+    imageAlt: "A mobile food-service trailer with an open service window",
+    summary: "A district-supported expansion bringing the CO-OP’s student-run food and retail operations into a mobile format.",
+    overview: "The Food Trailer Initiative is part of the district-supported expansion of the CO-OP. Around $30,000 of the larger district investment was associated with the trailer, making it a significant infrastructure and business implementation project. The work also includes an exterior wrap and branding concept for the CO-OP’s mobile retail presence.",
+    highlights: [
+      "A mobile extension of the CO-OP’s food and retail operations",
+      "Approximately $30,000 associated with the trailer investment",
+      "Planning for the infrastructure and operations of a new service format",
+      "Exterior wrap and branding development for the mobile presence"
+    ],
+    tags: ["Business Expansion", "Food Service", "Mobile Retail", "Operations", "Exterior Branding"]
+  },
+  {
     id: "chickfila-fulfillment",
     title: "Chick-fil-A Commerce & Fulfillment",
     category: "Food & Community",
