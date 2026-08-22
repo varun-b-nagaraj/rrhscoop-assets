@@ -41,7 +41,7 @@
     style.id = STYLE_ID;
     style.textContent = `
       :root {
-        --rrhs-nav-maroon: #6e1f2a;
+        --rrhs-nav-maroon: #4d111c;
         --rrhs-nav-dark: #141414;
         --rrhs-nav-light: #faf8f4;
         --rrhs-nav-alt: #ebebe2;
