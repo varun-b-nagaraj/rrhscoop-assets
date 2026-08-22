@@ -11,12 +11,26 @@
     if (RRHS_DEBUG) console.log(...args);
   };
 
-  const BASE = "https://rrhscoop-assets.vercel.app/custom-visuals";
+  function getAssetBase() {
+    try {
+      const script =
+        document.currentScript ||
+        document.querySelector('script[src*="custom-visuals/rrhscoop-visuals.js"]');
+      if (script && script.src) return new URL(".", script.src).href.replace(/\/$/, "");
+    } catch (e) {
+      log("RRHS: could not resolve asset base from current script", e);
+    }
+    return "https://rrhscoop-assets.vercel.app/custom-visuals";
+  }
+
+  const BASE = getAssetBase();
+  const ASSET_VERSION = "3";
+  const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
-    "ins-tile__category-item-169641499": `${BASE}/snack.png?v=2`,
-    "ins-tile__category-item-169641959": `${BASE}/beverage.png?v=2`,
-    "ins-tile__category-item-189782257": `${BASE}/merch.png?v=2`,
-    "ins-tile__category-item-194772751": `${BASE}/supplies.png?v=2`
+    "ins-tile__category-item-169641499": assetUrl("snack.png"),
+    "ins-tile__category-item-169641959": assetUrl("beverage.png"),
+    "ins-tile__category-item-189782257": assetUrl("merch.png"),
+    "ins-tile__category-item-194772751": assetUrl("supplies.png")
   };
 
   const CATEGORY_CARD_MAP = {
@@ -54,7 +68,7 @@
     const link = document.createElement("link");
     link.id = "rrhs-theme-tokens";
     link.rel = "stylesheet";
-    link.href = `${BASE}/theme-tokens.css?v=1`;
+    link.href = assetUrl("theme-tokens.css");
     (document.head || document.documentElement).appendChild(link);
   }
 
@@ -264,13 +278,63 @@
     observer.observe(collection);
   }
 
+  function firstSrcFromSrcset(srcset) {
+    if (!srcset) return "";
+    return srcset.split(",")[0].trim().split(/\s+/)[0] || "";
+  }
+
+  function nativeImageUrl(imageContainer) {
+    const img = imageContainer.querySelector(".ins-picture--full img, img");
+    if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+
+    const source = imageContainer.querySelector("source[srcset]");
+    if (source) return firstSrcFromSrcset(source.getAttribute("srcset"));
+
+    return "";
+  }
+
+  function resolveCardImage(config, imageContainer) {
+    return config.image || nativeImageUrl(imageContainer);
+  }
+
+  function ensureCardVisual(item, config, index) {
+    const imageContainer = item.querySelector(".ins-tile__image");
+    if (!config || !imageContainer) return;
+
+    let visual = imageContainer.querySelector(":scope > .rrhs-category-card__visual");
+    if (!visual) {
+      visual = document.createElement("img");
+      visual.className = "rrhs-category-card__visual";
+      imageContainer.appendChild(visual);
+    }
+
+    const src = resolveCardImage(config, imageContainer);
+    if (src && visual.getAttribute("src") !== src) visual.src = src;
+
+    visual.removeAttribute("style");
+    visual.alt = "";
+    visual.loading = index === 0 ? "eager" : "lazy";
+    visual.decoding = "async";
+    visual.dataset.rrhsVisual = "1";
+
+    visual.onerror = () => {
+      const fallback = nativeImageUrl(imageContainer);
+      if (fallback && visual.getAttribute("src") !== fallback) visual.src = fallback;
+    };
+
+    item.style.setProperty("--rrhs-card-bg", config.background);
+    item.style.setProperty("--rrhs-card-fg", config.foreground);
+    item.style.setProperty("--rrhs-card-delay", `${index * 85}ms`);
+    item.classList.toggle("rrhs-category-card--cfa", Boolean(config.isCfa));
+  }
+
   function initCategoryCards() {
     ensureThemeTokens();
     ensureCategoryCardStyles();
 
     const firstItem = document.getElementById(Object.keys(CATEGORY_CARD_MAP)[0]);
     const collection = firstItem && firstItem.closest(".ins-tile__category-collection");
-    if (!collection || collection.dataset.rrhsCardsInit === "1") return;
+    if (!collection) return;
 
     const items = Array.from(collection.querySelectorAll(":scope > .ins-tile__category-item"));
     const isMatchingCollection = items.length >= 4 && items.every((item) => CATEGORY_CARD_MAP[item.id]);
@@ -281,22 +345,7 @@
 
     items.forEach((item, index) => {
       const config = CATEGORY_CARD_MAP[item.id];
-      const imageContainer = item.querySelector(".ins-tile__image");
-      if (!config || !imageContainer) return;
-
-      const nativeImage = imageContainer.querySelector(".ins-picture--full img, img");
-      const visual = document.createElement("img");
-      visual.className = "rrhs-category-card__visual";
-      visual.src = config.image || (nativeImage && (nativeImage.currentSrc || nativeImage.src));
-      visual.alt = "";
-      visual.loading = index === 0 ? "eager" : "lazy";
-      visual.decoding = "async";
-
-      item.style.setProperty("--rrhs-card-bg", config.background);
-      item.style.setProperty("--rrhs-card-fg", config.foreground);
-      item.style.setProperty("--rrhs-card-delay", `${index * 85}ms`);
-      item.classList.toggle("rrhs-category-card--cfa", Boolean(config.isCfa));
-      imageContainer.appendChild(visual);
+      ensureCardVisual(item, config, index);
     });
 
     revealCategoryCards(collection);
@@ -460,6 +509,8 @@
   }
 
   function shouldRunImageSwap() {
+    if (document.querySelector(".rrhs-category-cards")) return false;
+
     const hasCategoryTile = document.querySelector('.ins-tile__category-collection');
     const hasImageWrapper = document.querySelector('.ins-tile__category-image-wrapper');
     const inModal = document.querySelector('.ec-modal__content, .ec-popup');
