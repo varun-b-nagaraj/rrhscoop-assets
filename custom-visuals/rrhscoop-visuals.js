@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "9";
+  const ASSET_VERSION = "10";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -48,56 +48,56 @@
     "ins-tile__category-item-169641499": {
       image: IMAGE_MAP["ins-tile__category-item-169641499"],
       photo: PHOTO_MAP["ins-tile__category-item-169641499"],
-      background: "#221817",
+      background: "#18352f",
       foreground: "#faf8f4",
-      wash: "rgb(20 20 20 / 0.72)",
-      hoverWash: "rgb(20 20 20 / 0.24)",
-      labelBackground: "rgb(20 20 20 / 0.78)",
-      hoverLabelBackground: "rgb(20 20 20 / 0.72)",
+      wash: "rgb(24 53 47 / 0.78)",
+      hoverWash: "rgb(24 53 47 / 0.22)",
+      labelBackground: "rgb(24 53 47 / 0.86)",
+      hoverLabelBackground: "rgb(24 53 47 / 0.74)",
       photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-169641959": {
       image: IMAGE_MAP["ins-tile__category-item-169641959"],
       photo: PHOTO_MAP["ins-tile__category-item-169641959"],
-      background: "#6e1f2a",
+      background: "#a85d34",
       foreground: "#faf8f4",
-      wash: "rgb(110 31 42 / 0.7)",
-      hoverWash: "rgb(110 31 42 / 0.24)",
-      labelBackground: "rgb(110 31 42 / 0.84)",
-      hoverLabelBackground: "rgb(110 31 42 / 0.74)",
+      wash: "rgb(168 93 52 / 0.76)",
+      hoverWash: "rgb(168 93 52 / 0.22)",
+      labelBackground: "rgb(130 68 37 / 0.82)",
+      hoverLabelBackground: "rgb(130 68 37 / 0.72)",
       photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-189782257": {
       image: IMAGE_MAP["ins-tile__category-item-189782257"],
       photo: PHOTO_MAP["ins-tile__category-item-189782257"],
-      background: "#2a2a28",
+      background: "#25364a",
       foreground: "#faf8f4",
-      wash: "rgb(42 42 40 / 0.7)",
-      hoverWash: "rgb(42 42 40 / 0.24)",
-      labelBackground: "rgb(42 42 40 / 0.76)",
-      hoverLabelBackground: "rgb(42 42 40 / 0.68)",
+      wash: "rgb(37 54 74 / 0.76)",
+      hoverWash: "rgb(37 54 74 / 0.22)",
+      labelBackground: "rgb(37 54 74 / 0.82)",
+      hoverLabelBackground: "rgb(37 54 74 / 0.7)",
       photoOpacity: "0",
       visualFilter: "brightness(0) invert(1)"
     },
     "ins-tile__category-item-194772751": {
       image: IMAGE_MAP["ins-tile__category-item-194772751"],
       photo: PHOTO_MAP["ins-tile__category-item-194772751"],
-      background: "#ebebe2",
-      foreground: "#6e1f2a",
-      wash: "rgb(235 235 226 / 0.78)",
-      hoverWash: "rgb(235 235 226 / 0.32)",
-      labelBackground: "rgb(235 235 226 / 0.9)",
-      hoverLabelBackground: "rgb(235 235 226 / 0.82)",
+      background: "#d8c99b",
+      foreground: "#141414",
+      wash: "rgb(216 201 155 / 0.8)",
+      hoverWash: "rgb(216 201 155 / 0.28)",
+      labelBackground: "rgb(216 201 155 / 0.9)",
+      hoverLabelBackground: "rgb(216 201 155 / 0.78)",
       photoOpacity: "0",
-      visualFilter: "brightness(0) saturate(100%) invert(14%) sepia(40%) saturate(2515%) hue-rotate(326deg) brightness(90%) contrast(87%)"
+      visualFilter: "brightness(0) saturate(100%) invert(8%) sepia(0%) saturate(505%) hue-rotate(177deg) brightness(93%) contrast(91%)"
     },
     "ins-tile__category-item-196956751": {
       image: IMAGE_MAP["ins-tile__category-item-196956751"],
       photo: PHOTO_MAP["ins-tile__category-item-196956751"],
       background: "#faf8f4",
-      foreground: "#6e1f2a",
+      foreground: "#8a1f2d",
       wash: "rgb(250 248 244 / 0.8)",
       hoverWash: "rgb(250 248 244 / 0.28)",
       labelBackground: "rgb(250 248 244 / 0.9)",
@@ -134,6 +134,17 @@
         position: relative;
         left: 50%;
         transform: translateX(-50%);
+      }
+
+      .rrhs-category-section {
+        background: #e7e2d4 !important;
+        color: #141414 !important;
+      }
+
+      .rrhs-category-section .ins-tile__headline,
+      .rrhs-category-section h1,
+      .rrhs-category-section h2 {
+        color: #6e1f2a !important;
       }
 
       .rrhs-category-cards .ins-tile__category-item {
@@ -464,6 +475,13 @@
 
     collection.dataset.rrhsCardsInit = "1";
     collection.classList.add("rrhs-category-cards");
+
+    const section =
+      collection.closest(".ins-tile") ||
+      collection.closest(".grid-container-item") ||
+      collection.closest("section") ||
+      collection.parentElement;
+    if (section) section.classList.add("rrhs-category-section");
 
     items.forEach((item, index) => {
       const config = CATEGORY_CARD_MAP[item.id];
