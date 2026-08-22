@@ -24,7 +24,7 @@
   }
 
   const BASE = getAssetBase();
-  const ASSET_VERSION = "12";
+  const ASSET_VERSION = "13";
   const assetUrl = (file) => `${BASE}/${file}?v=${ASSET_VERSION}`;
   const IMAGE_MAP = {
     "ins-tile__category-item-169641499": assetUrl("snack.png"),
@@ -610,6 +610,7 @@
       @media screen and (min-width: 900px) {
         .rrhs-counter-section {
           min-height: var(--cover-height, 720px) !important;
+          overflow: hidden !important;
         }
 
         .rrhs-counter-section .ins-tile__wrap,
@@ -622,15 +623,34 @@
           min-height: var(--cover-height, 720px) !important;
           height: auto !important;
           margin-top: 0 !important;
+          padding-left: calc(50% + 56px) !important;
+          padding-right: 56px !important;
           padding-top: 60px !important;
           padding-bottom: 60px !important;
+        }
+
+        .rrhs-counter-section .ins-tile__background {
+          inset: 0 auto 0 0 !important;
+          width: 50% !important;
+          height: 100% !important;
+          right: auto !important;
+          pointer-events: none !important;
+        }
+
+        .rrhs-counter-section .ins-tile__image,
+        .rrhs-counter-section .ins-picture,
+        .rrhs-counter-section picture {
+          width: 100% !important;
+          height: 100% !important;
+          background-size: cover !important;
+          background-position: center !important;
         }
 
         .rrhs-counter-section__stack {
           display: flex !important;
           flex-direction: column !important;
           flex: 0 0 auto !important;
-          align-self: flex-end !important;
+          align-self: flex-start !important;
           width: clamp(440px, 38vw, 620px) !important;
           min-width: 440px !important;
           max-width: 620px !important;
@@ -674,6 +694,15 @@
       }
 
       @media screen and (max-width: 899px) {
+        .rrhs-counter-section__content {
+          padding-left: 24px !important;
+          padding-right: 24px !important;
+        }
+
+        .rrhs-counter-section .ins-tile__background {
+          width: 100% !important;
+        }
+
         .rrhs-counter-section__stack {
           width: 100% !important;
           min-width: 0 !important;
@@ -756,27 +785,6 @@
       });
   }
 
-  function findCardByText(text) {
-    const needle = text.toUpperCase();
-    const candidates = document.querySelectorAll("article, li, .ins-tile__item, .ins-tile__card, .ins-tile__content, div");
-
-    for (const candidate of candidates) {
-      const candidateText = candidate.textContent.replace(/\s+/g, " ").trim().toUpperCase();
-      if (!candidateText.includes(needle)) continue;
-
-      const card =
-        candidate.closest("article") ||
-        candidate.closest("li") ||
-        candidate.closest(".ins-tile__item") ||
-        candidate.closest(".ins-tile__card") ||
-        candidate;
-
-      if (card && card.querySelector("img, picture")) return card;
-    }
-
-    return null;
-  }
-
   function replaceImageSource(img, url, alt) {
     if (!img || !url) return;
 
@@ -804,16 +812,7 @@
     const alt = "Students working on technology and automation systems";
     const brokenAltImage = document.querySelector('img[alt="Technology and automation project"]');
 
-    if (brokenAltImage) {
-      replaceImageSource(brokenAltImage, systemsImage, alt);
-      return;
-    }
-
-    const systemsCard = findCardByText("Systems Behind the Store");
-    if (!systemsCard) return;
-
-    const image = systemsCard.querySelector("img");
-    if (image) replaceImageSource(image, systemsImage, alt);
+    if (brokenAltImage) replaceImageSource(brokenAltImage, systemsImage, alt);
   }
 
   function logContext() {
