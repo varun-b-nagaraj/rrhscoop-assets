@@ -231,9 +231,20 @@ function formMailtoURL(form) {
 function notifyHeight() {
   window.requestAnimationFrame(() => {
     const last = document.querySelector(".contact");
+    const faq = document.getElementById("faq");
+    const stickyNav = document.querySelector(".side-nav");
+    const contact = document.getElementById("contact");
     const height = Math.ceil(last.getBoundingClientRect().bottom + window.scrollY);
+    const topFor = element => element ? Math.round(element.getBoundingClientRect().top + window.scrollY) : 0;
     document.documentElement.dataset.pageHeight = String(height);
     window.parent.postMessage({ type: "rrhs-faq-height", height }, "*");
+    window.parent.postMessage({
+      type: "rrhs-faq-metrics",
+      height,
+      faqTop: topFor(faq),
+      stickyStart: topFor(stickyNav),
+      contactTop: topFor(contact)
+    }, "*");
   });
 }
 
