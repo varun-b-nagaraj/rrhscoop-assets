@@ -789,6 +789,39 @@
     if (brokenAltImage) replaceImageSource(brokenAltImage, systemsImage, alt);
   }
 
+  function ensureProductTextTransparency() {
+    if (document.getElementById("rrhs-product-text-transparency")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-product-text-transparency";
+    style.textContent = `
+      #ecwid-products .grid-product,
+      #ecwid-products .grid-product__wrap,
+      #ecwid-products .grid-product__wrap-inner,
+      #ecwid-products a.grid-product__title,
+      #ecwid-products .grid-product__title-inner,
+      #ecwid-products .grid-product__price,
+      #ecwid-products .grid-product__price-amount,
+      #ecwid-products .grid-product__price-value {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+
+      #ecwid-products a.grid-product__title::before,
+      #ecwid-products a.grid-product__title::after,
+      #ecwid-products .grid-product__title-inner::before,
+      #ecwid-products .grid-product__title-inner::after,
+      #ecwid-products .grid-product__price::before,
+      #ecwid-products .grid-product__price::after {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   function logContext() {
     if (!RRHS_DEBUG) return;
     log("=== RRHS VISUALS DEBUG START ===");
@@ -947,6 +980,7 @@
       balanceHeroLayout();
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
+      ensureProductTextTransparency();
       initCategoryCards();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
