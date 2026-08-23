@@ -1166,4 +1166,10 @@
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleBoot);
   }
 
+  window.addEventListener("pageshow", scheduleBoot);
+  window.addEventListener("popstate", scheduleBoot);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleBoot();
+  });
+
 })();

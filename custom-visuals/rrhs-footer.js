@@ -57,10 +57,12 @@
       }
 
       .rrhs-footer-logo {
-        width: 25px;
-        height: 36px;
+        width: 48px;
+        height: 56px;
+        padding: 5px;
         object-fit: contain;
-        filter: brightness(0) invert(1);
+        background: #f7f0e4;
+        filter: none;
       }
 
       .rrhs-footer-wordmark strong {
@@ -295,5 +297,10 @@
   const schedule = () => requestAnimationFrame(boot);
   schedule();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", schedule);
+  window.addEventListener("pageshow", schedule);
+  window.addEventListener("popstate", schedule);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") schedule();
+  });
   new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
 }());

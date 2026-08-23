@@ -42,5 +42,11 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  const restoreStyles = () => requestAnimationFrame(ensureStyles);
   ensureStyles();
+  window.addEventListener("pageshow", restoreStyles);
+  window.addEventListener("popstate", restoreStyles);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") restoreStyles();
+  });
 }());
