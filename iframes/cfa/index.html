@@ -188,6 +188,13 @@
       var section = document.getElementById("cfa");
       var content = section.querySelector(".reveal");
 
+      document.addEventListener("click", function (event) {
+        var link = event.target.closest("a[href]");
+        if (!link) return;
+        event.preventDefault();
+        window.parent.postMessage({ type: "rrhs-cfa-navigate", href: link.href }, "*");
+      });
+
       function reveal() {
         section.classList.add("is-ready");
         content.classList.add("in");
