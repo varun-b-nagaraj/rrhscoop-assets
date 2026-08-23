@@ -634,7 +634,7 @@
       .ins-header__logo-inner.rrhs-header-logo-link {
         display: inline-flex !important;
         align-items: center !important;
-        gap: 12px !important;
+        gap: 6px !important;
       }
 
       .rrhs-header-logo-mark {
