@@ -843,10 +843,13 @@
           display: grid !important;
           grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
           align-items: start !important;
-          gap: clamp(10px, 1.35vw, 20px) !important;
-          width: 100% !important;
-          max-width: 1180px !important;
-          margin: 0 auto !important;
+          gap: clamp(5px, 0.65vw, 10px) !important;
+          position: relative !important;
+          left: 50% !important;
+          width: calc(50% + 50vw) !important;
+          max-width: 1480px !important;
+          margin: 0 !important;
+          transform: translateX(-50%) !important;
         }
 
         #ecwid-products .ec-store__category-page--0
@@ -922,11 +925,11 @@
           .grid__categories.grid__categories--advanced[data-items="5"]
           img.grid-category__picture-img {
           position: absolute !important;
-          inset: 7% !important;
-          width: 86% !important;
-          height: 86% !important;
-          max-width: 86% !important;
-          max-height: 86% !important;
+          inset: 4% !important;
+          width: 92% !important;
+          height: 92% !important;
+          max-width: 92% !important;
+          max-height: 92% !important;
           margin: auto !important;
           object-fit: contain !important;
         }
