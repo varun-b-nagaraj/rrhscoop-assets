@@ -1,8 +1,8 @@
 /* rrhs-footer.js - branded navigation footer for the RRHS CO-OP storefront */
 (function () {
   const FOOTER_SELECTOR = '.ins-tile--footer[tile-type="FOOTER"], section.ins-tile--footer';
-  const FOOTER_VERSION = "3";
-  const STYLE_ID = "rrhs-editorial-footer-styles-v3";
+  const FOOTER_VERSION = "4";
+  const STYLE_ID = "rrhs-editorial-footer-styles-v4";
   const EMAIL = "rrhs_coop_store@roundrockisd.org";
 
   function assetUrl(file) {
@@ -122,6 +122,18 @@
         gap: 12px;
       }
 
+      .rrhs-footer-category-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+
+      .rrhs-footer-category-group {
+        display: grid;
+        align-content: start;
+        gap: 10px;
+      }
+
       .rrhs-footer-link,
       .rrhs-footer-cookie {
         position: relative;
@@ -178,6 +190,36 @@
         margin-left: 12px !important;
         color: rgba(255, 250, 241, .65) !important;
         font-size: 14px !important;
+      }
+
+      .rrhs-footer-category-group .rrhs-footer-link--sub {
+        margin-left: 0 !important;
+      }
+
+      @keyframes rrhs-cookie-panel-in {
+        from {
+          opacity: 0;
+          transform: translate3d(34px, 0, 0);
+        }
+        to {
+          opacity: 1;
+          transform: translate3d(0, 0, 0);
+        }
+      }
+
+      @keyframes rrhs-cookie-overlay-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .ins-side-bar .ins-side-bar__wrapper {
+        animation: rrhs-cookie-panel-in 360ms cubic-bezier(.22, 1, .36, 1) both !important;
+        will-change: transform, opacity;
+      }
+
+      .ins-side-bar .ins-side-bar__overlay {
+        animation: rrhs-cookie-overlay-in 260ms ease-out both !important;
+        will-change: opacity;
       }
 
       .rrhs-footer-bottom {
@@ -246,8 +288,11 @@
 
       @media (prefers-reduced-motion: reduce) {
         .rrhs-footer-link::after,
-        .rrhs-footer-cookie::after {
+        .rrhs-footer-cookie::after,
+        .ins-side-bar .ins-side-bar__wrapper,
+        .ins-side-bar .ins-side-bar__overlay {
           transition: none;
+          animation: none !important;
         }
       }
     `;
@@ -291,16 +336,20 @@
 
         <section class="rrhs-footer-column">
           <h2>Snacks &amp; Drinks</h2>
-          <nav aria-label="Snack and drink categories">
-            ${link("/products/Snacks-c169641499", "Snacks", "rrhs-footer-link--parent")}
-            ${link("/products/Chips-c194225502", "Chips", "rrhs-footer-link--sub")}
-            ${link("/products/Gum-c194225751", "Gum", "rrhs-footer-link--sub")}
-            ${link("/products/Bar-c194226001", "Bars", "rrhs-footer-link--sub")}
-            ${link("/products/Drink-c169641959", "Drinks", "rrhs-footer-link--parent")}
-            ${link("/products/Soda-c194119752", "Soda", "rrhs-footer-link--sub")}
-            ${link("/products/Water-c194120003", "Water", "rrhs-footer-link--sub")}
-            ${link("/products/Juice-c194120004", "Juice", "rrhs-footer-link--sub")}
-            ${link("/products/Energy-Drinks-c194120005", "Energy Drinks", "rrhs-footer-link--sub")}
+          <nav class="rrhs-footer-category-grid" aria-label="Snack and drink categories">
+            <span class="rrhs-footer-category-group">
+              ${link("/products/Snacks-c169641499", "Snacks", "rrhs-footer-link--parent")}
+              ${link("/products/Chips-c194225502", "Chips", "rrhs-footer-link--sub")}
+              ${link("/products/Gum-c194225751", "Gum", "rrhs-footer-link--sub")}
+              ${link("/products/Bar-c194226001", "Bars", "rrhs-footer-link--sub")}
+            </span>
+            <span class="rrhs-footer-category-group">
+              ${link("/products/Drink-c169641959", "Drinks", "rrhs-footer-link--parent")}
+              ${link("/products/Soda-c194119752", "Soda", "rrhs-footer-link--sub")}
+              ${link("/products/Water-c194120003", "Water", "rrhs-footer-link--sub")}
+              ${link("/products/Juice-c194120004", "Juice", "rrhs-footer-link--sub")}
+              ${link("/products/Energy-Drinks-c194120005", "Energy Drinks", "rrhs-footer-link--sub")}
+            </span>
           </nav>
         </section>
 
