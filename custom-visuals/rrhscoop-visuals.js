@@ -789,6 +789,50 @@
     if (brokenAltImage) replaceImageSource(brokenAltImage, systemsImage, alt);
   }
 
+  function updateAboutBuildCards() {
+    if (!/^\/about\/?$/.test(window.location.pathname)) return;
+
+    const heading = Array.from(document.querySelectorAll("h2.heading")).find(
+      (element) => element.textContent.replace(/\s+/g, " ").trim().toLowerCase() === "a place to build.",
+    );
+    const section = heading && heading.closest("section");
+    const cards = section ? Array.from(section.querySelectorAll(".project-grid > .project")) : [];
+    if (cards.length < 4) return;
+
+    const content = [
+      {
+        number: "01 / FINANCE & REPORTING",
+        title: "Finance & Reporting",
+        description: "Tracking sales, margins, expenses, product performance, and turning store data into reports that support decisions.",
+      },
+      {
+        number: "02 / MERCHANDISE DEVELOPMENT",
+        title: "Merchandise Development",
+        description: "Designing apparel, choosing blanks and materials, pricing products, working with vendors, and launching student-created merchandise.",
+      },
+      {
+        number: "03 / MARKETING & CUSTOMER GROWTH",
+        title: "Marketing & Customer Growth",
+        description: "Building campaigns, promoting product drops, managing digital content, analyzing engagement, and improving how students discover the store.",
+      },
+      {
+        number: "04 / SOFTWARE & OPERATIONS",
+        title: "Software & Operations",
+        description: "Improving the systems behind ordering, inventory, scheduling, delivery, e-commerce, and other day-to-day store processes.",
+      },
+    ];
+
+    cards.slice(0, 4).forEach((card, index) => {
+      const item = content[index];
+      const number = card.querySelector(".project-num");
+      const title = card.querySelector("h3");
+      const description = card.querySelector(".body");
+      if (number) number.textContent = item.number;
+      if (title) title.textContent = item.title;
+      if (description) description.textContent = item.description;
+    });
+  }
+
   function ensureProductTextTransparency() {
     if (document.getElementById("rrhs-product-text-transparency")) return;
 
@@ -1096,6 +1140,7 @@
       balanceHeroLayout();
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
+      updateAboutBuildCards();
       ensureProductTextTransparency();
       ensureCompactStorefrontCategories();
       initCategoryCards();
