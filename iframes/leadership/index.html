@@ -211,14 +211,22 @@
       text-transform: uppercase;
     }
     .responsibility-list {
+      display: grid;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
       margin: 0;
       padding: 0;
       border-top: 1px solid var(--line);
       list-style: none;
     }
+    .department-responsibilities--column .responsibility-list {
+      flex: 1;
+      min-height: 0;
+    }
+    .department-responsibilities--inline .responsibility-list { height: 270px; }
     .responsibility-list li {
       border-bottom: 1px solid var(--line);
-      transition: background .2s ease;
+      overflow: hidden;
+      transition: background .28s ease;
     }
     .responsibility-list li:hover,
     .responsibility-list li:focus-within,
@@ -264,7 +272,7 @@
       height: 1px;
       background: var(--maroon);
       content: "";
-      transition: transform .24s ease;
+      transition: transform .28s ease;
     }
     .responsibility-icon::after { transform: rotate(90deg); }
     .responsibility-description {
@@ -277,13 +285,13 @@
       line-height: 1.55;
       opacity: 0;
       transform: translateY(-5px);
-      transition: max-height .32s cubic-bezier(.22, 1, .36, 1), padding .32s ease, opacity .2s ease, transform .32s ease;
+      transition: max-height .28s cubic-bezier(.22, 1, .36, 1), padding .28s cubic-bezier(.22, 1, .36, 1), opacity .28s ease, transform .28s cubic-bezier(.22, 1, .36, 1);
     }
     .responsibility-list li:hover .responsibility-description,
     .responsibility-list li:focus-within .responsibility-description,
     .responsibility-list li.is-open .responsibility-description {
-      max-height: 92px;
-      padding-bottom: 14px;
+      max-height: 70px;
+      padding-bottom: 8px;
       opacity: 1;
       transform: translateY(0);
     }
@@ -462,7 +470,7 @@
       .leaders { grid-template-columns: 1fr; }
       .leader { height: 440px; }
       .initials { height: 300px; flex-basis: 300px; }
-      .department-responsibilities--column { height: auto; min-height: 270px; }
+      .department-responsibilities--column { height: 360px; min-height: 360px; }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
       .closing { padding: 82px 0 88px; }
@@ -712,6 +720,14 @@
           else list.insertBefore(responsibilityBlock, list.firstChild);
 
           responsibilityBlock.querySelectorAll(".responsibility-button").forEach(function (button) {
+            button.closest("li").addEventListener("mouseenter", function () {
+              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
+                if (openItem === button.closest("li")) return;
+                openItem.classList.remove("is-open");
+                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
+                if (openItem.contains(document.activeElement)) document.activeElement.blur();
+              });
+            });
             button.addEventListener("click", function () {
               var item = button.closest("li");
               var willOpen = !item.classList.contains("is-open");
