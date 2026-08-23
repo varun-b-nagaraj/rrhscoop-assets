@@ -479,6 +479,13 @@ body{
 
 <script>
 (function () {
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest("a[href]");
+    if (!link) return;
+    event.preventDefault();
+    window.parent.postMessage({ type: "rrhs-home-navigate", href: link.href }, "*");
+  });
+
   function reportHeight() {
     window.parent.postMessage({
       type: "rrhs-home-categories-height",

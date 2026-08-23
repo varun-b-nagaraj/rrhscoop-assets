@@ -3,7 +3,7 @@
   <iframe
     id="rrhs-home-hero-frame"
     title="Built for Dragons"
-    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/hero.html?v=8"
+    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/hero.html?v=9"
     scrolling="no"
     loading="eager"
     height="770"
@@ -12,7 +12,7 @@
   <iframe
     id="rrhs-home-categories-frame"
     title="Shop RRHS CO-OP categories"
-    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/categories.html?v=2"
+    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/categories.html?v=3"
     scrolling="no"
     loading="eager"
     height="810"
@@ -35,6 +35,18 @@
 
     window.addEventListener("message", function (event) {
       if (!event.data) return;
+      if (
+        (event.source === hero.contentWindow || event.source === categories.contentWindow) &&
+        event.data.type === "rrhs-home-navigate"
+      ) {
+        try {
+          var destination = new URL(event.data.href);
+          if (destination.origin === "https://rrhscoop.roundrockisd.org") {
+            window.location.assign(destination.href);
+          }
+        } catch (error) {}
+        return;
+      }
       if (event.source === categories.contentWindow && event.data.type === "rrhs-home-categories-height") {
         categories.style.setProperty("height", Math.ceil(event.data.height) + "px", "important");
       }
