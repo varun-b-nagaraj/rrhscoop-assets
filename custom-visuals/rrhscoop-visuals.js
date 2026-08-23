@@ -607,19 +607,16 @@
     style.id = "rrhs-scroll-header-styles";
     style.textContent = `
       .rrhs-scroll-header {
+        position: relative !important;
+        z-index: auto !important;
+        background: var(--ins-color-background, #faf8f4) !important;
+        transition: box-shadow 220ms ease;
+      }
+
+      .rrhs-sticky-header-shell {
         position: sticky !important;
         top: 0 !important;
         z-index: 1000 !important;
-        background: var(--ins-color-background, #faf8f4) !important;
-        transform: translateY(0);
-        transition:
-          transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
-          box-shadow 260ms ease;
-        will-change: transform;
-      }
-
-      .rrhs-scroll-header--hidden {
-        transform: translateY(-110%) !important;
       }
 
       .rrhs-scroll-header--scrolled {
@@ -673,26 +670,29 @@
     if (!header) return;
 
     header.classList.add("rrhs-scroll-header");
+    header.classList.remove("rrhs-scroll-header--hidden");
 
-    if (scrollHeaderState && scrollHeaderState.header === header) return;
+    const headerShell =
+      header.closest(".section__wrapper") ||
+      header.closest(".section__animation") ||
+      header.parentElement;
+    if (headerShell) headerShell.classList.add("rrhs-sticky-header-shell");
+
+    if (
+      scrollHeaderState &&
+      scrollHeaderState.header === header &&
+      scrollHeaderState.headerShell === headerShell
+    ) return;
 
     scrollHeaderState = {
       header,
-      lastY: Math.max(0, window.scrollY || window.pageYOffset || 0),
+      headerShell,
       ticking: false
     };
 
     const updateHeader = () => {
       const currentY = Math.max(0, window.scrollY || window.pageYOffset || 0);
-      const delta = currentY - scrollHeaderState.lastY;
-      const shouldHide = currentY > 120 && delta > 6;
-      const shouldShow = delta < -3 || currentY <= 16;
-
       header.classList.toggle("rrhs-scroll-header--scrolled", currentY > 12);
-      if (shouldHide) header.classList.add("rrhs-scroll-header--hidden");
-      if (shouldShow) header.classList.remove("rrhs-scroll-header--hidden");
-
-      scrollHeaderState.lastY = currentY;
       scrollHeaderState.ticking = false;
     };
 
