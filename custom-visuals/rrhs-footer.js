@@ -1,8 +1,8 @@
 /* rrhs-footer.js - branded navigation footer for the RRHS CO-OP storefront */
 (function () {
   const FOOTER_SELECTOR = '.ins-tile--footer[tile-type="FOOTER"], section.ins-tile--footer';
-  const FOOTER_VERSION = "4";
-  const STYLE_ID = "rrhs-editorial-footer-styles-v4";
+  const FOOTER_VERSION = "5";
+  const STYLE_ID = "rrhs-editorial-footer-styles-v5";
   const EMAIL = "rrhs_coop_store@roundrockisd.org";
 
   function assetUrl(file) {
@@ -67,11 +67,9 @@
 
       .rrhs-footer-logo {
         display: block;
-        width: 52px;
-        height: 60px;
-        padding: 5px;
+        width: 48px;
+        height: 68px;
         object-fit: contain;
-        background: #f7f0e4;
       }
 
       .rrhs-footer-wordmark strong {
@@ -327,7 +325,7 @@
       <div class="rrhs-footer-main">
         <section class="rrhs-footer-brand" aria-label="RRHS CO-OP">
           <a class="rrhs-footer-brand-lockup" href="/" aria-label="RRHS CO-OP home">
-            <img class="rrhs-footer-logo" src="${assetUrl("rrhs-header-logo.webp?v=18")}" alt="Official RRHS CO-OP water tower logo">
+            <img class="rrhs-footer-logo" src="${assetUrl("rrhs-header-logo-inverted.png?v=1")}" alt="Official RRHS CO-OP water tower logo">
             <span class="rrhs-footer-wordmark"><strong>RRHS CO-OP</strong><span>SCHOOL STORE</span></span>
           </a>
           <p class="rrhs-footer-description">The student-operated store of Round Rock High School.</p>
