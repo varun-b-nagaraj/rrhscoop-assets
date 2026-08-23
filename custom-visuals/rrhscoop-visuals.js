@@ -831,6 +831,110 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  function ensureCompactStorefrontCategories() {
+    if (document.getElementById("rrhs-compact-storefront-categories")) return;
+
+    const style = document.createElement("style");
+    style.id = "rrhs-compact-storefront-categories";
+    style.textContent = `
+      @media (min-width: 780px) {
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"] {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          align-items: start !important;
+          gap: clamp(10px, 1.35vw, 20px) !important;
+          width: 100% !important;
+          max-width: 1180px !important;
+          margin: 0 auto !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          > .grid-category {
+          float: none !important;
+          clear: none !important;
+          display: block !important;
+          width: auto !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__wrap,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__wrap-inner,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__card {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__image {
+          position: relative !important;
+          display: block !important;
+          width: 100% !important;
+          height: auto !important;
+          min-height: 0 !important;
+          aspect-ratio: 1 / 1 !important;
+          overflow: hidden !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__spacer,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__image-spacer {
+          display: none !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__bg,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__bg-image,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__image-wrap,
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          .grid-category__picture {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+
+        #ecwid-products .ec-store__category-page--0
+          .grid__categories.grid__categories--advanced[data-items="5"]
+          img.grid-category__picture-img {
+          position: absolute !important;
+          inset: 7% !important;
+          width: 86% !important;
+          height: 86% !important;
+          max-width: 86% !important;
+          max-height: 86% !important;
+          margin: auto !important;
+          object-fit: contain !important;
+        }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   function logContext() {
     if (!RRHS_DEBUG) return;
     log("=== RRHS VISUALS DEBUG START ===");
@@ -990,6 +1094,7 @@
       fixMinimalMarqueeWidth();
       fixProjectCardImages();
       ensureProductTextTransparency();
+      ensureCompactStorefrontCategories();
       initCategoryCards();
       initCategoryImageSwap();
     } catch (e) { log('RRHS visuals boot error', e); }
