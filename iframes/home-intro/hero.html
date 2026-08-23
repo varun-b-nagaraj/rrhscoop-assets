@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Built for Dragons — RRHS CO-OP</title>
+  <base target="_top">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --hero-bg: #eeeae0;
+      --ink: #1b1816;
+      --maroon: #6e1f2a;
+      --display: "Playfair Display", Georgia, serif;
+      --body: "Spectral", Georgia, serif;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html,
+    body {
+      min-width: 320px;
+      margin: 0;
+      background: #eeeae0 !important;
+    }
+    body {
+      color: var(--ink);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    .hero {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: clamp(680px, 64vw, 850px);
+      padding: 64px 48px;
+      background: #eeeae0 !important;
+    }
+    .hero__inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(360px, .94fr);
+      gap: clamp(48px, 7vw, 106px);
+      align-items: center;
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+    .hero__content {
+      opacity: 0;
+      transform: translateY(22px);
+      animation: reveal .75s var(--ease) forwards;
+    }
+    .hero__tagline {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 0 0 34px;
+      color: var(--maroon);
+      font-family: var(--body);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: .03em;
+      line-height: 1.4;
+    }
+    .hero__tagline::before {
+      width: 34px;
+      height: 1px;
+      flex: 0 0 34px;
+      background: currentColor;
+      content: "";
+    }
+    .hero__headline {
+      max-width: 650px;
+      margin: 0 0 26px;
+      font-family: var(--display);
+      font-size: clamp(72px, 8.2vw, 118px);
+      font-weight: 500;
+      letter-spacing: -.055em;
+      line-height: .79;
+      text-transform: uppercase;
+    }
+    .hero__description {
+      max-width: 520px;
+      margin: 0 0 42px;
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: clamp(18px, 1.55vw, 22px);
+      line-height: 1.5;
+    }
+    .hero__buttons {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 28px;
+    }
+    .btn--primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 212px;
+      min-height: 70px;
+      padding: 18px 28px;
+      border: 1px solid var(--maroon);
+      border-radius: 0;
+      color: #fff;
+      background: var(--maroon);
+      font-family: var(--body);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: color .22s ease, background-color .22s ease, transform .22s var(--ease);
+    }
+    .btn--primary:hover,
+    .btn--primary:focus-visible {
+      color: var(--maroon);
+      background: transparent;
+      transform: translateY(-2px);
+    }
+    .btn--text {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .btn--text::after {
+      content: "→";
+      transition: transform .2s var(--ease);
+    }
+    .btn--text:hover::after,
+    .btn--text:focus-visible::after { transform: translateX(5px); }
+    .btn--primary:focus-visible,
+    .btn--text:focus-visible { outline: 2px solid var(--maroon); outline-offset: 5px; }
+
+    .hero__visual {
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      transform: translateY(18px) scale(.98);
+      animation: reveal .85s var(--ease) .12s forwards;
+    }
+    .hero__visual picture { display: block; width: 100%; }
+    .hero__visual img {
+      width: 100%;
+      max-height: 650px;
+      object-fit: contain;
+    }
+
+    @keyframes reveal {
+      to { opacity: 1; transform: none; }
+    }
+
+    @media (max-width: 820px) {
+      .hero { min-height: auto; padding: 78px 24px 66px; }
+      .hero__inner { grid-template-columns: 1fr; gap: 46px; }
+      .hero__headline { font-size: clamp(64px, 16vw, 94px); }
+      .hero__visual { order: -1; }
+      .hero__visual img { max-height: 440px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero { padding: 58px 20px; }
+      .hero__tagline { font-size: 11px; }
+      .hero__headline { font-size: 58px; }
+      .hero__description { font-size: 18px; }
+      .btn--primary { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero__content,
+      .hero__visual { opacity: 1; transform: none; animation: none; }
+      .btn--primary,
+      .btn--text::after { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero" style="background:#EEEAE0!important;">
+    <div class="hero__inner">
+      <div class="hero__content">
+        <p class="hero__tagline">ROUND ROCK HIGH SCHOOL · EST. 1913</p>
+        <h1 class="hero__headline">Built for Dragons.</h1>
+        <p class="hero__description">Official Round Rock gear, designed, managed, and delivered by students.</p>
+        <div class="hero__buttons">
+          <a class="btn--primary" href="https://rrhscoop.roundrockisd.org/products"><span>Shop the CO-OP</span></a>
+          <a class="btn--text" href="https://rrhscoop.roundrockisd.org/about-us">About Us</a>
+        </div>
+      </div>
+      <div class="hero__visual">
+        <picture>
+          <source srcset="https://dhgf5mcbrms62.cloudfront.net/104841648/cover-ZUMnsU/jGXtuIY-2000x2000.webp" type="image/webp">
+          <img src="https://dhgf5mcbrms62.cloudfront.net/104841648/cover-ZUMnsU/jGXtuIY-2000x2000.png" alt="Round Rock CO-OP water tower emblem" width="2000" height="2000">
+        </picture>
+      </div>
+    </div>
+  </section>
+  <script>
+    (function () {
+      function reportHeight() {
+        window.parent.postMessage({ type: "rrhs-home-hero-height", height: Math.ceil(document.documentElement.scrollHeight) }, "*");
+      }
+      window.addEventListener("load", reportHeight);
+      window.addEventListener("resize", reportHeight);
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "rrhs-home-hero-request-height") reportHeight();
+      });
+      if (typeof ResizeObserver === "function") new ResizeObserver(reportHeight).observe(document.body);
+    }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Shop the Co-Op — RRHS CO-OP</title>
+<base target="_top">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+  rel="stylesheet"
+>
+
+<style>
+:root{
+  --bg:#E7E1D4;
+  --ink:#1B1816;
+  --muted:#736C64;
+
+  --maroon:#6E1F2A;
+  --maroon-dark:#591723;
+
+  --cream:#F6F1E8;
+
+  --display:"Playfair Display", Georgia, serif;
+  --body:"Spectral", Georgia, serif;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  margin:0;
+  padding:0;
+  background:#E7E1D4 !important;
+}
+
+body{
+  background:#E7E1D4 !important;
+  color:var(--ink);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+
+/* =========================================
+   SECTION
+========================================= */
+
+.shop-section{
+  width:100%;
+  background:#E7E1D4 !important;
+  padding:105px 48px 112px;
+}
+
+.shop-section__inner{
+  width:min(1240px,100%);
+  margin:0 auto;
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.shop-section__top{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:50px;
+  margin-bottom:54px;
+}
+
+.shop-section__heading{
+  max-width:650px;
+}
+
+.shop-section__eyebrow{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:0 0 20px;
+  color:var(--maroon);
+  font-family:var(--body);
+  font-size:12px;
+  font-weight:600;
+  line-height:1;
+  letter-spacing:.30em;
+  text-transform:uppercase;
+}
+
+.shop-section__eyebrow::before{
+  content:"";
+  width:34px;
+  height:1px;
+  flex-shrink:0;
+  background:var(--maroon);
+}
+
+.shop-section__title{
+  margin:0 0 14px;
+  font-family:var(--display);
+  font-size:clamp(46px,4.3vw,64px);
+  font-weight:700;
+  line-height:1;
+  letter-spacing:-.035em;
+}
+
+.shop-section__description{
+  max-width:510px;
+  margin:0;
+  color:var(--muted);
+  font-family:var(--body);
+  font-size:17px;
+  line-height:1.55;
+}
+
+.shop-section__catalog{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding-bottom:4px;
+  color:var(--maroon) !important;
+  -webkit-text-fill-color:var(--maroon) !important;
+  font-family:var(--body);
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  text-decoration:none !important;
+  white-space:nowrap;
+}
+
+.shop-section__catalog::after{
+  content:"→";
+  font-size:17px;
+  transition:transform 180ms ease;
+}
+
+.shop-section__catalog:hover::after{
+  transform:translateX(4px);
+}
+
+
+/* =========================================
+   CATEGORY GRID
+========================================= */
+
+.category-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:18px;
+}
+
+
+/* =========================================
+   CARD
+========================================= */
+
+.category-card{
+  position:relative;
+  display:block;
+  min-width:0;
+  aspect-ratio:.72;
+  overflow:hidden;
+  background:#222;
+  color:#fff !important;
+  text-decoration:none !important;
+  isolation:isolate;
+}
+
+.category-card__image{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform:scale(1.001);
+  transition:transform 600ms cubic-bezier(.22,1,.36,1), filter 400ms ease;
+}
+
+.category-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(15,12,11,.02) 0%,
+      rgba(15,12,11,.06) 35%,
+      rgba(15,12,11,.35) 63%,
+      rgba(15,12,11,.90) 100%
+    );
+  pointer-events:none;
+  transition:background 300ms ease;
+}
+
+.category-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:rgba(110,31,42,0);
+  pointer-events:none;
+  transition:background 300ms ease;
+}
+
+.category-card:hover .category-card__image{
+  transform:scale(1.045);
+}
+
+.category-card:hover::after{
+  background:rgba(110,31,42,.13);
+}
+
+
+/* =========================================
+   CARD CONTENT
+========================================= */
+
+.category-card__content{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:2;
+  padding:24px 24px 27px;
+}
+
+.category-card__number{
+  display:block;
+  margin-bottom:12px;
+  color:#D8C99D;
+  font-family:var(--body);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.24em;
+}
+
+.category-card__heading-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+
+.category-card__title{
+  margin:0;
+  color:var(--cream);
+  font-family:var(--display);
+  font-size:clamp(22px,1.65vw,28px);
+  font-weight:600;
+  line-height:1.05;
+  letter-spacing:-.02em;
+}
+
+.category-card__arrow{
+  flex:none;
+  color:var(--cream);
+  font-family:var(--body);
+  font-size:21px;
+  transition:transform 180ms ease;
+}
+
+.category-card:hover .category-card__arrow{
+  transform:translateX(5px);
+}
+
+.category-card__copy{
+  margin:0;
+  color:rgba(246,241,232,.78);
+  font-family:var(--body);
+  font-size:14px;
+  line-height:1.55;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media(max-width:1150px){
+  .category-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .category-card{
+    aspect-ratio:.78;
+  }
+}
+
+@media(max-width:760px){
+  .shop-section{
+    padding:78px 24px 84px;
+  }
+
+  .shop-section__top{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:24px;
+    margin-bottom:40px;
+  }
+
+  .shop-section__title{
+    font-size:clamp(42px,9vw,56px);
+  }
+
+  .category-grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+  }
+}
+
+@media(max-width:520px){
+  .shop-section{
+    padding:66px 18px 72px;
+  }
+
+  .category-grid{
+    grid-template-columns:1fr;
+  }
+
+  .category-card{
+    aspect-ratio:1.05;
+  }
+
+  .category-card__content{
+    padding:24px;
+  }
+
+  .category-card__title{
+    font-size:28px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<section class="shop-section" style="background:#E7E1D4!important;">
+  <div class="shop-section__inner">
+
+    <div class="shop-section__top">
+      <div class="shop-section__heading">
+        <p class="shop-section__eyebrow">Shop the Co-Op</p>
+
+        <h2 class="shop-section__title">
+          What are you here for?
+        </h2>
+
+        <p class="shop-section__description">
+          Four counters, one student-run store. Pick a department
+          and we’ll take it from there.
+        </p>
+      </div>
+
+      <a
+        class="shop-section__catalog"
+        href="https://rrhscoop.roundrockisd.org/products"
+      >
+        Full Catalog
+      </a>
+    </div>
+
+    <div class="category-grid">
+
+      <!-- 01 MERCH -->
+      <a
+        class="category-card"
+        href="https://rrhscoop.roundrockisd.org/products/Merchandise-c189782257"
+      >
+        <img
+          class="category-card__image"
+          src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=900&q=85"
+          alt="Clothes hanging on a retail rack"
+        >
+
+        <div class="category-card__content">
+          <span class="category-card__number">01</span>
+
+          <div class="category-card__heading-row">
+            <h3 class="category-card__title">Merch</h3>
+            <span class="category-card__arrow">→</span>
+          </div>
+
+          <p class="category-card__copy">
+            Tees, hoodies, accessories, and Dragon gear.
+          </p>
+        </div>
+      </a>
+
+      <!-- 02 SNACKS -->
+      <a
+        class="category-card"
+        href="https://rrhscoop.roundrockisd.org/products/Food-c169641499"
+      >
+        <img
+          class="category-card__image"
+          src="https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=900&q=85"
+          alt="Assorted bags of chips and packaged snacks"
+        >
+
+        <div class="category-card__content">
+          <span class="category-card__number">02</span>
+
+          <div class="category-card__heading-row">
+            <h3 class="category-card__title">Snacks</h3>
+            <span class="category-card__arrow">→</span>
+          </div>
+
+          <p class="category-card__copy">
+            Between-class fuel and quick favorites.
+          </p>
+        </div>
+      </a>
+
+      <!-- 03 DRINKS -->
+      <a
+        class="category-card"
+        href="https://rrhscoop.roundrockisd.org/products/Drink-c169641959"
+      >
+        <img
+          class="category-card__image"
+          src="https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=85"
+          alt="Cold soda cans on ice"
+        >
+
+        <div class="category-card__content">
+          <span class="category-card__number">03</span>
+
+          <div class="category-card__heading-row">
+            <h3 class="category-card__title">Drinks</h3>
+            <span class="category-card__arrow">→</span>
+          </div>
+
+          <p class="category-card__copy">
+            Cold drinks stocked for the school day.
+          </p>
+        </div>
+      </a>
+
+      <!-- 04 SCHOOL SUPPLIES -->
+      <a
+        class="category-card"
+        href="https://rrhscoop.roundrockisd.org/products/School-Supplies-c194772751"
+      >
+        <img
+          class="category-card__image"
+          src="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=85"
+          alt="Notebook, pens, pencils, and school supplies"
+        >
+
+        <div class="category-card__content">
+          <span class="category-card__number">04</span>
+
+          <div class="category-card__heading-row">
+            <h3 class="category-card__title">School Supplies</h3>
+            <span class="category-card__arrow">→</span>
+          </div>
+
+          <p class="category-card__copy">
+            Notebooks, pens, pencils, and last-minute saves.
+          </p>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  function reportHeight() {
+    window.parent.postMessage({
+      type: "rrhs-home-categories-height",
+      height: Math.ceil(document.documentElement.scrollHeight)
+    }, "*");
+  }
+  window.addEventListener("load", reportHeight);
+  window.addEventListener("resize", reportHeight);
+  window.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "rrhs-home-categories-request-height") reportHeight();
+  });
+  if (typeof ResizeObserver === "function") new ResizeObserver(reportHeight).observe(document.body);
+}());
+</script>
+</body>
+</html>

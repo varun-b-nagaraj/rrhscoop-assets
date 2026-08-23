@@ -1,0 +1,45 @@
+<!-- Paste this entire block into the RRHS CO-OP page. -->
+<div id="rrhs-home-intro-frames" style="width:100%;margin:0;padding:0;">
+  <iframe
+    id="rrhs-home-hero-frame"
+    title="Built for Dragons"
+    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/hero.html?v=1"
+    scrolling="no"
+    loading="eager"
+    height="850"
+    style="display:block;width:100%;height:850px;border:0;margin:0;padding:0;background:#EEEAE0!important;overflow:hidden;"
+  ></iframe>
+  <iframe
+    id="rrhs-home-categories-frame"
+    title="Shop RRHS CO-OP categories"
+    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/categories.html?v=1"
+    scrolling="no"
+    loading="eager"
+    height="810"
+    style="display:block;width:100%;height:810px;border:0;margin:0;padding:0;background:#E7E1D4!important;overflow:hidden;"
+  ></iframe>
+</div>
+<script>
+  (function () {
+    var hero = document.getElementById("rrhs-home-hero-frame");
+    var categories = document.getElementById("rrhs-home-categories-frame");
+    if (!hero || !categories) return;
+
+    window.addEventListener("message", function (event) {
+      if (!event.data) return;
+      if (event.source === hero.contentWindow && event.data.type === "rrhs-home-hero-height") {
+        hero.style.setProperty("height", Math.ceil(event.data.height) + "px", "important");
+      }
+      if (event.source === categories.contentWindow && event.data.type === "rrhs-home-categories-height") {
+        categories.style.setProperty("height", Math.ceil(event.data.height) + "px", "important");
+      }
+    });
+
+    hero.addEventListener("load", function () {
+      hero.contentWindow.postMessage({ type: "rrhs-home-hero-request-height" }, "*");
+    });
+    categories.addEventListener("load", function () {
+      categories.contentWindow.postMessage({ type: "rrhs-home-categories-request-height" }, "*");
+    });
+  }());
+</script>
