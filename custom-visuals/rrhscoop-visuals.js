@@ -818,6 +818,15 @@
         background-color: transparent !important;
         background-image: none !important;
       }
+
+      #ecwid-products .grid-category__shadow,
+      #ecwid-products .grid-category__shadow-inner,
+      #ecwid-products .grid-category:hover .grid-category__shadow,
+      #ecwid-products .grid-category:hover .grid-category__shadow-inner,
+      #ecwid-products .grid-category:focus-within .grid-category__shadow,
+      #ecwid-products .grid-category:focus-within .grid-category__shadow-inner {
+        color: #faf8f4 !important;
+      }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
