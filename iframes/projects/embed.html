@@ -79,11 +79,11 @@
 <iframe
   id="rrhs-projects-frame"
   title="RRHS CO-OP Student Projects"
-  src="https://rrhscoop-assets.vercel.app/iframes/projects/index.html?v=4"
+  src="https://rrhscoop-assets.vercel.app/iframes/projects/index.html?v=5"
   scrolling="no"
   loading="eager"
   height="6600"
-  onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-projects-height')f.style.height=Math.ceil(e.data.height)+'px';});}f.contentWindow.postMessage({type:'rrhs-projects-request-height'},'*');"
+  onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-projects-height')f.style.height=Math.ceil(e.data.height)+'px';});}f.contentWindow.postMessage({type:'rrhs-projects-request-height'},'*');var p=new URLSearchParams(window.location.search).get('project');if(p)f.contentWindow.postMessage({type:'rrhs-projects-open-id',id:p},'*');"
 ></iframe>
 
 <div id="rrhs-project-modal" aria-hidden="true">
@@ -113,6 +113,14 @@
     var closeButton = modal.querySelector(".rpm-close");
     var lastFocus = null;
     var previousOverflow = "";
+    var requestedProject = new URLSearchParams(window.location.search).get("project") || "";
+
+    if (requestedProject) {
+      var frameUrl = new URL(frame.src, window.location.href);
+      frameUrl.searchParams.set("v", "5");
+      frameUrl.searchParams.set("project", requestedProject);
+      if (frame.src !== frameUrl.href) frame.src = frameUrl.href;
+    }
 
     function fillList(container, values, className) {
       container.textContent = "";
@@ -172,6 +180,9 @@
       if (event.source !== frame.contentWindow || !event.data) return;
       if (event.data.type === "rrhs-projects-height") frame.style.height = Math.ceil(event.data.height) + "px";
       if (event.data.type === "rrhs-project-open" && event.data.project) openProject(event.data.project);
+    });
+    frame.addEventListener("load", function () {
+      if (requestedProject) frame.contentWindow.postMessage({ type: "rrhs-projects-open-id", id: requestedProject }, "*");
     });
     closeButton.addEventListener("click", closeProject);
     modal.addEventListener("click", function (event) { if (event.target === modal) closeProject(); });

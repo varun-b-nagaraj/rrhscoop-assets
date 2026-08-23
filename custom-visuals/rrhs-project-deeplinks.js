@@ -6,7 +6,7 @@
     "solving real constraints": "cafeteria-kiosk"
   };
   const FRAME_SELECTOR = "iframe[src*='/iframes/projects']";
-  const PROJECT_FRAME_VERSION = "4";
+  const PROJECT_FRAME_VERSION = "5";
 
   function requestedProject() {
     const url = new URL(window.location.href);
