@@ -79,7 +79,7 @@
 <iframe
   id="rrhs-projects-frame"
   title="RRHS CO-OP Student Projects"
-  src="https://rrhscoop-assets.vercel.app/iframes/projects/index.html?v=8"
+  src="https://rrhscoop-assets.vercel.app/iframes/projects/index.html?v=9"
   scrolling="no"
   loading="eager"
   height="6600"
@@ -117,7 +117,7 @@
 
     if (requestedProject) {
       var frameUrl = new URL(frame.src, window.location.href);
-      frameUrl.searchParams.set("v", "8");
+      frameUrl.searchParams.set("v", "9");
       frameUrl.searchParams.set("project", requestedProject);
       if (frame.src !== frameUrl.href) frame.src = frameUrl.href;
     }
