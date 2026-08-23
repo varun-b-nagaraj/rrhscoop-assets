@@ -211,11 +211,12 @@
     }
     .responsibility-list {
       display: block;
-      margin: 0;
+      margin: 0 -24px;
       padding: 0;
       border-top: 1px solid var(--line);
       list-style: none;
     }
+    .department-responsibilities--inline .responsibility-list { margin-inline: -18px; }
     .responsibility-list li {
       border-bottom: 1px solid var(--line);
       overflow: hidden;
@@ -228,7 +229,7 @@
       gap: 8px;
       align-items: center;
       width: 100%;
-      padding: 12px 0;
+      padding: 12px 24px;
       border: 0;
       color: var(--ink);
       background: transparent;
@@ -239,6 +240,7 @@
       text-align: left;
       cursor: pointer;
     }
+    .department-responsibilities--inline .responsibility-button { padding-inline: 18px; }
     .responsibility-button:focus-visible {
       outline: 1px solid var(--maroon);
       outline-offset: -1px;
@@ -269,7 +271,7 @@
     .responsibility-description {
       max-height: 0;
       margin: 0;
-      padding: 0 18px 0 33px;
+      padding: 0 24px 0 57px;
       overflow: hidden;
       color: var(--muted);
       font-size: 11px;
@@ -278,6 +280,7 @@
       transform: translateY(-5px);
       transition: max-height .28s cubic-bezier(.22, 1, .36, 1), padding .28s cubic-bezier(.22, 1, .36, 1), opacity .28s ease, transform .28s cubic-bezier(.22, 1, .36, 1);
     }
+    .department-responsibilities--inline .responsibility-description { padding-inline: 51px 18px; }
     .responsibility-list li.is-open .responsibility-description {
       max-height: 70px;
       padding-bottom: 8px;
