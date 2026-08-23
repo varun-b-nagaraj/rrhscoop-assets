@@ -24,7 +24,7 @@
   const runtime = new URL('rrhs-runtime.js', base).href;
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=28', base).href;
   const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=7', base).href;
-  const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=4', base).href;
+  const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=5', base).href;
   const projectDeepLinks = new URL('custom-visuals/rrhs-project-deeplinks.js?v=7', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
   const inventoryGuard = new URL('check-out-page/rrhs-inventory-guard.js', base).href;

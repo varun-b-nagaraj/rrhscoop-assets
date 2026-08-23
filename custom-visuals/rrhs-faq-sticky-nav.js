@@ -3,13 +3,14 @@
   const STYLE_ID = "rrhs-faq-host-nav-styles";
   const NAV_ID = "rrhs-faq-sticky-nav";
   const FRAME_SELECTOR = "iframe[src*='/iframes/faq']";
+  const FAQ_FRAME_VERSION = "8";
   const TOP_OFFSET = 72;
   const topics = [
-    ["faq", "All topics", "45"],
+    ["faq", "All topics", "46"],
     ["group-top", "Top Questions", "5"],
     ["group-about", "About the CO-OP", "5"],
     ["group-shopping", "Shopping & Products", "5"],
-    ["group-ordering", "Ordering", "5"],
+    ["group-ordering", "Ordering", "6"],
     ["group-pickup", "Pickup & Delivery", "5"],
     ["group-payments", "Payments", "5"],
     ["group-returns", "Returns & Problems", "5"],
@@ -207,6 +208,13 @@
     const nextFrame = document.querySelector(FRAME_SELECTOR);
     if (!nextFrame) return;
     frame = nextFrame;
+    try {
+      const frameUrl = new URL(frame.src, window.location.href);
+      if (frameUrl.searchParams.get("v") !== FAQ_FRAME_VERSION) {
+        frameUrl.searchParams.set("v", FAQ_FRAME_VERSION);
+        frame.src = frameUrl.href;
+      }
+    } catch (_) {}
     ensureStyles();
     const existingNav = document.getElementById(NAV_ID);
     if (existingNav && existingNav.dataset.rrhsFaqHostOwned !== "1") {

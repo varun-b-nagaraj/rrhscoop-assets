@@ -46,6 +46,7 @@ const faqGroups = [
       ["What should I check before submitting my order?", "Confirm products, sizes, colors, quantities, contact information, fulfillment method, and any school delivery information before purchasing."],
       ["Can I change my order after submitting it?", "Changes are not guaranteed after an order has been submitted. Contact the CO-OP as soon as possible if you notice an error."],
       ["Can I cancel an order?", "Order cancellations are not guaranteed because orders may already have entered fulfillment. Contact the CO-OP promptly if you need assistance."],
+      ["How and when can I order Chick-fil-A?", "Chick-fil-A can be ordered during 2nd and 6th period. You can choose delivery or pickup when ordering online, or come to the CO-OP and order in person during those periods."],
       ["Why might my order take longer than expected?", "The CO-OP is operated by students during the school calendar. School schedules, holidays, student availability, inventory issues, and large order volumes can affect fulfillment times."]
     ]
   },
