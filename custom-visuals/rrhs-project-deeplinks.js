@@ -6,7 +6,7 @@
     "solving real constraints": "cafeteria-kiosk"
   };
   const FRAME_SELECTOR = "iframe[src*='/iframes/projects']";
-  const PROJECT_FRAME_VERSION = "5";
+  const PROJECT_FRAME_VERSION = "6";
 
   function ensureProjectModalStyles() {
     if (document.getElementById("rrhs-project-modal-bridge-styles")) return;
@@ -156,6 +156,14 @@
       if (event.data.type === "rrhs-project-open" && event.data.project) {
         openProjectModal(event.data.project);
       }
+      if (event.data.type === "rrhs-projects-navigate" && event.data.href) {
+        try {
+          const destination = new URL(event.data.href, window.location.href);
+          if (destination.protocol === "http:" || destination.protocol === "https:") {
+            window.location.assign(destination.href);
+          }
+        } catch (_) {}
+      }
     });
   }
 
@@ -181,7 +189,6 @@
 
   function connectProjectsFrame() {
     const projectId = requestedProject();
-    if (!projectId) return;
     const frame = document.querySelector(FRAME_SELECTOR);
     if (!frame) return;
 
@@ -192,21 +199,23 @@
       return;
     }
 
-    const needsReload = url.searchParams.get("project") !== projectId || url.searchParams.get("v") !== PROJECT_FRAME_VERSION;
+    const needsReload =
+      url.searchParams.get("v") !== PROJECT_FRAME_VERSION ||
+      (projectId && url.searchParams.get("project") !== projectId);
     if (needsReload) {
       url.searchParams.set("v", PROJECT_FRAME_VERSION);
-      url.searchParams.set("project", projectId);
+      if (projectId) url.searchParams.set("project", projectId);
       frame.src = url.href;
     }
 
-    if (frame.dataset.rrhsProjectDeepLinkBound !== "1") {
+    if (projectId && frame.dataset.rrhsProjectDeepLinkBound !== "1") {
       frame.dataset.rrhsProjectDeepLinkBound = "1";
       frame.addEventListener("load", () => {
         frame.contentWindow.postMessage({ type: "rrhs-projects-open-id", id: requestedProject() }, "*");
       });
     }
 
-    frame.contentWindow.postMessage({ type: "rrhs-projects-open-id", id: projectId }, "*");
+    if (projectId) frame.contentWindow.postMessage({ type: "rrhs-projects-open-id", id: projectId }, "*");
   }
 
   function init() {

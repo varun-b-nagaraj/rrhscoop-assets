@@ -461,6 +461,22 @@ emptyClear.addEventListener("click", resetFilters);
 localClose.addEventListener("click", () => localDialog.close());
 localDialog.addEventListener("click", event => { if (event.target === localDialog) localDialog.close(); });
 
+document.addEventListener("click", event => {
+  const link = event.target.closest("a[href]");
+  if (!link || window.parent === window) return;
+
+  const url = new URL(link.href, window.location.href);
+  const isSameDocumentAnchor =
+    url.origin === window.location.origin &&
+    url.pathname === window.location.pathname &&
+    url.search === window.location.search &&
+    url.hash;
+  if (isSameDocumentAnchor) return;
+
+  event.preventDefault();
+  window.parent.postMessage({ type: "rrhs-projects-navigate", href: url.href }, "*");
+});
+
 document.addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
