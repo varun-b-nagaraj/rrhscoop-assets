@@ -2,10 +2,38 @@
 <iframe
   id="rrhs-cfa-frame"
   title="Chick-fil-A ordering at the RRHS CO-OP"
-  src="https://rrhscoop-assets.vercel.app/iframes/cfa/index.html?v=1"
+  src="https://rrhscoop-assets.vercel.app/iframes/cfa/index.html?v=2"
   scrolling="no"
   loading="lazy"
   height="680"
   style="display:block;width:100%;height:680px;border:0;margin:0;padding:0;background:#1d1816;overflow:hidden;"
   onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-cfa-height')f.style.height=Math.ceil(e.data.height)+'px';});}f.contentWindow.postMessage({type:'rrhs-cfa-request-height'},'*');"
 ></iframe>
+<script>
+  (function () {
+    var frame = document.getElementById("rrhs-cfa-frame");
+    var ticking = false;
+    if (!frame) return;
+
+    function updateParallax() {
+      ticking = false;
+      var rect = frame.getBoundingClientRect();
+      var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      var frameCenter = rect.top + rect.height / 2;
+      var offset = (viewportHeight / 2 - frameCenter) * .08;
+      offset = Math.max(-28, Math.min(28, offset));
+      frame.contentWindow.postMessage({ type: "rrhs-cfa-parallax", offset: offset }, "*");
+    }
+
+    function scheduleParallax() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateParallax);
+    }
+
+    window.addEventListener("scroll", scheduleParallax, { passive: true });
+    window.addEventListener("resize", scheduleParallax);
+    frame.addEventListener("load", scheduleParallax);
+    scheduleParallax();
+  }());
+</script>

@@ -44,10 +44,13 @@
     }
     .cfa-band > img {
       z-index: -2;
+      top: -42px;
+      height: calc(100% + 84px);
       object-fit: cover;
       object-position: center;
-      transform: scale(1.035);
-      transition: transform 1.3s var(--ease);
+      transform: translate3d(0, var(--cfa-parallax-y, 0px), 0) scale(1.035);
+      transition: transform 120ms linear;
+      will-change: transform;
     }
     .cfa-veil {
       z-index: -1;
@@ -70,7 +73,9 @@
       transition: opacity .72s var(--ease), transform .72s var(--ease);
     }
     .reveal.in { opacity: 1; transform: translateY(0); }
-    .cfa-band.is-ready > img { transform: scale(1); }
+    .cfa-band.is-ready > img {
+      transform: translate3d(0, var(--cfa-parallax-y, 0px), 0) scale(1.035);
+    }
 
     .eyebrow {
       display: flex;
@@ -200,7 +205,14 @@
       window.addEventListener("load", reportHeight);
       window.addEventListener("resize", reportHeight);
       window.addEventListener("message", function (event) {
-        if (event.data && event.data.type === "rrhs-cfa-request-height") reportHeight();
+        if (!event.data) return;
+        if (event.data.type === "rrhs-cfa-request-height") reportHeight();
+        if (event.data.type === "rrhs-cfa-parallax") {
+          var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          var requestedOffset = Number(event.data.offset) || 0;
+          var offset = reduceMotion ? 0 : Math.max(-28, Math.min(28, requestedOffset));
+          section.style.setProperty("--cfa-parallax-y", offset.toFixed(2) + "px");
+        }
       });
       if (typeof ResizeObserver === "function") {
         new ResizeObserver(reportHeight).observe(section);
