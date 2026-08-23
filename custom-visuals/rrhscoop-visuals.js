@@ -634,21 +634,24 @@
       .ins-header__logo-inner.rrhs-header-logo-link {
         display: inline-flex !important;
         align-items: center !important;
-        gap: 10px !important;
+        gap: 12px !important;
       }
 
       .rrhs-header-logo-mark {
-        display: block;
-        width: 34px;
-        height: 34px;
-        object-fit: contain;
-        flex: 0 0 auto;
+        display: block !important;
+        width: 40px !important;
+        height: 40px !important;
+        max-width: none !important;
+        max-height: none !important;
+        object-fit: contain !important;
+        flex: 0 0 40px !important;
       }
 
       @media screen and (max-width: 699px) {
         .rrhs-header-logo-mark {
-          width: 30px;
-          height: 30px;
+          width: 34px !important;
+          height: 34px !important;
+          flex-basis: 34px !important;
         }
       }
 
