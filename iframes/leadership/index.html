@@ -189,9 +189,7 @@
       background: #f1e8dc;
     }
     .department-responsibilities--column {
-      display: flex;
-      flex-direction: column;
-      height: 420px;
+      align-self: start;
       padding: 27px 24px 24px;
     }
     .department-responsibilities--inline {
@@ -211,25 +209,17 @@
       text-transform: uppercase;
     }
     .responsibility-list {
-      display: grid;
-      grid-template-rows: repeat(3, minmax(0, 1fr));
+      display: block;
       margin: 0;
       padding: 0;
       border-top: 1px solid var(--line);
       list-style: none;
     }
-    .department-responsibilities--column .responsibility-list {
-      flex: 1;
-      min-height: 0;
-    }
-    .department-responsibilities--inline .responsibility-list { height: 270px; }
     .responsibility-list li {
       border-bottom: 1px solid var(--line);
       overflow: hidden;
       transition: background .28s ease;
     }
-    .responsibility-list li:hover,
-    .responsibility-list li:focus-within,
     .responsibility-list li.is-open { background: rgba(110, 31, 42, .045); }
     .responsibility-button {
       display: grid;
@@ -287,16 +277,12 @@
       transform: translateY(-5px);
       transition: max-height .28s cubic-bezier(.22, 1, .36, 1), padding .28s cubic-bezier(.22, 1, .36, 1), opacity .28s ease, transform .28s cubic-bezier(.22, 1, .36, 1);
     }
-    .responsibility-list li:hover .responsibility-description,
-    .responsibility-list li:focus-within .responsibility-description,
     .responsibility-list li.is-open .responsibility-description {
       max-height: 70px;
       padding-bottom: 8px;
       opacity: 1;
       transform: translateY(0);
     }
-    .responsibility-list li:hover .responsibility-icon::after,
-    .responsibility-list li:focus-within .responsibility-icon::after,
     .responsibility-list li.is-open .responsibility-icon::after {
       transform: rotate(0deg);
     }
@@ -470,7 +456,7 @@
       .leaders { grid-template-columns: 1fr; }
       .leader { height: 440px; }
       .initials { height: 300px; flex-basis: 300px; }
-      .department-responsibilities--column { height: 360px; min-height: 360px; }
+      .department-responsibilities--column { height: auto; min-height: 0; }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
       .closing { padding: 82px 0 88px; }
@@ -621,7 +607,7 @@
           <div><p class="department-number">Department 08</p><h3>Chick-fil-A</h3></div>
           <p class="department-copy">The Chick-fil-A team manages the CO-OP’s Chick-fil-A service. Its leaders help coordinate preparation, product handling, customer service, and an efficient experience for students and staff.</p>
           <div class="leaders">
-            <div class="leader"><span class="initials">IN</span><div><p class="leader-role">Director</p><p class="leader-name">Isabella Ngo</p></div></div>
+            <div class="leader"><span class="initials">IN</span><div><p class="leader-role">Director</p><p class="leader-name">Isabelle Ngo</p></div></div>
             <div class="leader"><span class="initials">AP</span><div><p class="leader-role">Manager</p><p class="leader-name">Aasrita Pichikala</p></div></div>
           </div>
         </article>
@@ -719,25 +705,31 @@
           if (isHumanResources) departmentElement.insertBefore(responsibilityBlock, list);
           else list.insertBefore(responsibilityBlock, list.firstChild);
 
-          responsibilityBlock.querySelectorAll(".responsibility-button").forEach(function (button) {
-            button.closest("li").addEventListener("mouseenter", function () {
-              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
-                if (openItem === button.closest("li")) return;
-                openItem.classList.remove("is-open");
-                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
-                if (openItem.contains(document.activeElement)) document.activeElement.blur();
-              });
+          var responsibilityItems = Array.prototype.slice.call(responsibilityBlock.querySelectorAll("li"));
+          function openResponsibility(item) {
+            responsibilityItems.forEach(function (responsibilityItem) {
+              var isCurrent = responsibilityItem === item;
+              responsibilityItem.classList.toggle("is-open", isCurrent);
+              responsibilityItem.querySelector(".responsibility-button").setAttribute("aria-expanded", String(isCurrent));
             });
-            button.addEventListener("click", function () {
-              var item = button.closest("li");
-              var willOpen = !item.classList.contains("is-open");
-              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
-                openItem.classList.remove("is-open");
-                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
-              });
-              item.classList.toggle("is-open", willOpen);
-              button.setAttribute("aria-expanded", String(willOpen));
-            });
+          }
+
+          responsibilityItems.forEach(function (item) {
+            var button = item.querySelector(".responsibility-button");
+            item.addEventListener("mouseenter", function () { openResponsibility(item); });
+            button.addEventListener("focus", function () { openResponsibility(item); });
+            button.addEventListener("click", function () { openResponsibility(item); });
+          });
+          responsibilityBlock.addEventListener("mouseleave", function () {
+            if (responsibilityBlock.contains(document.activeElement)) document.activeElement.blur();
+            openResponsibility(null);
+          });
+          responsibilityBlock.addEventListener("focusout", function () {
+            window.setTimeout(function () {
+              if (!responsibilityBlock.contains(document.activeElement) && !responsibilityBlock.matches(":hover")) {
+                openResponsibility(null);
+              }
+            }, 0);
           });
         }
 
