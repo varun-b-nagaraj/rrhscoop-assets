@@ -130,14 +130,15 @@
       line-height: 1.2;
       text-decoration: none;
       text-transform: uppercase;
-      transition: color .22s ease, background-color .22s ease, transform .22s var(--ease);
+      transition: color .22s ease, background-color .22s ease, border-color .22s ease;
     }
     .btn.light { color: var(--dark); background: var(--ink); }
     .btn:hover,
     .btn:focus-visible {
-      color: var(--ink);
-      background: transparent;
-      transform: translateY(-2px);
+      border-color: #761627;
+      color: #fff;
+      background: #761627;
+      transform: none;
     }
     .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
     .cfa-note {
@@ -177,7 +178,7 @@
         <span class="eyebrow">The Morning Rush</span>
         <h2 id="cfa-title">Chick-fil-A, ordered for your 2nd/6th period.</h2>
         <p>Order Chick-fil-A favorites through the official Co-Op storefront. The Co-Op team handles fulfillment for pickup or campus delivery.</p>
-        <a href="https://rrhscoop.roundrockisd.org/products/Chick-fil-A-c196956751" class="btn light" target="_blank" rel="noopener">View the Menu</a>
+        <a href="https://rrhscoop.roundrockisd.org/products/Chick-fil-A-c196956751" class="btn light" target="_blank" rel="noopener">Shop CFA</a>
         <div class="cfa-note">Ordering closes each school day at 10:30 AM</div>
       </div>
     </div>
