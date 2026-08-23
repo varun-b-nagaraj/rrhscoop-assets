@@ -639,12 +639,12 @@
 
       .rrhs-header-logo-mark {
         display: block !important;
-        width: 40px !important;
-        height: 40px !important;
+        width: 48px !important;
+        height: 48px !important;
         max-width: none !important;
         max-height: none !important;
         object-fit: contain !important;
-        flex: 0 0 40px !important;
+        flex: 0 0 48px !important;
       }
 
       @media screen and (max-width: 699px) {
