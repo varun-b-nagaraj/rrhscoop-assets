@@ -618,12 +618,13 @@
         top: 0 !important;
         z-index: 1000 !important;
         transform: translateY(0);
-        transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+        transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
         will-change: transform;
       }
 
       .rrhs-sticky-header-shell--hidden {
         transform: translateY(calc(-100% - 1px)) !important;
+        transition-duration: 420ms;
       }
 
       .rrhs-sticky-header-shell--hidden:focus-within {
@@ -703,6 +704,7 @@
       header,
       headerShell,
       lastY: Math.max(0, window.scrollY || window.pageYOffset || 0),
+      downwardDistance: 0,
       ticking: false
     };
     scrollHeaderState = state;
@@ -714,11 +716,19 @@
       const delta = currentY - state.lastY;
       header.classList.toggle("rrhs-scroll-header--scrolled", currentY > 12);
 
+      if (delta > 0) {
+        state.downwardDistance += delta;
+      } else if (delta < 0) {
+        state.downwardDistance = 0;
+      }
+
       if (headerShell) {
         if (currentY <= 16 || delta < -2) {
           headerShell.classList.remove("rrhs-sticky-header-shell--hidden");
-        } else if (currentY > 96 && delta > 2) {
+          state.downwardDistance = 0;
+        } else if (currentY > 160 && state.downwardDistance >= 72) {
           headerShell.classList.add("rrhs-sticky-header-shell--hidden");
+          state.downwardDistance = 0;
         }
       }
 
