@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap");
+
 /* RRHS CO-OP visual system — keep new storefront visuals on these tokens. */
 :root {
   --rrhs-maroon: #6e1f2a;
@@ -7,8 +9,10 @@
   --rrhs-cream: #f1eee8;
   --rrhs-paper: #faf8f4;
 
-  --rrhs-font-title: "Raleway", Arial, sans-serif;
-  --rrhs-font-body: "Merriweather", Georgia, serif;
+  --display: "Playfair Display", Georgia, serif;
+  --body: "Spectral", Georgia, serif;
+  --rrhs-font-title: var(--display);
+  --rrhs-font-body: var(--body);
 
   --rrhs-radius-card: 16px;
   --rrhs-motion-standard: cubic-bezier(0.22, 1, 0.36, 1);

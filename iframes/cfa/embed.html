@@ -1,0 +1,11 @@
+<!-- Paste this entire block into the RRHS CO-OP page. -->
+<iframe
+  id="rrhs-cfa-frame"
+  title="Chick-fil-A ordering at the RRHS CO-OP"
+  src="https://rrhscoop-assets.vercel.app/iframes/cfa/index.html?v=1"
+  scrolling="no"
+  loading="lazy"
+  height="680"
+  style="display:block;width:100%;height:680px;border:0;margin:0;padding:0;background:#1d1816;overflow:hidden;"
+  onload="var f=this;if(!f.dataset.rrhsBridge){f.dataset.rrhsBridge='1';window.addEventListener('message',function(e){if(e.source!==f.contentWindow||!e.data)return;if(e.data.type==='rrhs-cfa-height')f.style.height=Math.ceil(e.data.height)+'px';});}f.contentWindow.postMessage({type:'rrhs-cfa-request-height'},'*');"
+></iframe>

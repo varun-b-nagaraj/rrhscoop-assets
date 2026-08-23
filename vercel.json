@@ -17,6 +17,14 @@
       "destination": "/iframes/faq/embed.html"
     },
     {
+      "source": "/iframes/cfa.html",
+      "destination": "/iframes/cfa/index.html"
+    },
+    {
+      "source": "/iframes/cfa-embed.html",
+      "destination": "/iframes/cfa/embed.html"
+    },
+    {
       "source": "/iframes/assets/(.*)",
       "destination": "/iframes/leadership/assets/$1"
     },

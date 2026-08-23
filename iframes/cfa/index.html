@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Chick-fil-A at the RRHS CO-OP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --display: "Playfair Display", Georgia, serif;
+      --body: "Spectral", Georgia, serif;
+      --ink: #f4eee5;
+      --gold: #d8c590;
+      --dark: #1d1816;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-width: 320px; background: var(--dark); }
+    body {
+      color: var(--ink);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    img { display: block; }
+
+    .cfa-band {
+      position: relative;
+      min-height: clamp(580px, 51.6vw, 680px);
+      overflow: hidden;
+      isolation: isolate;
+      background: var(--dark);
+    }
+    .cfa-band > img,
+    .cfa-veil {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .cfa-band > img {
+      z-index: -2;
+      object-fit: cover;
+      object-position: center;
+      transform: scale(1.035);
+      transition: transform 1.3s var(--ease);
+    }
+    .cfa-veil {
+      z-index: -1;
+      background:
+        linear-gradient(90deg, rgba(18,13,12,.96) 0%, rgba(18,13,12,.81) 30%, rgba(18,13,12,.28) 66%, rgba(18,13,12,.12) 100%),
+        linear-gradient(0deg, rgba(18,13,12,.4), transparent 55%);
+    }
+    .wrap {
+      display: flex;
+      align-items: center;
+      width: min(calc(100% - 128px), 1154px);
+      min-height: inherit;
+      margin: 0 auto;
+      padding: 66px 0;
+    }
+    .inner { width: min(540px, 50%); }
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .72s var(--ease), transform .72s var(--ease);
+    }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    .cfa-band.is-ready > img { transform: scale(1); }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 0 0 25px;
+      color: var(--gold);
+      font-family: var(--body);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .32em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      width: 34px;
+      height: 1px;
+      flex: 0 0 34px;
+      background: currentColor;
+      content: "";
+    }
+    h2 {
+      max-width: 620px;
+      margin: 0 0 20px;
+      font-family: var(--display);
+      font-size: clamp(48px, 5.15vw, 70px);
+      font-weight: 400;
+      letter-spacing: -.035em;
+      line-height: .94;
+    }
+    .inner > p {
+      max-width: 465px;
+      margin: 0 0 33px;
+      color: rgba(244,238,229,.9);
+      font-size: clamp(17px, 1.45vw, 19px);
+      font-weight: 400;
+      line-height: 1.55;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 194px;
+      min-height: 60px;
+      padding: 16px 28px;
+      border: 1px solid var(--ink);
+      border-radius: 0;
+      font-family: var(--body);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .18em;
+      line-height: 1.2;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: color .22s ease, background-color .22s ease, transform .22s var(--ease);
+    }
+    .btn.light { color: var(--dark); background: var(--ink); }
+    .btn:hover,
+    .btn:focus-visible {
+      color: var(--ink);
+      background: transparent;
+      transform: translateY(-2px);
+    }
+    .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+    .cfa-note {
+      margin-top: 26px;
+      color: rgba(244,238,229,.66);
+      font-family: var(--body);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: .2em;
+      line-height: 1.5;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 760px) {
+      .cfa-band { min-height: 650px; }
+      .cfa-band > img { object-position: 61% center; }
+      .cfa-veil {
+        background: linear-gradient(90deg, rgba(18,13,12,.95) 0%, rgba(18,13,12,.78) 64%, rgba(18,13,12,.4) 100%);
+      }
+      .wrap { width: min(calc(100% - 40px), 620px); padding: 52px 0; }
+      .inner { width: 100%; }
+      h2 { font-size: clamp(43px, 12vw, 58px); }
+      .inner > p { font-size: 17px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cfa-band > img, .reveal, .btn { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="cfa-band" id="cfa" aria-labelledby="cfa-title">
+    <img src="https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&amp;fit=crop&amp;w=1800&amp;h=1000&amp;q=80" alt="" aria-hidden="true">
+    <div class="cfa-veil" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="inner reveal">
+        <span class="eyebrow">The Morning Rush</span>
+        <h2 id="cfa-title">Chick-fil-A, ordered before first period.</h2>
+        <p>Order Chick-fil-A favorites through the official Co-Op storefront. The Co-Op team handles fulfillment for pickup or campus delivery.</p>
+        <a href="https://rrhscoop.roundrockisd.org/products/Chick-fil-A-c196956751" class="btn light" target="_blank" rel="noopener">View the Menu</a>
+        <div class="cfa-note">Ordering closes each school day at 10:30 AM</div>
+      </div>
+    </div>
+  </section>
+  <script>
+    (function () {
+      var section = document.getElementById("cfa");
+      var content = section.querySelector(".reveal");
+
+      function reveal() {
+        section.classList.add("is-ready");
+        content.classList.add("in");
+      }
+
+      function reportHeight() {
+        window.parent.postMessage({
+          type: "rrhs-cfa-height",
+          height: Math.ceil(document.documentElement.scrollHeight)
+        }, "*");
+      }
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(reveal);
+      });
+      window.addEventListener("load", reportHeight);
+      window.addEventListener("resize", reportHeight);
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "rrhs-cfa-request-height") reportHeight();
+      });
+      if (typeof ResizeObserver === "function") {
+        new ResizeObserver(reportHeight).observe(section);
+      }
+    }());
+  </script>
+</body>
+</html>
