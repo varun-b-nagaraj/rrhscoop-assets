@@ -187,7 +187,7 @@
       grid-column: 2;
       grid-row: 1 / span 2;
       display: grid;
-      grid-template-columns: repeat(var(--leader-count, 2), minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
       align-items: stretch;
     }
@@ -196,7 +196,7 @@
       display: flex;
       flex-direction: column;
       width: 100%;
-      height: 340px;
+      height: 420px;
       padding: 0;
       border: 1px solid var(--line);
       background: #fff;
@@ -210,8 +210,8 @@
       display: grid;
       place-items: center;
       width: 100%;
-      height: 220px;
-      flex: 0 0 220px;
+      height: 285px;
+      flex: 0 0 285px;
       color: #fff;
       background:
         radial-gradient(circle at 72% 18%, rgba(255,255,255,.14), transparent 28%),
@@ -349,8 +349,8 @@
       .exec-photo { height: auto; aspect-ratio: 1 / .88; }
       .department { grid-template-columns: 1fr; gap: 22px; padding: 38px 0; }
       .leaders { grid-template-columns: 1fr; }
-      .leader { height: 320px; }
-      .initials { height: 200px; flex-basis: 200px; }
+      .leader { height: 440px; }
+      .initials { height: 300px; flex-basis: 300px; }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
       .closing { padding: 82px 0 88px; }
@@ -541,8 +541,6 @@
       document.querySelectorAll(".leaders").forEach(function (list) {
         var department = list.closest(".department").querySelector("h3").textContent.trim();
         var leaders = Array.prototype.slice.call(list.querySelectorAll(".leader"));
-        list.style.setProperty("--leader-count", String(Math.min(leaders.length, 3)));
-
         leaders.forEach(function (leader, index) {
           var role = leader.querySelector(".leader-role").textContent.trim();
           var name = leader.querySelector(".leader-name").textContent.trim();
