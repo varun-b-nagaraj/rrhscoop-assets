@@ -157,12 +157,14 @@
     .department-list { border-top: 1px solid var(--line); }
     .department {
       display: grid;
-      grid-template-columns: .72fr 1.15fr 1fr;
-      gap: 50px;
-      padding: 48px 0;
+      grid-template-columns: minmax(220px, .72fr) minmax(0, 2.28fr);
+      grid-template-rows: auto 1fr;
+      gap: 16px 56px;
+      padding: 56px 0;
       border-bottom: 1px solid var(--line);
       scroll-margin-top: 24px;
     }
+    .department > div:first-child { grid-column: 1; grid-row: 1; }
     .department-number {
       margin-bottom: 10px;
       color: var(--maroon);
@@ -172,91 +174,124 @@
       text-transform: uppercase;
     }
     .department h3 { margin-bottom: 0; font-size: clamp(27px, 3vw, 38px); line-height: 1.05; letter-spacing: -.035em; }
-    .department-copy { margin-bottom: 0; color: var(--muted); font-size: 15px; line-height: 1.75; }
+    .department-copy {
+      grid-column: 1;
+      grid-row: 2;
+      max-width: 320px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.68;
+    }
     .leaders {
-      position: relative;
+      grid-column: 2;
+      grid-row: 1 / span 2;
       display: grid;
-      gap: 12px;
+      grid-template-columns: repeat(var(--leader-count, 2), minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
     }
     .leader {
       position: relative;
-      z-index: 2;
       display: flex;
-      align-items: center;
-      gap: 15px;
+      flex-direction: column;
       width: 100%;
-      min-height: 74px;
-      padding: 13px 16px 13px 73px;
+      height: 340px;
+      padding: 0;
       border: 1px solid var(--line);
       background: #fff;
       cursor: pointer;
       overflow: hidden;
-      transition: width .36s ease, height .36s ease, padding .36s ease, transform .36s ease, border-color .2s ease, background .2s ease;
+      isolation: isolate;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), border-color .2s ease, box-shadow .3s ease;
     }
-    .leader > div { min-width: 0; opacity: 1; white-space: nowrap; transition: opacity .18s ease, width .3s ease; }
     .initials {
-      position: absolute;
-      top: 50%;
-      left: 14px;
+      position: relative;
       display: grid;
       place-items: center;
-      width: 44px;
-      height: 44px;
-      flex: 0 0 44px;
-      border-radius: 50%;
+      width: 100%;
+      height: 220px;
+      flex: 0 0 220px;
       color: #fff;
-      background: var(--maroon);
-      font-size: 12px;
-      font-weight: 700;
+      background:
+        radial-gradient(circle at 72% 18%, rgba(255,255,255,.14), transparent 28%),
+        linear-gradient(145deg, #842b38, var(--maroon-deep));
+      font-family: "DM Serif Display", Georgia, serif;
+      font-size: clamp(38px, 4vw, 58px);
+      font-weight: 400;
       letter-spacing: .04em;
-      transform: translateY(-50%);
-      transition: color .18s ease, background .18s ease;
+      transform: scale(1);
+      transform-origin: center top;
+      transition: height .42s cubic-bezier(.22, 1, .36, 1), flex-basis .42s cubic-bezier(.22, 1, .36, 1), transform .42s cubic-bezier(.22, 1, .36, 1);
     }
-    .leader-role { margin-bottom: 4px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
-    .leader-name { margin-bottom: 0; font-size: 16px; font-weight: 700; line-height: 1.2; }
-    .leaders.is-active .leader {
-      width: 72px;
-      height: 74px;
-      min-height: 74px;
-      max-height: 74px;
-      padding: 13px 0;
-      gap: 0;
-      flex: 0 0 74px;
-      border-color: rgba(110, 31, 42, .24);
-      transform: none;
-    }
-    .leaders.is-active .leader > div { width: 0; opacity: 0; pointer-events: none; }
-    .leaders.is-active .initials {
-      width: 44px;
-      height: 44px;
-      min-width: 44px;
-      min-height: 44px;
-      flex: 0 0 44px;
-      transform: translateY(-50%);
-    }
-    .leaders.is-active .leader.is-selected { z-index: 3; }
-    .leaders.is-active.is-settled .leader.is-selected { color: #fff; background: var(--maroon); }
-    .leaders.is-active.is-settled .leader.is-selected .initials { color: var(--maroon); background: #fff; }
-    .leader-profile {
+    .initials::after {
       position: absolute;
-      z-index: 1;
-      inset: 0 0 0 86px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 18px 20px;
-      border: 1px solid var(--line);
-      background: #fff;
-      opacity: 0;
-      overflow: auto;
+      inset: 15px;
+      border: 1px solid rgba(255,255,255,.18);
+      content: "";
       pointer-events: none;
-      transform: translateX(18px);
-      transition: opacity .24s ease .1s, transform .34s ease;
     }
-    .leaders.is-active .leader-profile { opacity: 1; transform: none; }
-    .profile-kicker { margin-bottom: 6px; color: var(--maroon); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-    .profile-name { margin-bottom: 10px; font-size: clamp(18px, 1.5vw, 23px); line-height: 1.08; letter-spacing: -.025em; }
-    .profile-copy { margin-bottom: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .leader-summary {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      padding: 19px 20px 20px;
+      background: #fff;
+      transition: padding .38s cubic-bezier(.22, 1, .36, 1);
+    }
+    .leader-name {
+      order: 1;
+      margin-bottom: 5px;
+      font-family: "DM Serif Display", Georgia, serif;
+      font-size: clamp(20px, 1.7vw, 25px);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: -.02em;
+    }
+    .leader-role {
+      order: 2;
+      margin-bottom: 0;
+      color: var(--maroon);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .leader-copy {
+      order: 3;
+      max-height: 0;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      opacity: 0;
+      overflow: hidden;
+      transform: translateY(24px);
+      transition: max-height .42s cubic-bezier(.22, 1, .36, 1), margin-top .35s ease, opacity .24s ease .08s, transform .42s cubic-bezier(.22, 1, .36, 1);
+    }
+    .leader:hover,
+    .leader:focus {
+      border-color: rgba(110, 31, 42, .42);
+      box-shadow: 0 18px 38px rgba(77, 17, 28, .13);
+      outline: none;
+      transform: translateY(-4px);
+    }
+    .leader:hover .initials,
+    .leader:focus .initials {
+      height: 118px;
+      flex-basis: 118px;
+      transform: scale(1.025);
+    }
+    .leader:hover .leader-summary,
+    .leader:focus .leader-summary { padding-top: 15px; }
+    .leader:hover .leader-copy,
+    .leader:focus .leader-copy {
+      max-height: 112px;
+      margin-top: 12px;
+      opacity: 1;
+      transform: translateY(0);
+    }
     .leader:focus-visible { outline: 3px solid rgba(110, 31, 42, .28); outline-offset: 2px; }
 
     .closing { padding: 112px 0 118px; text-align: center; background: var(--cream); }
@@ -297,8 +332,11 @@
       .exec-grid { grid-template-columns: 1fr; }
       .exec-card { display: grid; grid-template-columns: 280px 1fr; }
       .exec-photo { height: 100%; aspect-ratio: auto; }
-      .department { grid-template-columns: .75fr 1.25fr; gap: 28px 40px; }
-      .leaders { grid-column: 2; }
+      .department { grid-template-columns: 1fr; grid-template-rows: auto; gap: 16px; }
+      .department > div:first-child,
+      .department-copy,
+      .leaders { grid-column: 1; grid-row: auto; }
+      .department-copy { max-width: 680px; margin-bottom: 14px; }
     }
 
     @media (max-width: 620px) {
@@ -310,18 +348,24 @@
       .exec-card { display: block; }
       .exec-photo { height: auto; aspect-ratio: 1 / .88; }
       .department { grid-template-columns: 1fr; gap: 22px; padding: 38px 0; }
-      .leaders { grid-column: auto; }
+      .leaders { grid-template-columns: 1fr; }
+      .leader { height: 320px; }
+      .initials { height: 200px; flex-basis: 200px; }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
       .closing { padding: 82px 0 88px; }
       .closing-copy { font-size: 17px; }
       .closing-actions { flex-direction: column; align-items: stretch; }
       .closing-button { width: 100%; min-width: 0; }
-      .leader-profile { left: 80px; padding: 14px 16px; }
-      .profile-copy { font-size: 11px; }
     }
 
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .leader,
+      .initials,
+      .leader-summary,
+      .leader-copy { transition: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -362,7 +406,7 @@
           <img class="exec-photo" src="assets/ashwini-yelaru.webp?v=2" alt="Ashwini Yeluru">
           <div class="exec-body">
             <p class="role">Chief Operations Officer</p>
-            <h3>Ashwini Yelaru</h3>
+            <h3>Ashwini Yeluru</h3>
             <p class="exec-bio">Hello! My name is Ashwini, and I am the COO this year for the RRHS CO-OP. This is my second year working for the school store after being a 2025–2026 general employee. I’m a junior, planning on majoring in business in the future. I am incredibly excited and grateful for the opportunity to help the CO-OP grow and accomplish great things this year!</p>
           </div>
         </article>
@@ -480,7 +524,6 @@
   <script>
     (function () {
       function sendHeight() {
-        if (document.querySelector(".leaders.is-active")) return;
         var height = document.documentElement.scrollHeight;
         document.documentElement.dataset.pageHeight = String(height);
         window.parent.postMessage({ type: "rrhs-leadership-height", height: height }, "*");
@@ -496,60 +539,29 @@
         });
       });
       document.querySelectorAll(".leaders").forEach(function (list) {
-        var settleTimer;
         var department = list.closest(".department").querySelector("h3").textContent.trim();
-        var profile = document.createElement("div");
-        profile.className = "leader-profile";
-        profile.setAttribute("aria-live", "polite");
-        profile.innerHTML = '<p class="profile-kicker"></p><h4 class="profile-name"></h4><p class="profile-copy"></p>';
-        list.appendChild(profile);
+        var leaders = Array.prototype.slice.call(list.querySelectorAll(".leader"));
+        list.style.setProperty("--leader-count", String(Math.min(leaders.length, 3)));
 
-        function selectLeader(leader) {
+        leaders.forEach(function (leader, index) {
           var role = leader.querySelector(".leader-role").textContent.trim();
           var name = leader.querySelector(".leader-name").textContent.trim();
-          var wasActive = list.classList.contains("is-active");
-          list.classList.add("is-active");
-          if (!wasActive) {
-            list.classList.remove("is-settled");
-            window.clearTimeout(settleTimer);
-            settleTimer = window.setTimeout(function () {
-              if (list.classList.contains("is-active")) list.classList.add("is-settled");
-            }, 360);
-          }
-          list.querySelectorAll(".leader").forEach(function (item) {
-            var selected = item === leader;
-            item.classList.toggle("is-selected", selected);
-            item.setAttribute("aria-expanded", selected ? "true" : "false");
-          });
-          profile.querySelector(".profile-kicker").textContent = role + " · " + department;
-          profile.querySelector(".profile-name").textContent = name;
-          profile.querySelector(".profile-copy").textContent = name + " serves as " + role.toLowerCase() + " for the RRHS CO-OP’s " + department + " department during the 2026–2027 school year.";
-        }
+          var avatar = leader.querySelector(".initials");
+          var summary = leader.querySelector(":scope > div");
+          var bio = document.createElement("p");
+          var bioId = "leader-bio-" + list.closest(".department").id + "-" + index;
 
-        function closeProfile() {
-          window.clearTimeout(settleTimer);
-          list.classList.remove("is-active");
-          list.classList.remove("is-settled");
-          list.querySelectorAll(".leader").forEach(function (item) {
-            item.classList.remove("is-selected");
-            item.setAttribute("aria-expanded", "false");
-          });
-          window.requestAnimationFrame(sendHeight);
-        }
+          if (avatar) avatar.classList.add("leader-photo");
+          if (summary) summary.classList.add("leader-summary");
+          bio.id = bioId;
+          bio.className = "leader-copy";
+          bio.textContent = name + " serves as " + role.toLowerCase() + " for the RRHS CO-OP’s " + department + " department during the 2026–2027 school year.";
+          if (summary) summary.appendChild(bio);
 
-        list.querySelectorAll(".leader").forEach(function (leader) {
           leader.tabIndex = 0;
-          leader.setAttribute("role", "button");
-          leader.setAttribute("aria-expanded", "false");
-          leader.addEventListener("mouseenter", function () { selectLeader(leader); });
-          leader.addEventListener("focus", function () { selectLeader(leader); });
-          leader.addEventListener("click", function () { selectLeader(leader); });
-        });
-        list.addEventListener("mouseleave", closeProfile);
-        list.addEventListener("focusout", function () {
-          window.setTimeout(function () {
-            if (!list.contains(document.activeElement)) closeProfile();
-          }, 0);
+          leader.setAttribute("role", "group");
+          leader.setAttribute("aria-label", name + ", " + role + ", " + department);
+          leader.setAttribute("aria-describedby", bioId);
         });
       });
       window.addEventListener("message", function (event) {

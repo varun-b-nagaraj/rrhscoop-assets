@@ -1172,6 +1172,19 @@
     wrap.addEventListener("focusin", handler);
   }
 
+  function updateLeadershipFrameVersion() {
+    const frame = document.getElementById("rrhs-leadership-frame");
+    if (!frame || !frame.src) return;
+
+    try {
+      const url = new URL(frame.src, window.location.href);
+      if (!url.pathname.endsWith("/iframes/leadership/index.html")) return;
+      if (url.searchParams.get("v") === "20") return;
+      url.searchParams.set("v", "20");
+      frame.src = url.href;
+    } catch (_) {}
+  }
+
   function boot() {
     try {
       logContext();
@@ -1185,6 +1198,7 @@
       ensureCompactStorefrontCategories();
       initCategoryCards();
       initCategoryImageSwap();
+      updateLeadershipFrameVersion();
     } catch (e) { log('RRHS visuals boot error', e); }
   }
 
