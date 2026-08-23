@@ -222,14 +222,12 @@
       flex: 1;
       min-height: 0;
     }
-    .department-responsibilities--inline .responsibility-list { height: 270px; }
+    .department-responsibilities--inline .responsibility-list { height: 330px; }
     .responsibility-list li {
       border-bottom: 1px solid var(--line);
       overflow: hidden;
       transition: background .28s ease;
     }
-    .responsibility-list li:hover,
-    .responsibility-list li:focus-within,
     .responsibility-list li.is-open { background: rgba(110, 31, 42, .045); }
     .responsibility-button {
       display: grid;
@@ -278,25 +276,21 @@
     .responsibility-description {
       max-height: 0;
       margin: 0;
-      padding: 0 18px 0 33px;
+      padding: 0 0 0 33px;
       overflow: hidden;
       color: var(--muted);
-      font-size: 11px;
-      line-height: 1.55;
+      font-size: 12.5px;
+      line-height: 1.48;
       opacity: 0;
       transform: translateY(-5px);
       transition: max-height .28s cubic-bezier(.22, 1, .36, 1), padding .28s cubic-bezier(.22, 1, .36, 1), opacity .28s ease, transform .28s cubic-bezier(.22, 1, .36, 1);
     }
-    .responsibility-list li:hover .responsibility-description,
-    .responsibility-list li:focus-within .responsibility-description,
     .responsibility-list li.is-open .responsibility-description {
-      max-height: 70px;
+      max-height: 84px;
       padding-bottom: 8px;
       opacity: 1;
       transform: translateY(0);
     }
-    .responsibility-list li:hover .responsibility-icon::after,
-    .responsibility-list li:focus-within .responsibility-icon::after,
     .responsibility-list li.is-open .responsibility-icon::after {
       transform: rotate(0deg);
     }
@@ -645,44 +639,44 @@
     (function () {
       var responsibilities = {
         hr: [
-          { title: "Team coordination", description: "Coordinates student roles, schedules, and day-to-day team needs." },
-          { title: "Workplace communication", description: "Keeps expectations and important updates clear across departments." },
-          { title: "Customer service", description: "Supports positive, consistent service for students, staff, and visitors." }
+          { title: "Team coordination", description: "Organizes student assignments, schedules, and coverage so every department has the support it needs each day." },
+          { title: "Workplace communication", description: "Shares expectations, updates, and procedures across teams so students can coordinate their work clearly and consistently." },
+          { title: "Customer service", description: "Helps resolve service questions while maintaining a welcoming, dependable experience for students, staff, and visitors." }
         ],
         finance: [
-          { title: "Sales reporting", description: "Turns sales activity into clear reports leaders can use." },
-          { title: "Budget tracking", description: "Monitors spending and available funds throughout the school year." },
-          { title: "Purchasing insights", description: "Uses cost and performance data to guide purchasing decisions." }
+          { title: "Sales reporting", description: "Reviews sales activity, organizes totals, and highlights useful trends for department and storewide decisions." },
+          { title: "Budget tracking", description: "Tracks department spending against available funds so teams can plan purchases responsibly throughout the year." },
+          { title: "Purchasing insights", description: "Compares costs, margins, and product performance to recommend smarter quantities and stronger-value purchases." }
         ],
         product: [
-          { title: "Product selection", description: "Chooses useful, relevant products for the RRHS community." },
-          { title: "Merchandise planning", description: "Plans assortments, pricing, and launches for CO-OP merchandise." },
-          { title: "Store presentation", description: "Organizes products so the store feels clear and easy to shop." }
+          { title: "Product selection", description: "Evaluates demand, usefulness, price, and school relevance when choosing products for the RRHS community." },
+          { title: "Merchandise planning", description: "Plans assortments, pricing, quantities, and launch timing for student-created and vendor-supplied merchandise." },
+          { title: "Store presentation", description: "Organizes products, displays, and signage so the store remains clear, appealing, and easy to shop." }
         ],
         lightspeed: [
-          { title: "E-commerce systems", description: "Maintains the online storefront and its customer-facing experience." },
-          { title: "Point-of-sale support", description: "Supports the systems used to process in-person purchases." },
-          { title: "Order organization", description: "Keeps digital orders accurate and ready for fulfillment." }
+          { title: "E-commerce systems", description: "Maintains storefront pages, product information, and online tools that shape the customer ordering experience." },
+          { title: "Point-of-sale support", description: "Supports the hardware and workflows used to process accurate, efficient purchases at each counter." },
+          { title: "Order organization", description: "Keeps incoming digital orders accurate, clearly sorted, and ready for pickup or campus delivery." }
         ],
         marketing: [
-          { title: "Campaign planning", description: "Builds campaigns around products, events, and seasonal moments." },
-          { title: "Digital content", description: "Creates content that keeps students informed and engaged." },
-          { title: "Product promotion", description: "Introduces new products and helps customers discover what is available." }
+          { title: "Campaign planning", description: "Builds coordinated campaigns around product launches, school events, seasonal moments, and store priorities." },
+          { title: "Digital content", description: "Creates clear, engaging content that keeps the RRHS community informed across digital channels." },
+          { title: "Product promotion", description: "Introduces new products, communicates their value, and helps customers discover what is currently available." }
         ],
         kiosk: [
-          { title: "Kiosk readiness", description: "Prepares the cafeteria kiosk for efficient daily service." },
-          { title: "Student service", description: "Helps students complete purchases quickly between classes." },
-          { title: "Product flow", description: "Keeps high-demand kiosk products organized and available." }
+          { title: "Kiosk readiness", description: "Prepares inventory, equipment, and the sales area so the cafeteria kiosk opens ready for service." },
+          { title: "Student service", description: "Guides quick, accurate purchases while keeping the between-class customer experience welcoming and organized." },
+          { title: "Product flow", description: "Monitors demand and restocks high-volume items so popular kiosk products remain available during service." }
         ],
         inventory: [
-          { title: "Stock counts", description: "Tracks available quantities and identifies inventory differences." },
-          { title: "Replenishment", description: "Restocks products before availability becomes a problem." },
-          { title: "Product organization", description: "Maintains clear storage and reliable product locations." }
+          { title: "Stock counts", description: "Performs regular counts, records available quantities, and investigates differences between physical and system inventory." },
+          { title: "Replenishment", description: "Identifies low-stock products and coordinates timely restocking before availability affects customers or operations." },
+          { title: "Product organization", description: "Maintains clear storage zones, consistent labeling, and reliable locations for faster product handling." }
         ],
         chickfila: [
-          { title: "Order preparation", description: "Coordinates orders so they are ready at the correct time." },
-          { title: "Product handling", description: "Maintains an organized process from arrival through handoff." },
-          { title: "Pickup and delivery", description: "Supports accurate counter pickup and campus delivery service." }
+          { title: "Order preparation", description: "Coordinates incoming orders and fulfillment timing so each purchase is complete and ready when expected." },
+          { title: "Product handling", description: "Maintains an organized, accurate process from food arrival through sorting, storage, and customer handoff." },
+          { title: "Pickup and delivery", description: "Supports efficient counter pickup and accurate classroom delivery during the available service periods." }
         ]
       };
 
@@ -714,30 +708,38 @@
           responsibilityBlock.setAttribute("aria-label", department + " responsibilities");
           responsibilityBlock.innerHTML = '<p class="responsibility-label">Responsibilities</p><ol class="responsibility-list">' + departmentResponsibilities.map(function (item, responsibilityIndex) {
             var panelId = "responsibility-" + departmentElement.id + "-" + responsibilityIndex;
-            return '<li><button class="responsibility-button" type="button" aria-expanded="false" aria-controls="' + panelId + '"><span class="responsibility-number">' + String(responsibilityIndex + 1).padStart(2, "0") + '</span><span>' + item.title + '</span><span class="responsibility-icon" aria-hidden="true"></span></button><p class="responsibility-description" id="' + panelId + '">' + item.description + '</p></li>';
+            var isDefault = responsibilityIndex === 0;
+            return '<li' + (isDefault ? ' class="is-open"' : '') + '><button class="responsibility-button" type="button" aria-expanded="' + String(isDefault) + '" aria-controls="' + panelId + '"><span class="responsibility-number">' + String(responsibilityIndex + 1).padStart(2, "0") + '</span><span>' + item.title + '</span><span class="responsibility-icon" aria-hidden="true"></span></button><p class="responsibility-description" id="' + panelId + '">' + item.description + '</p></li>';
           }).join("") + "</ol>";
           if (isHumanResources) departmentElement.insertBefore(responsibilityBlock, list);
           else list.insertBefore(responsibilityBlock, list.firstChild);
 
-          responsibilityBlock.querySelectorAll(".responsibility-button").forEach(function (button) {
-            button.closest("li").addEventListener("mouseenter", function () {
-              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
-                if (openItem === button.closest("li")) return;
-                openItem.classList.remove("is-open");
-                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
-                if (openItem.contains(document.activeElement)) document.activeElement.blur();
-              });
+          var responsibilityItems = Array.prototype.slice.call(responsibilityBlock.querySelectorAll("li"));
+          var defaultResponsibility = responsibilityItems[0];
+          function openResponsibility(item) {
+            responsibilityItems.forEach(function (openItem) {
+              var isCurrent = openItem === item;
+              openItem.classList.toggle("is-open", isCurrent);
+              openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", String(isCurrent));
             });
-            button.addEventListener("click", function () {
-              var item = button.closest("li");
-              var willOpen = !item.classList.contains("is-open");
-              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
-                openItem.classList.remove("is-open");
-                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
-              });
-              item.classList.toggle("is-open", willOpen);
-              button.setAttribute("aria-expanded", String(willOpen));
-            });
+          }
+
+          responsibilityItems.forEach(function (item) {
+            var button = item.querySelector(".responsibility-button");
+            item.addEventListener("mouseenter", function () { openResponsibility(item); });
+            button.addEventListener("focus", function () { openResponsibility(item); });
+            button.addEventListener("click", function () { openResponsibility(item); });
+          });
+          responsibilityBlock.addEventListener("mouseleave", function () {
+            if (responsibilityBlock.contains(document.activeElement)) document.activeElement.blur();
+            openResponsibility(defaultResponsibility);
+          });
+          responsibilityBlock.addEventListener("focusout", function () {
+            window.setTimeout(function () {
+              if (!responsibilityBlock.contains(document.activeElement) && !responsibilityBlock.matches(":hover")) {
+                openResponsibility(defaultResponsibility);
+              }
+            }, 0);
           });
         }
 
