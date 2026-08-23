@@ -617,6 +617,17 @@
         position: sticky !important;
         top: 0 !important;
         z-index: 1000 !important;
+        transform: translateY(0);
+        transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform;
+      }
+
+      .rrhs-sticky-header-shell--hidden {
+        transform: translateY(calc(-100% - 1px)) !important;
+      }
+
+      .rrhs-sticky-header-shell--hidden:focus-within {
+        transform: translateY(0) !important;
       }
 
       .rrhs-scroll-header--scrolled {
@@ -653,7 +664,8 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .rrhs-scroll-header {
+        .rrhs-scroll-header,
+        .rrhs-sticky-header-shell {
           transition: none !important;
         }
       }
@@ -676,7 +688,10 @@
       header.closest(".section__wrapper") ||
       header.closest(".section__animation") ||
       header.parentElement;
-    if (headerShell) headerShell.classList.add("rrhs-sticky-header-shell");
+    if (headerShell) {
+      headerShell.classList.add("rrhs-sticky-header-shell");
+      headerShell.classList.remove("rrhs-sticky-header-shell--hidden");
+    }
 
     if (
       scrollHeaderState &&
@@ -684,21 +699,36 @@
       scrollHeaderState.headerShell === headerShell
     ) return;
 
-    scrollHeaderState = {
+    const state = {
       header,
       headerShell,
+      lastY: Math.max(0, window.scrollY || window.pageYOffset || 0),
       ticking: false
     };
+    scrollHeaderState = state;
 
     const updateHeader = () => {
+      if (scrollHeaderState !== state) return;
+
       const currentY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+      const delta = currentY - state.lastY;
       header.classList.toggle("rrhs-scroll-header--scrolled", currentY > 12);
-      scrollHeaderState.ticking = false;
+
+      if (headerShell) {
+        if (currentY <= 16 || delta < -2) {
+          headerShell.classList.remove("rrhs-sticky-header-shell--hidden");
+        } else if (currentY > 96 && delta > 2) {
+          headerShell.classList.add("rrhs-sticky-header-shell--hidden");
+        }
+      }
+
+      state.lastY = currentY;
+      state.ticking = false;
     };
 
     window.addEventListener("scroll", () => {
-      if (!scrollHeaderState || scrollHeaderState.header !== header || scrollHeaderState.ticking) return;
-      scrollHeaderState.ticking = true;
+      if (scrollHeaderState !== state || state.ticking) return;
+      state.ticking = true;
       requestAnimationFrame(updateHeader);
     }, { passive: true });
 
