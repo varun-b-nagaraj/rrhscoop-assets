@@ -338,6 +338,17 @@
       content: "";
       pointer-events: none;
     }
+    .initials.leader-image {
+      display: block;
+      object-fit: cover;
+      outline: 1px solid rgba(255,255,255,.22);
+      outline-offset: -15px;
+      transition: height .42s cubic-bezier(.22, 1, .36, 1), flex-basis .42s cubic-bezier(.22, 1, .36, 1), transform .42s cubic-bezier(.22, 1, .36, 1), object-position .42s cubic-bezier(.22, 1, .36, 1);
+    }
+    .leader-image--hasit { object-position: center 27%; }
+    .leader-image--isabelle { object-position: center 35%; }
+    .leader:hover .leader-image--hasit,
+    .leader:focus .leader-image--hasit { object-position: center 12%; }
     .leader-summary {
       display: flex;
       flex: 1;
@@ -576,7 +587,7 @@
           <div><p class="department-number">Department 04</p><h3>Lightspeed</h3></div>
           <p class="department-copy">Lightspeed supports the digital systems behind the store. The team works with the CO-OP’s e-commerce and point-of-sale tools, helping keep products, orders, and the online shopping experience organized.</p>
           <div class="leaders">
-            <div class="leader"><span class="initials">HB</span><div><p class="leader-role">Director</p><p class="leader-name">Hasit Bandaru</p></div></div>
+            <div class="leader"><img class="initials leader-image leader-image--hasit" src="assets/hasit-bandaru.jpg?v=1" alt="Hasit Bandaru" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Hasit Bandaru</p></div></div>
             <div class="leader"><span class="initials">BM</span><div><p class="leader-role">Manager</p><p class="leader-name">Bhuvan Mantrala</p></div></div>
           </div>
         </article>
@@ -612,7 +623,7 @@
           <div><p class="department-number">Department 08</p><h3>Chick-fil-A</h3></div>
           <p class="department-copy">The Chick-fil-A team manages the CO-OP’s Chick-fil-A service. Its leaders help coordinate preparation, product handling, customer service, and an efficient experience for students and staff.</p>
           <div class="leaders">
-            <div class="leader"><span class="initials">IN</span><div><p class="leader-role">Director</p><p class="leader-name">Isabelle Ngo</p></div></div>
+            <div class="leader"><img class="initials leader-image leader-image--isabelle" src="assets/isabelle-ngo.JPG?v=1" alt="Isabelle Ngo" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Isabelle Ngo</p></div></div>
             <div class="leader"><span class="initials">AP</span><div><p class="leader-role">Manager</p><p class="leader-name">Aasrita Pichikala</p></div></div>
           </div>
         </article>
