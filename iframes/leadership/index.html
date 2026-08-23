@@ -164,7 +164,11 @@
       border-bottom: 1px solid var(--line);
       scroll-margin-top: 24px;
     }
-    #hr { min-height: 650px; }
+    #hr {
+      min-height: 590px;
+      transition: min-height .28s cubic-bezier(.22, 1, .36, 1);
+    }
+    #hr.responsibilities-active { min-height: 650px; }
     .department > div:first-child { grid-column: 1; grid-row: 1; }
     .department-number {
       margin-bottom: 10px;
@@ -473,7 +477,8 @@
       .exec-card { display: grid; grid-template-columns: 280px 1fr; }
       .exec-photo { height: 100%; aspect-ratio: auto; }
       .department { grid-template-columns: 1fr; grid-template-rows: auto; gap: 16px; }
-      #hr { min-height: 0; }
+      #hr,
+      #hr.responsibilities-active { min-height: 0; }
       .department > div:first-child,
       .department-copy,
       .department-responsibilities--inline,
@@ -752,6 +757,9 @@
               responsibilityItem.querySelector(".responsibility-button").setAttribute("aria-expanded", String(isCurrent));
             });
           }
+          function setDepartmentExpansion(isActive) {
+            if (isHumanResources) departmentElement.classList.toggle("responsibilities-active", isActive);
+          }
 
           responsibilityItems.forEach(function (item) {
             var button = item.querySelector(".responsibility-button");
@@ -759,14 +767,18 @@
             button.addEventListener("focus", function () { openResponsibility(item); });
             button.addEventListener("click", function () { openResponsibility(item); });
           });
+          responsibilityBlock.addEventListener("mouseenter", function () { setDepartmentExpansion(true); });
+          responsibilityBlock.addEventListener("focusin", function () { setDepartmentExpansion(true); });
           responsibilityBlock.addEventListener("mouseleave", function () {
             if (responsibilityBlock.contains(document.activeElement)) document.activeElement.blur();
             openResponsibility(null);
+            setDepartmentExpansion(false);
           });
           responsibilityBlock.addEventListener("focusout", function () {
             window.setTimeout(function () {
               if (!responsibilityBlock.contains(document.activeElement) && !responsibilityBlock.matches(":hover")) {
                 openResponsibility(null);
+                setDepartmentExpansion(false);
               }
             }, 0);
           });
