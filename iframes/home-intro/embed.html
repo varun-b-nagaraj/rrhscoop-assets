@@ -3,11 +3,11 @@
   <iframe
     id="rrhs-home-hero-frame"
     title="Built for Dragons"
-    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/hero.html?v=3"
+    src="https://rrhscoop-assets.vercel.app/iframes/home-intro/hero.html?v=4"
     scrolling="no"
     loading="eager"
     height="770"
-    style="display:block;width:100%;height:calc(100svh - 80px);border:0;margin:0;padding:0;background:#EEEAE0!important;overflow:hidden;"
+    style="display:block;width:100%;height:calc(100svh - 64px);border:0;margin:0;padding:0;background:#EEEAE0!important;overflow:hidden;"
   ></iframe>
   <iframe
     id="rrhs-home-categories-frame"
@@ -27,7 +27,7 @@
 
     function sizeHeroToViewport() {
       var siteHeader = document.querySelector(".ins-header");
-      var headerHeight = siteHeader ? siteHeader.getBoundingClientRect().height : 80;
+      var headerHeight = siteHeader ? siteHeader.getBoundingClientRect().height : 64;
       var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
       var heroHeight = Math.max(1, Math.round(viewportHeight - headerHeight));
       hero.style.setProperty("height", heroHeight + "px", "important");

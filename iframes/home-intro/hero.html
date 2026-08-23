@@ -152,9 +152,10 @@
     }
     .hero__visual picture {
       display: block;
-      width: 250%;
-      max-width: none;
-      margin-left: -75%;
+      width: 100%;
+      margin: 0;
+      transform: scale(2.25);
+      transform-origin: center;
     }
     .hero__visual img {
       width: 100%;
@@ -172,7 +173,7 @@
       .hero__inner { grid-template-columns: 1fr; gap: 46px; }
       .hero__headline { font-size: clamp(64px, 16vw, 94px); }
       .hero__visual { order: -1; align-self: center; }
-      .hero__visual picture { width: 100%; margin-left: 0; }
+      .hero__visual picture { width: 100%; margin: 0; transform: none; }
       .hero__visual img { max-height: 440px; }
     }
 
