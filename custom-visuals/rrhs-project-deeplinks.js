@@ -6,7 +6,7 @@
     "solving real constraints": "cafeteria-kiosk"
   };
   const FRAME_SELECTOR = "iframe[src*='/iframes/projects']";
-  const PROJECT_FRAME_VERSION = "7";
+  const PROJECT_FRAME_VERSION = "8";
 
   function ensureProjectModalStyles() {
     if (document.getElementById("rrhs-project-modal-bridge-styles")) return;

@@ -222,10 +222,146 @@ const projects = [
       "Storefront presentation, reliability, and ongoing iteration"
     ],
     tags: ["Web Design", "UX", "HTML", "CSS", "JavaScript", "Responsive Design"]
+  },
+  {
+    id: "finance-business-reporting",
+    title: "Finance & Business Reporting",
+    category: "Finance",
+    status: "Live",
+    image: "assets/data-forecasting.webp",
+    imageAlt: "An analytics dashboard showing business performance data",
+    summary: "Students track revenue, expenses, margins, and product performance to build reports that support purchasing and operating decisions.",
+    overview: "Students use store financial and product data to understand performance and turn it into practical reporting for purchasing and day-to-day operating decisions.",
+    highlights: [
+      "Revenue and expense tracking",
+      "Margin and product-performance analysis",
+      "Reports that support purchasing decisions",
+      "Financial insight for store operations"
+    ],
+    tags: ["Finance", "Reporting", "Margins", "Product Performance", "Decision Support"]
+  },
+  {
+    id: "marketing-campaigns-product-launches",
+    title: "Marketing Campaigns & Product Launches",
+    category: "Marketing",
+    status: "Ongoing",
+    image: "assets/web-development.webp",
+    imageAlt: "Digital content and campaign work displayed on a computer",
+    summary: "Student-led campaigns for new products, seasonal promotions, school events, and digital channels across the CO-OP.",
+    overview: "Students plan and run campaigns that connect product launches, seasonal promotions, school events, and the CO-OP’s digital channels.",
+    highlights: [
+      "Campaign planning for new products",
+      "Seasonal and school-event promotions",
+      "Digital content across CO-OP channels",
+      "Launch coordination and campaign improvement"
+    ],
+    tags: ["Marketing", "Campaigns", "Product Launches", "Digital Content", "Promotion"]
+  },
+  {
+    id: "merchandise-design-vendor-sourcing",
+    title: "Merchandise Design & Vendor Sourcing",
+    category: "Retail & Design",
+    status: "Ongoing",
+    image: "assets/merchandise.webp",
+    imageAlt: "Apparel arranged for a merchandise launch",
+    summary: "Students develop apparel concepts, compare blanks and vendors, set pricing, coordinate production, and prepare products for launch.",
+    overview: "Students manage the merchandise-development process from early apparel concepts and material comparisons through vendor selection, pricing, production, and launch preparation.",
+    highlights: [
+      "Apparel concepts and product development",
+      "Blank, material, and vendor comparisons",
+      "Pricing and production coordination",
+      "Product preparation for launch"
+    ],
+    tags: ["Merchandise", "Apparel Design", "Vendor Sourcing", "Pricing", "Production"]
+  },
+  {
+    id: "visual-merchandising-store-displays",
+    title: "Visual Merchandising & Store Displays",
+    category: "Retail & Design",
+    status: "Ongoing",
+    image: "assets/retail-redesign.webp",
+    imageAlt: "A retail interior with coordinated product displays",
+    summary: "Planning product placement, displays, signage, fixtures, and seasonal layouts to improve the in-store shopping experience.",
+    overview: "Students shape the in-store experience through product placement, display planning, signage, fixture decisions, and seasonal layouts.",
+    highlights: [
+      "Product placement and display planning",
+      "Signage and fixture coordination",
+      "Seasonal store layouts",
+      "In-store shopping experience improvements"
+    ],
+    tags: ["Visual Merchandising", "Store Displays", "Signage", "Fixtures", "Retail Experience"]
+  },
+  {
+    id: "purchasing-inventory-planning",
+    title: "Purchasing & Inventory Planning",
+    category: "Operations",
+    status: "Live",
+    image: "assets/inventory-logistics.webp",
+    imageAlt: "Organized merchandise inventory in a stock area",
+    summary: "Students analyze sales, place product orders, manage stock levels, and balance availability with purchasing costs.",
+    overview: "Students connect sales analysis with purchasing and inventory decisions, balancing product availability, stock levels, and the cost of each order.",
+    highlights: [
+      "Sales analysis for purchasing decisions",
+      "Product ordering and replenishment",
+      "Stock-level monitoring",
+      "Availability and purchasing-cost balance"
+    ],
+    tags: ["Purchasing", "Inventory Planning", "Sales Analysis", "Stock Levels", "Operations"]
+  },
+  {
+    id: "brand-partnerships-vendor-relations",
+    title: "Brand Partnerships & Vendor Relations",
+    category: "Business Development",
+    status: "Ongoing",
+    image: "assets/operations-pos.webp",
+    imageAlt: "A retail team coordinating business operations",
+    summary: "Students work with vendors and outside partners on pricing, fulfillment, promotions, and new product opportunities.",
+    overview: "Students build working relationships with vendors and outside partners to coordinate pricing, fulfillment, promotions, and potential additions to the CO-OP’s product mix.",
+    highlights: [
+      "Vendor and partner communication",
+      "Pricing and fulfillment coordination",
+      "Collaborative promotions",
+      "New product opportunity development"
+    ],
+    tags: ["Business Development", "Partnerships", "Vendor Relations", "Fulfillment", "Product Development"]
+  },
+  {
+    id: "customer-experience-feedback",
+    title: "Customer Experience & Feedback",
+    category: "Marketing",
+    status: "Ongoing",
+    image: "assets/community-delivery.webp",
+    imageAlt: "Students collaborating and sharing feedback",
+    summary: "Using student feedback, sales behavior, and store observations to improve service, product selection, and the shopping experience.",
+    overview: "Students combine direct feedback, sales behavior, and observations from the store to identify improvements to service, product selection, and the overall customer experience.",
+    highlights: [
+      "Student and customer feedback collection",
+      "Sales-behavior analysis",
+      "Store observation and service review",
+      "Product-selection and experience improvements"
+    ],
+    tags: ["Customer Experience", "Feedback", "Sales Behavior", "Service", "Product Selection"]
+  },
+  {
+    id: "event-sales-pop-up-retail",
+    title: "Event Sales & Pop-Up Retail",
+    category: "Retail & Community",
+    status: "Ongoing",
+    image: "assets/food-trailer.webp",
+    imageAlt: "A temporary mobile retail service setup",
+    summary: "Students plan and operate temporary sales at school events, managing products, staffing, displays, and customer flow.",
+    overview: "Students prepare and run temporary retail operations at school events, coordinating the products, people, displays, and customer flow needed for each location.",
+    highlights: [
+      "Pop-up planning for school events",
+      "Product and staffing coordination",
+      "Temporary display setup",
+      "Customer-flow management"
+    ],
+    tags: ["Pop-Up Retail", "Event Sales", "Staffing", "Displays", "Community"]
   }
 ];
 
-const categoryOrder = ["All", "Technology", "Operations", "Retail & Design", "Data", "Food & Community"];
+const categoryOrder = ["All", "Technology", "Operations", "Retail & Design", "Data", "Food & Community", "Finance", "Marketing", "Business Development", "Retail & Community"];
 const stageOrder = ["Live", "Ongoing", "In Development", "Prototype", "Concept"];
 const state = { query: "", category: "All", status: "all", sort: "featured" };
 
