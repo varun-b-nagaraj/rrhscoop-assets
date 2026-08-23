@@ -22,7 +22,7 @@
 
   const base = baseForCurrentScript();
   const runtime = new URL('rrhs-runtime.js', base).href;
-  const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=18', base).href;
+  const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=19', base).href;
   const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=4', base).href;
   const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=3', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
