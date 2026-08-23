@@ -158,7 +158,7 @@
     .department {
       display: grid;
       grid-template-columns: minmax(220px, .72fr) minmax(0, 2.28fr);
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto 1fr;
       gap: 16px 56px;
       padding: 56px 0;
       border-bottom: 1px solid var(--line);
@@ -194,9 +194,13 @@
       height: 420px;
       padding: 27px 24px 24px;
     }
-    .department-responsibilities--row {
-      grid-column: 1 / -1;
-      padding: 22px 24px 20px;
+    .department-responsibilities--inline {
+      grid-column: 1;
+      grid-row: 3;
+      align-self: start;
+      max-width: 320px;
+      margin-top: 8px;
+      padding: 20px 18px 16px;
     }
     .responsibility-label {
       margin-bottom: 9px;
@@ -213,41 +217,84 @@
       list-style: none;
     }
     .responsibility-list li {
-      display: grid;
-      grid-template-columns: 25px 1fr;
-      gap: 8px;
-      align-items: baseline;
-      padding: 9px 0;
       border-bottom: 1px solid var(--line);
+      transition: background .2s ease;
+    }
+    .responsibility-list li:hover,
+    .responsibility-list li:focus-within,
+    .responsibility-list li.is-open { background: rgba(110, 31, 42, .045); }
+    .responsibility-button {
+      display: grid;
+      grid-template-columns: 25px minmax(0, 1fr) 14px;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      padding: 12px 0;
+      border: 0;
       color: var(--ink);
+      background: transparent;
+      font-family: var(--body);
       font-size: 12px;
       font-weight: 600;
       line-height: 1.35;
+      text-align: left;
+      cursor: pointer;
     }
-    .responsibility-list span {
+    .responsibility-button:focus-visible {
+      outline: 1px solid var(--maroon);
+      outline-offset: -1px;
+    }
+    .responsibility-number {
       color: var(--maroon);
       font-size: 9px;
       font-weight: 700;
       letter-spacing: .1em;
     }
-    .department-responsibilities--column .responsibility-list { margin-top: auto; }
-    .department-responsibilities--row .responsibility-list {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .responsibility-icon {
+      position: relative;
+      width: 12px;
+      height: 12px;
     }
-    .department-responsibilities--row .responsibility-list li {
-      padding: 12px 18px 2px;
-      border-right: 1px solid var(--line);
-      border-bottom: 0;
+    .responsibility-icon::before,
+    .responsibility-icon::after {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 12px;
+      height: 1px;
+      background: var(--maroon);
+      content: "";
+      transition: transform .24s ease;
     }
-    .department-responsibilities--row .responsibility-list li:first-child { padding-left: 0; }
-    .department-responsibilities--row .responsibility-list li:last-child {
-      padding-right: 0;
-      border-right: 0;
+    .responsibility-icon::after { transform: rotate(90deg); }
+    .responsibility-description {
+      max-height: 0;
+      margin: 0;
+      padding: 0 18px 0 33px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+      opacity: 0;
+      transform: translateY(-5px);
+      transition: max-height .32s cubic-bezier(.22, 1, .36, 1), padding .32s ease, opacity .2s ease, transform .32s ease;
+    }
+    .responsibility-list li:hover .responsibility-description,
+    .responsibility-list li:focus-within .responsibility-description,
+    .responsibility-list li.is-open .responsibility-description {
+      max-height: 92px;
+      padding-bottom: 14px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .responsibility-list li:hover .responsibility-icon::after,
+    .responsibility-list li:focus-within .responsibility-icon::after,
+    .responsibility-list li.is-open .responsibility-icon::after {
+      transform: rotate(0deg);
     }
     .leaders {
       grid-column: 2;
-      grid-row: 1 / span 2;
+      grid-row: 1 / span 3;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
@@ -397,8 +444,10 @@
       .department { grid-template-columns: 1fr; grid-template-rows: auto; gap: 16px; }
       .department > div:first-child,
       .department-copy,
+      .department-responsibilities--inline,
       .leaders { grid-column: 1; grid-row: auto; }
       .department-copy { max-width: 680px; margin-bottom: 14px; }
+      .department-responsibilities--inline { max-width: 680px; margin: 0 0 18px; }
     }
 
     @media (max-width: 620px) {
@@ -414,15 +463,6 @@
       .leader { height: 440px; }
       .initials { height: 300px; flex-basis: 300px; }
       .department-responsibilities--column { height: auto; min-height: 270px; }
-      .department-responsibilities--row { grid-column: auto; padding: 27px 24px 24px; }
-      .department-responsibilities--row .responsibility-list { display: block; }
-      .department-responsibilities--row .responsibility-list li,
-      .department-responsibilities--row .responsibility-list li:first-child,
-      .department-responsibilities--row .responsibility-list li:last-child {
-        padding: 12px 0;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
-      }
       .jump-links { gap: 8px; }
       .jump-links a { padding: 9px 12px; }
       .closing { padding: 82px 0 88px; }
@@ -596,14 +636,46 @@
   <script>
     (function () {
       var responsibilities = {
-        hr: ["Team coordination", "Workplace communication", "Customer service"],
-        finance: ["Sales reporting", "Budget tracking", "Purchasing insights"],
-        product: ["Product selection", "Merchandise planning", "Store presentation"],
-        lightspeed: ["E-commerce systems", "Point-of-sale support", "Order organization"],
-        marketing: ["Campaign planning", "Digital content", "Product promotion"],
-        kiosk: ["Kiosk readiness", "Student service", "Product flow"],
-        inventory: ["Stock counts", "Replenishment", "Product organization"],
-        chickfila: ["Order preparation", "Product handling", "Pickup and delivery service"]
+        hr: [
+          { title: "Team coordination", description: "Coordinates student roles, schedules, and day-to-day team needs." },
+          { title: "Workplace communication", description: "Keeps expectations and important updates clear across departments." },
+          { title: "Customer service", description: "Supports positive, consistent service for students, staff, and visitors." }
+        ],
+        finance: [
+          { title: "Sales reporting", description: "Turns sales activity into clear reports leaders can use." },
+          { title: "Budget tracking", description: "Monitors spending and available funds throughout the school year." },
+          { title: "Purchasing insights", description: "Uses cost and performance data to guide purchasing decisions." }
+        ],
+        product: [
+          { title: "Product selection", description: "Chooses useful, relevant products for the RRHS community." },
+          { title: "Merchandise planning", description: "Plans assortments, pricing, and launches for CO-OP merchandise." },
+          { title: "Store presentation", description: "Organizes products so the store feels clear and easy to shop." }
+        ],
+        lightspeed: [
+          { title: "E-commerce systems", description: "Maintains the online storefront and its customer-facing experience." },
+          { title: "Point-of-sale support", description: "Supports the systems used to process in-person purchases." },
+          { title: "Order organization", description: "Keeps digital orders accurate and ready for fulfillment." }
+        ],
+        marketing: [
+          { title: "Campaign planning", description: "Builds campaigns around products, events, and seasonal moments." },
+          { title: "Digital content", description: "Creates content that keeps students informed and engaged." },
+          { title: "Product promotion", description: "Introduces new products and helps customers discover what is available." }
+        ],
+        kiosk: [
+          { title: "Kiosk readiness", description: "Prepares the cafeteria kiosk for efficient daily service." },
+          { title: "Student service", description: "Helps students complete purchases quickly between classes." },
+          { title: "Product flow", description: "Keeps high-demand kiosk products organized and available." }
+        ],
+        inventory: [
+          { title: "Stock counts", description: "Tracks available quantities and identifies inventory differences." },
+          { title: "Replenishment", description: "Restocks products before availability becomes a problem." },
+          { title: "Product organization", description: "Maintains clear storage and reliable product locations." }
+        ],
+        chickfila: [
+          { title: "Order preparation", description: "Coordinates orders so they are ready at the correct time." },
+          { title: "Product handling", description: "Maintains an organized process from arrival through handoff." },
+          { title: "Pickup and delivery", description: "Supports accurate counter pickup and campus delivery service." }
+        ]
       };
 
       function sendHeight() {
@@ -629,12 +701,28 @@
 
         if (departmentResponsibilities.length) {
           var responsibilityBlock = document.createElement("aside");
-          responsibilityBlock.className = "department-responsibilities " + (departmentElement.id === "hr" ? "department-responsibilities--row" : "department-responsibilities--column");
+          var isHumanResources = departmentElement.id === "hr";
+          responsibilityBlock.className = "department-responsibilities " + (isHumanResources ? "department-responsibilities--inline" : "department-responsibilities--column");
           responsibilityBlock.setAttribute("aria-label", department + " responsibilities");
           responsibilityBlock.innerHTML = '<p class="responsibility-label">Responsibilities</p><ol class="responsibility-list">' + departmentResponsibilities.map(function (item, responsibilityIndex) {
-            return '<li><span>' + String(responsibilityIndex + 1).padStart(2, "0") + '</span>' + item + '</li>';
+            var panelId = "responsibility-" + departmentElement.id + "-" + responsibilityIndex;
+            return '<li><button class="responsibility-button" type="button" aria-expanded="false" aria-controls="' + panelId + '"><span class="responsibility-number">' + String(responsibilityIndex + 1).padStart(2, "0") + '</span><span>' + item.title + '</span><span class="responsibility-icon" aria-hidden="true"></span></button><p class="responsibility-description" id="' + panelId + '">' + item.description + '</p></li>';
           }).join("") + "</ol>";
-          list.appendChild(responsibilityBlock);
+          if (isHumanResources) departmentElement.insertBefore(responsibilityBlock, list);
+          else list.insertBefore(responsibilityBlock, list.firstChild);
+
+          responsibilityBlock.querySelectorAll(".responsibility-button").forEach(function (button) {
+            button.addEventListener("click", function () {
+              var item = button.closest("li");
+              var willOpen = !item.classList.contains("is-open");
+              responsibilityBlock.querySelectorAll("li.is-open").forEach(function (openItem) {
+                openItem.classList.remove("is-open");
+                openItem.querySelector(".responsibility-button").setAttribute("aria-expanded", "false");
+              });
+              item.classList.toggle("is-open", willOpen);
+              button.setAttribute("aria-expanded", String(willOpen));
+            });
+          });
         }
 
         leaders.forEach(function (leader, index) {
