@@ -1179,8 +1179,8 @@
     try {
       const url = new URL(frame.src, window.location.href);
       if (!url.pathname.endsWith("/iframes/leadership/index.html")) return;
-      if (url.searchParams.get("v") === "35") return;
-      url.searchParams.set("v", "35");
+      if (url.searchParams.get("v") === "36") return;
+      url.searchParams.set("v", "36");
       frame.src = url.href;
     } catch (_) {}
   }

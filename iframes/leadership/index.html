@@ -353,6 +353,8 @@
     }
     .leader-image--hasit { object-position: center 27%; }
     .leader-image--isabelle { object-position: center 35%; }
+    .leader-image--dhriti { object-position: center 30%; }
+    .leader-image--emili { object-position: center 26%; }
     .leader-summary {
       position: absolute;
       top: 285px;
@@ -627,7 +629,7 @@
           <div><p class="department-number">Department 05</p><h3>Marketing</h3></div>
           <p class="department-copy">Marketing tells the CO-OP’s story. The department supports campaigns, promotions, content, and communication that help students and staff discover products, services, and store updates.</p>
           <div class="leaders">
-            <div class="leader"><span class="initials">DS</span><div><p class="leader-role">Director</p><p class="leader-name">Dhriti Saani</p></div></div>
+            <div class="leader"><img class="initials leader-image leader-image--dhriti" src="assets/dhriti-saani.png?v=1" alt="Dhriti Saani" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Dhriti Saani</p></div></div>
             <div class="leader"><span class="initials">SV</span><div><p class="leader-role">Manager</p><p class="leader-name">Sai Vaddula</p></div></div>
           </div>
         </article>
@@ -645,7 +647,7 @@
           <div><p class="department-number">Department 07</p><h3>Inventory</h3></div>
           <p class="department-copy">Inventory keeps the store supplied and organized. The department supports stock tracking, counts, replenishment, and product organization so the right items are available when customers need them.</p>
           <div class="leaders">
-            <div class="leader"><span class="initials">EK</span><div><p class="leader-role">Director</p><p class="leader-name">Emili Kosik</p></div></div>
+            <div class="leader"><img class="initials leader-image leader-image--emili" src="assets/emili-kosik.png?v=1" alt="Emili Kosik" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Emili Kosik</p></div></div>
             <div class="leader"><span class="initials">AS</span><div><p class="leader-role">Manager</p><p class="leader-name">Anisha Saravanan</p></div></div>
           </div>
         </article>
@@ -654,7 +656,7 @@
           <div><p class="department-number">Department 08</p><h3>Chick-fil-A</h3></div>
           <p class="department-copy">The Chick-fil-A team manages the CO-OP’s Chick-fil-A service. Its leaders help coordinate preparation, product handling, customer service, and an efficient experience for students and staff.</p>
           <div class="leaders">
-            <div class="leader"><img class="initials leader-image leader-image--isabelle" src="assets/isabelle-ngo.png?v=1" alt="Isabelle Ngo" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Isabelle Ngo</p></div></div>
+            <div class="leader" data-bio="Hi! My name is Isabelle but you can call me Izzy and I am so honored to be this year’s Chick-fil-A Director! I am a senior planning on majoring in chemistry, and when you can’t find me organizing or eating Chick-fil-A, I’ll be in the pool as team captain of the swim team. I am super excited to be a leading part of this new branch of the CO-OP!"><img class="initials leader-image leader-image--isabelle" src="assets/isabelle-ngo.png?v=1" alt="Isabelle Ngo" loading="lazy" decoding="async"><div><p class="leader-role">Director</p><p class="leader-name">Isabelle Ngo</p></div></div>
             <div class="leader"><span class="initials">AP</span><div><p class="leader-role">Manager</p><p class="leader-name">Aasrita Pichikala</p></div></div>
           </div>
         </article>
@@ -808,7 +810,7 @@
           }
           bio.id = bioId;
           bio.className = "leader-copy";
-          bio.textContent = name + " serves as " + role.toLowerCase() + " for the RRHS CO-OP’s " + department + " department during the 2026–2027 school year.";
+          bio.textContent = leader.getAttribute("data-bio") || (name + " serves as " + role.toLowerCase() + " for the RRHS CO-OP’s " + department + " department during the 2026–2027 school year.");
           if (summary) summary.appendChild(bio);
 
           leader.tabIndex = 0;
