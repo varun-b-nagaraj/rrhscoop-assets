@@ -24,7 +24,7 @@
   const runtime = new URL('rrhs-runtime.js', base).href;
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=23', base).href;
   const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=4', base).href;
-  const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=3', base).href;
+  const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=4', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
   const inventoryGuard = new URL('check-out-page/rrhs-inventory-guard.js', base).href;
   const stoleDrawer = new URL('check-out-page/rrhs-stole-drawer.js', base).href;
@@ -43,9 +43,9 @@
   // The optional scripts and their implementations remain available for future use.
   loadScript(runtime)
     .catch(() => {})
+    .then(() => loadScript(faqStickyNav).catch(() => {}))
     .then(() => loadScript(visuals).catch(() => {}))
     .then(() => loadScript(headerDropdowns).catch(() => {}))
-    .then(() => loadScript(faqStickyNav).catch(() => {}))
     .then(() => loadScript(checkout).catch(() => {}))
     .then(() => loadScript(inventoryGuard).catch(() => {}))
     .then(() => loadOptionalScript(stoleDrawerEnabled, stoleDrawer))

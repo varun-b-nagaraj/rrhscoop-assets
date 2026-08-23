@@ -3,7 +3,7 @@
   const STYLE_ID = "rrhs-faq-host-nav-styles";
   const NAV_ID = "rrhs-faq-sticky-nav";
   const FRAME_SELECTOR = "iframe[src*='/iframes/faq']";
-  const TOP_OFFSET = 112;
+  const TOP_OFFSET = 72;
   const topics = [
     ["faq", "All topics", "45"],
     ["group-top", "Top Questions", "5"],
@@ -238,15 +238,6 @@
 
   window.addEventListener("message", (event) => {
     if (!frame || event.source !== frame.contentWindow || !event.data) return;
-    if (event.data.type === "rrhs-faq-height" && !metrics) {
-      const height = Number(event.data.height || frame.offsetHeight || 6200);
-      metrics = {
-        height,
-        stickyStart: Math.min(760, height * .12),
-        contactTop: Math.max(0, height - 900)
-      };
-      schedulePosition();
-    }
     if (event.data.type === "rrhs-faq-metrics") {
       metrics = event.data;
       schedulePosition();
