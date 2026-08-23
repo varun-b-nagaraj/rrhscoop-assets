@@ -364,16 +364,16 @@
       min-height: 0;
       padding: 19px 20px 20px;
       background: #fff;
-      transition: top .42s cubic-bezier(.22, 1, .36, 1), left .42s cubic-bezier(.22, 1, .36, 1), padding .38s cubic-bezier(.22, 1, .36, 1);
+      transition: top .42s cubic-bezier(.22, 1, .36, 1), left .42s cubic-bezier(.22, 1, .36, 1), padding .42s cubic-bezier(.22, 1, .36, 1);
     }
     .leader-heading {
       display: flex;
       flex: 0 0 auto;
       flex-direction: column;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 5px;
       min-height: 0;
-      transition: flex-basis .42s cubic-bezier(.22, 1, .36, 1), margin-left .42s cubic-bezier(.22, 1, .36, 1), padding-left .38s cubic-bezier(.22, 1, .36, 1);
+      transition: min-height .42s cubic-bezier(.22, 1, .36, 1), margin-left .42s cubic-bezier(.22, 1, .36, 1), padding-left .42s cubic-bezier(.22, 1, .36, 1);
     }
     .leader-name {
       order: 1;
@@ -403,7 +403,7 @@
       opacity: 0;
       overflow: hidden;
       transform: translateY(24px);
-      transition: max-height .42s cubic-bezier(.22, 1, .36, 1), margin-top .35s ease, padding-left .38s cubic-bezier(.22, 1, .36, 1), opacity .24s ease .08s, transform .42s cubic-bezier(.22, 1, .36, 1);
+      transition: max-height .42s cubic-bezier(.22, 1, .36, 1), margin-top .42s cubic-bezier(.22, 1, .36, 1), padding-left .42s cubic-bezier(.22, 1, .36, 1), opacity .24s ease, transform .42s cubic-bezier(.22, 1, .36, 1);
     }
     .leader:hover,
     .leader:focus {
@@ -427,8 +427,7 @@
     }
     .leader:hover .leader-heading,
     .leader:focus .leader-heading {
-      flex-basis: 118px;
-      justify-content: center;
+      min-height: 118px;
       margin-left: 118px;
       padding-left: 17px;
     }
