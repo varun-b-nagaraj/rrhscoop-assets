@@ -25,6 +25,14 @@
       "destination": "/iframes/cfa/embed.html"
     },
     {
+      "source": "/iframes/why-coop.html",
+      "destination": "/iframes/why-coop/index.html"
+    },
+    {
+      "source": "/iframes/why-coop-embed.html",
+      "destination": "/iframes/why-coop/embed.html"
+    },
+    {
       "source": "/iframes/assets/(.*)",
       "destination": "/iframes/leadership/assets/$1"
     },

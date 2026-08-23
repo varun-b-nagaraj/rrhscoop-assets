@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Why Shop the RRHS CO-OP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --display: "Playfair Display", Georgia, serif;
+      --body: "Spectral", Georgia, serif;
+      --maroon: #761627;
+      --ink: #1d1a18;
+      --muted: #776f68;
+      --paper: #f4f1e9;
+      --sand: #ebe5d7;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --max: 1160px;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      min-width: 320px;
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h2, h3 { font-family: var(--display); }
+    svg { display: block; }
+    .wrap { width: min(calc(100% - 80px), var(--max)); margin: 0 auto; }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 0;
+      color: var(--maroon);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .31em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .eyebrow::before,
+    .eyebrow::after {
+      width: 34px;
+      height: 1px;
+      background: currentColor;
+      content: "";
+    }
+
+    .why {
+      min-height: 566px;
+      padding: 42px 0 82px;
+      background: var(--paper);
+      text-align: center;
+    }
+    .why .eyebrow { justify-content: center; margin-bottom: 23px; }
+    .why h2 {
+      margin-bottom: 10px;
+      font-size: clamp(42px, 3.5vw, 54px);
+      font-weight: 700;
+      letter-spacing: -.035em;
+      line-height: .98;
+    }
+    .why-intro {
+      max-width: 500px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(48px, 8vw, 126px);
+      margin-top: 72px;
+    }
+    .benefit { text-align: center; }
+    .benefit-icon {
+      display: grid;
+      place-items: center;
+      width: 74px;
+      height: 74px;
+      margin: 0 auto 21px;
+      border: 1px solid var(--maroon);
+      border-radius: 50%;
+      color: var(--maroon);
+    }
+    .benefit-icon svg { width: 30px; height: 30px; }
+    .benefit h3 {
+      margin-bottom: 7px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+      line-height: 1.15;
+    }
+    .benefit p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .how {
+      min-height: 595px;
+      padding: 108px 0 96px;
+      background: var(--sand);
+    }
+    .how .eyebrow { margin-bottom: 23px; }
+    .how .eyebrow::after { display: none; }
+    .how h2 {
+      margin-bottom: 9px;
+      font-size: clamp(48px, 4.15vw, 64px);
+      font-weight: 500;
+      letter-spacing: -.045em;
+      line-height: .96;
+    }
+    .how-intro {
+      max-width: 430px;
+      margin-bottom: 65px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(42px, 7vw, 104px);
+    }
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 20px;
+      color: #541421;
+    }
+    .step h3 {
+      margin-bottom: 8px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+    }
+    .step p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity .7s var(--ease), transform .7s var(--ease);
+    }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    .benefit:nth-child(2), .step:nth-child(2) { transition-delay: 80ms; }
+    .benefit:nth-child(3), .step:nth-child(3) { transition-delay: 160ms; }
+    .step:nth-child(4) { transition-delay: 240ms; }
+
+    @media (max-width: 840px) {
+      .wrap { width: min(calc(100% - 40px), var(--max)); }
+      .why { padding: 64px 0 76px; }
+      .benefits { grid-template-columns: 1fr; gap: 46px; margin-top: 58px; }
+      .benefit p { max-width: 380px; margin-right: auto; margin-left: auto; }
+      .how { padding: 78px 0 84px; }
+      .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 54px 38px; }
+    }
+
+    @media (max-width: 520px) {
+      .eyebrow { font-size: 10px; letter-spacing: .24em; }
+      .why h2 { font-size: 41px; }
+      .how h2 { font-size: 46px; }
+      .steps { grid-template-columns: 1fr; gap: 42px; }
+      .step { max-width: 360px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="why" aria-labelledby="why-title">
+    <div class="wrap">
+      <p class="eyebrow">Why the Co-Op</p>
+      <h2 id="why-title">Made for the Way Dragons Shop</h2>
+      <p class="why-intro">The only store built by RRHS students, for the RRHS community.</p>
+
+      <div class="benefits">
+        <article class="benefit reveal">
+          <div class="benefit-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+              <path d="M5 10.5 16 5l11 5.5v12L16 28 5 22.5z"/><path d="m5 10.5 11 5.6 11-5.6M16 16.1V28"/>
+            </svg>
+          </div>
+          <h3>Official RRHS Gear</h3>
+          <p>Authentic Round Rock merchandise you won’t find anywhere else on campus.</p>
+        </article>
+
+        <article class="benefit reveal">
+          <div class="benefit-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 9h16v13H4zM20 13h5l3 4v5h-8z"/><circle cx="9" cy="24" r="2.5"/><circle cx="24" cy="24" r="2.5"/>
+            </svg>
+          </div>
+          <h3>Pickup &amp; School Delivery</h3>
+          <p>Order between classes and grab it at the counter — or get it delivered across RRHS.</p>
+        </article>
+
+        <article class="benefit reveal">
+          <div class="benefit-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="12" cy="10" r="4"/><circle cx="23" cy="12" r="3"/><path d="M4.5 26c.5-5 3.2-7.5 7.5-7.5s7 2.5 7.5 7.5M19 20c1.1-1.3 2.5-2 4.2-2 3.3 0 5.3 2 5.8 6"/>
+            </svg>
+          </div>
+          <h3>100% Student-Run</h3>
+          <p>Every order supports 150+ students learning real business, tech, and design.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow">How It Works</p>
+      <h2 id="how-title">From the Co-Op to You.</h2>
+      <p class="how-intro">Order online, and the Co-Op team takes it from the counter to your classroom.</p>
+
+      <div class="steps">
+        <article class="step reveal">
+          <svg class="step-icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M4 5h24a2 2 0 0 1 2 2v16H2V7a2 2 0 0 1 2-2Zm-3 20h30v2H1z"/></svg>
+          <h3>01 — Shop</h3>
+          <p>Browse merchandise online, right from your Chromebook.</p>
+        </article>
+        <article class="step reveal">
+          <svg class="step-icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="2" y="6" width="28" height="20" rx="2"/><circle cx="16" cy="16" r="4" fill="var(--sand)"/></svg>
+          <h3>02 — Order</h3>
+          <p>Complete your purchase through the Co-Op storefront.</p>
+        </article>
+        <article class="step reveal">
+          <svg class="step-icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="3" y="6" width="12" height="18" rx="2"/><rect x="17" y="6" width="12" height="18" rx="2"/></svg>
+          <h3>03 — Pickup or Delivery</h3>
+          <p>The Co-Op team prepares your order for counter pickup or school delivery.</p>
+        </article>
+        <article class="step reveal">
+          <svg class="step-icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="m16 2 3.6 7.5 8.2 1.2-5.9 5.8 1.4 8.2L16 20.8l-7.3 3.9 1.4-8.2-5.9-5.8 8.2-1.2z"/></svg>
+          <h3>04 — Come Back &amp; Earn</h3>
+          <p>Shop again and watch for rewards, offers, and perks for regulars.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var items = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+
+      function revealItems() {
+        if (!("IntersectionObserver" in window)) {
+          items.forEach(function (item) { item.classList.add("in"); });
+          return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("in");
+            observer.unobserve(entry.target);
+          });
+        }, { threshold: .16 });
+        items.forEach(function (item) { observer.observe(item); });
+      }
+
+      function reportHeight() {
+        window.parent.postMessage({
+          type: "rrhs-why-coop-height",
+          height: Math.ceil(document.documentElement.scrollHeight)
+        }, "*");
+      }
+
+      revealItems();
+      window.addEventListener("load", reportHeight);
+      window.addEventListener("resize", reportHeight);
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "rrhs-why-coop-request-height") reportHeight();
+      });
+      if (typeof ResizeObserver === "function") {
+        new ResizeObserver(reportHeight).observe(document.body);
+      }
+    }());
+  </script>
+</body>
+</html>
