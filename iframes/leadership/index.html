@@ -371,12 +371,13 @@
       flex: 0 0 auto;
       flex-direction: column;
       justify-content: flex-start;
+      gap: 5px;
       min-height: 0;
-      transition: flex-basis .42s cubic-bezier(.22, 1, .36, 1);
+      transition: flex-basis .42s cubic-bezier(.22, 1, .36, 1), margin-left .42s cubic-bezier(.22, 1, .36, 1), padding-left .38s cubic-bezier(.22, 1, .36, 1);
     }
     .leader-name {
       order: 1;
-      margin-bottom: 5px;
+      margin-bottom: 0;
       font-family: "DM Serif Display", Georgia, serif;
       font-size: clamp(20px, 1.7vw, 25px);
       font-weight: 400;
@@ -402,7 +403,7 @@
       opacity: 0;
       overflow: hidden;
       transform: translateY(24px);
-      transition: max-height .42s cubic-bezier(.22, 1, .36, 1), margin-top .35s ease, opacity .24s ease .08s, transform .42s cubic-bezier(.22, 1, .36, 1);
+      transition: max-height .42s cubic-bezier(.22, 1, .36, 1), margin-top .35s ease, padding-left .38s cubic-bezier(.22, 1, .36, 1), opacity .24s ease .08s, transform .42s cubic-bezier(.22, 1, .36, 1);
     }
     .leader:hover,
     .leader:focus {
@@ -421,18 +422,21 @@
     .leader:hover .leader-summary,
     .leader:focus .leader-summary {
       top: 0;
-      left: 118px;
-      padding: 0 17px 20px;
+      left: 0;
+      padding: 0 17px 20px 0;
     }
     .leader:hover .leader-heading,
     .leader:focus .leader-heading {
       flex-basis: 118px;
       justify-content: center;
+      margin-left: 118px;
+      padding-left: 17px;
     }
     .leader:hover .leader-copy,
     .leader:focus .leader-copy {
-      max-height: 220px;
-      margin-top: 10px;
+      max-height: 260px;
+      margin-top: 14px;
+      padding-left: 17px;
       opacity: 1;
       transform: translateY(0);
     }
