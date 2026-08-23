@@ -329,6 +329,17 @@ function openProject(project) {
   }
 }
 
+let lastDeepLinkedProject = "";
+
+function openProjectById(projectId) {
+  const normalizedId = String(projectId || "").trim();
+  if (!normalizedId || normalizedId === lastDeepLinkedProject) return;
+  const project = projects.find(item => item.id === normalizedId);
+  if (!project) return;
+  lastDeepLinkedProject = normalizedId;
+  openProject(project);
+}
+
 function resetFilters() {
   state.query = "";
   state.category = "All";
@@ -459,6 +470,7 @@ document.addEventListener("keydown", event => {
 
 window.addEventListener("message", event => {
   if (event.data && event.data.type === "rrhs-projects-request-height") notifyHeight();
+  if (event.data && event.data.type === "rrhs-projects-open-id") openProjectById(event.data.id);
 });
 window.addEventListener("load", notifyHeight);
 window.addEventListener("resize", notifyHeight);
@@ -466,3 +478,6 @@ if (window.ResizeObserver) new ResizeObserver(notifyHeight).observe(document.bod
 document.fonts && document.fonts.ready.then(notifyHeight);
 
 render();
+
+const initialProjectId = new URLSearchParams(window.location.search).get("project");
+if (initialProjectId) window.requestAnimationFrame(() => openProjectById(initialProjectId));
