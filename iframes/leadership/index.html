@@ -158,7 +158,7 @@
     .department {
       display: grid;
       grid-template-columns: minmax(220px, .72fr) minmax(0, 2.28fr);
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto 1fr;
       gap: 16px 56px;
       padding: 56px 0;
       border-bottom: 1px solid var(--line);
@@ -183,9 +183,49 @@
       font-size: 14px;
       line-height: 1.68;
     }
+    .department-responsibilities {
+      grid-column: 1;
+      grid-row: 3;
+      align-self: start;
+      width: 100%;
+      max-width: 320px;
+      margin-top: 12px;
+    }
+    .responsibility-label {
+      margin-bottom: 9px;
+      color: var(--maroon);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .responsibility-list {
+      margin: 0;
+      padding: 0;
+      border-top: 1px solid var(--line);
+      list-style: none;
+    }
+    .responsibility-list li {
+      display: grid;
+      grid-template-columns: 25px 1fr;
+      gap: 8px;
+      align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .responsibility-list span {
+      color: var(--maroon);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .1em;
+    }
     .leaders {
       grid-column: 2;
-      grid-row: 1 / span 2;
+      grid-row: 1 / span 3;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
@@ -335,8 +375,10 @@
       .department { grid-template-columns: 1fr; grid-template-rows: auto; gap: 16px; }
       .department > div:first-child,
       .department-copy,
+      .department-responsibilities,
       .leaders { grid-column: 1; grid-row: auto; }
       .department-copy { max-width: 680px; margin-bottom: 14px; }
+      .department-responsibilities { max-width: 680px; margin: 0 0 18px; }
     }
 
     @media (max-width: 620px) {
@@ -523,6 +565,17 @@
 
   <script>
     (function () {
+      var responsibilities = {
+        hr: ["Team coordination", "Workplace communication", "Customer service"],
+        finance: ["Sales reporting", "Budget tracking", "Purchasing insights"],
+        product: ["Product selection", "Merchandise planning", "Store presentation"],
+        lightspeed: ["E-commerce systems", "Point-of-sale support", "Order organization"],
+        marketing: ["Campaign planning", "Digital content", "Product promotion"],
+        kiosk: ["Kiosk readiness", "Student service", "Product flow"],
+        inventory: ["Stock counts", "Replenishment", "Product organization"],
+        chickfila: ["Order preparation", "Product handling", "Pickup and delivery service"]
+      };
+
       function sendHeight() {
         var height = document.documentElement.scrollHeight;
         document.documentElement.dataset.pageHeight = String(height);
@@ -539,8 +592,21 @@
         });
       });
       document.querySelectorAll(".leaders").forEach(function (list) {
-        var department = list.closest(".department").querySelector("h3").textContent.trim();
+        var departmentElement = list.closest(".department");
+        var department = departmentElement.querySelector("h3").textContent.trim();
+        var departmentResponsibilities = responsibilities[departmentElement.id] || [];
         var leaders = Array.prototype.slice.call(list.querySelectorAll(".leader"));
+
+        if (departmentResponsibilities.length) {
+          var responsibilityBlock = document.createElement("aside");
+          responsibilityBlock.className = "department-responsibilities";
+          responsibilityBlock.setAttribute("aria-label", department + " responsibilities");
+          responsibilityBlock.innerHTML = '<p class="responsibility-label">Responsibilities</p><ol class="responsibility-list">' + departmentResponsibilities.map(function (item, responsibilityIndex) {
+            return '<li><span>' + String(responsibilityIndex + 1).padStart(2, "0") + '</span>' + item + '</li>';
+          }).join("") + "</ol>";
+          departmentElement.insertBefore(responsibilityBlock, list);
+        }
+
         leaders.forEach(function (leader, index) {
           var role = leader.querySelector(".leader-role").textContent.trim();
           var name = leader.querySelector(".leader-name").textContent.trim();
