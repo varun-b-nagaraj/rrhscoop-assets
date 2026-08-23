@@ -362,6 +362,14 @@
       background: #fff;
       transition: top .42s cubic-bezier(.22, 1, .36, 1), left .42s cubic-bezier(.22, 1, .36, 1), padding .38s cubic-bezier(.22, 1, .36, 1);
     }
+    .leader-heading {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: 0;
+      transition: flex-basis .42s cubic-bezier(.22, 1, .36, 1);
+    }
     .leader-name {
       order: 1;
       margin-bottom: 5px;
@@ -410,12 +418,17 @@
     .leader:focus .leader-summary {
       top: 0;
       left: 118px;
-      padding: 17px 17px 20px;
+      padding: 0 17px 20px;
+    }
+    .leader:hover .leader-heading,
+    .leader:focus .leader-heading {
+      flex-basis: 118px;
+      justify-content: center;
     }
     .leader:hover .leader-copy,
     .leader:focus .leader-copy {
       max-height: 220px;
-      margin-top: 12px;
+      margin-top: 10px;
       opacity: 1;
       transform: translateY(0);
     }
@@ -760,15 +773,24 @@
         }
 
         leaders.forEach(function (leader, index) {
-          var role = leader.querySelector(".leader-role").textContent.trim();
-          var name = leader.querySelector(".leader-name").textContent.trim();
+          var roleElement = leader.querySelector(".leader-role");
+          var nameElement = leader.querySelector(".leader-name");
+          var role = roleElement.textContent.trim();
+          var name = nameElement.textContent.trim();
           var avatar = leader.querySelector(".initials");
           var summary = leader.querySelector(":scope > div");
+          var heading = document.createElement("div");
           var bio = document.createElement("p");
           var bioId = "leader-bio-" + list.closest(".department").id + "-" + index;
 
           if (avatar) avatar.classList.add("leader-photo");
-          if (summary) summary.classList.add("leader-summary");
+          if (summary) {
+            summary.classList.add("leader-summary");
+            heading.className = "leader-heading";
+            heading.appendChild(nameElement);
+            heading.appendChild(roleElement);
+            summary.appendChild(heading);
+          }
           bio.id = bioId;
           bio.className = "leader-copy";
           bio.textContent = name + " serves as " + role.toLowerCase() + " for the RRHS CO-OP’s " + department + " department during the 2026–2027 school year.";
