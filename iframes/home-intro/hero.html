@@ -159,19 +159,28 @@
       transform: translateY(18px) scale(.98);
       animation: reveal .85s var(--ease) .12s forwards;
     }
+    /* The emblem file carries ~28% transparent padding on each side and its
+       artwork sits 3% above the file's vertical centre. Anchoring the picture
+       box would leave that dead space in the layout and throw the composition
+       off centre, so anchor the artwork itself: pin the picture's right edge to
+       the column edge, then push it back out by the padding it carries. */
     .hero__visual picture {
+      --art-pad-right: 28.02%;
+      --art-center-y: 46.88%;
       position: absolute;
       top: 50%;
-      left: 50%;
+      right: 0;
       display: block;
-      width: 185%;
-      max-width: 880px;
+      height: 100%;
+      max-height: 760px;
+      width: auto;
       margin: 0;
-      transform: translate(-50%, -50%);
+      transform: translate(var(--art-pad-right), calc(var(--art-center-y) * -1));
       pointer-events: none;
     }
     .hero__visual img {
-      width: 100%;
+      height: 100%;
+      width: auto;
       max-width: none;
       max-height: none;
       object-fit: contain;
@@ -187,8 +196,13 @@
       .hero__inner { grid-template-columns: 1fr; gap: 46px; height: auto; }
       .hero__headline { font-size: clamp(64px, 16vw, 94px); }
       .hero__visual { order: -1; align-self: center; height: 440px; }
-      .hero__visual picture { width: 100%; max-width: 560px; margin: 0; transform: translate(-50%, -50%); }
-      .hero__visual img { max-height: 440px; }
+      .hero__visual picture {
+        right: auto;
+        left: 50%;
+        height: 100%;
+        max-height: 440px;
+        transform: translate(-50%, calc(var(--art-center-y) * -1));
+      }
     }
 
     @media (max-width: 480px) {
@@ -222,7 +236,7 @@
       <div class="hero__visual">
         <picture>
           <source srcset="https://dhgf5mcbrms62.cloudfront.net/104841648/cover-ZUMnsU/jGXtuIY-2000x2000.webp" type="image/webp">
-          <img src="https://dhgf5mcbrms62.cloudfront.net/104841648/cover-ZUMnsU/jGXtuIY-2000x2000.png" alt="Round Rock CO-OP water tower emblem" width="2000" height="2000">
+          <img src="https://dhgf5mcbrms62.cloudfront.net/104841648/cover-ZUMnsU/jGXtuIY-2000x2000.png" alt="Round Rock CO-OP water tower emblem" width="960" height="720">
         </picture>
       </div>
     </div>
