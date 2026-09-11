@@ -44,6 +44,9 @@
     systems: assetUrl("project-backgrounds/systems.jpg")
   };
   const HEADER_LOGO_URL = assetUrl("rrhs-header-logo.webp");
+  const LEGACY_ROUTE_MAP = new Map([
+    ["/leadership-old", "/leadership"]
+  ]);
 
   const CATEGORY_CARD_MAP = {
     "ins-tile__category-item-169641499": {
@@ -1185,6 +1188,38 @@
     } catch (_) {}
   }
 
+  function repairKnownRoutes(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return;
+
+    root.querySelectorAll("a[href]").forEach((anchor) => {
+      try {
+        const url = new URL(anchor.getAttribute("href"), window.location.href);
+        if (url.origin !== window.location.origin) return;
+
+        const replacement = LEGACY_ROUTE_MAP.get(url.pathname.replace(/\/$/, ""));
+        if (!replacement) return;
+
+        url.pathname = replacement;
+        anchor.href = url.href;
+      } catch (_) {}
+    });
+
+    root.querySelectorAll("iframe").forEach((frame) => {
+      if (!frame.dataset.rrhsRouteRepairBound) {
+        frame.dataset.rrhsRouteRepairBound = "1";
+        frame.addEventListener("load", () => {
+          try {
+            repairKnownRoutes(frame.contentDocument);
+          } catch (_) {}
+        });
+      }
+
+      try {
+        repairKnownRoutes(frame.contentDocument);
+      } catch (_) {}
+    });
+  }
+
   function boot() {
     try {
       logContext();
@@ -1199,6 +1234,7 @@
       initCategoryCards();
       initCategoryImageSwap();
       updateLeadershipFrameVersion();
+      repairKnownRoutes(document);
     } catch (e) { log('RRHS visuals boot error', e); }
   }
 
