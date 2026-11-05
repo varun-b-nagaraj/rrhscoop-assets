@@ -14,8 +14,9 @@ reinvestment section uses the owner’s revised copy and focuses on CO-OP operat
   deadline for next-day orders, sandwich $6.25, grilled chicken Cobb salad $12.00,
   and eight-piece nuggets $6.50. It directs staff to pay at the Co-op until
   e-commerce returns. The page preserves that distinction from classroom delivery.
-- No staff-portal URL was supplied. The page uses the existing public storefront
-  and store email instead of inventing a private portal destination.
+- The site owner clarified that delivery orders are placed through the public
+  website: find products, add to cart, enter a room number, and pay online.
+  Chick-fil-A is not available for website ordering yet and uses its separate form.
 
 ## Images
 
