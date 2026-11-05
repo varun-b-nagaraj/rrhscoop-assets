@@ -102,7 +102,7 @@ h1 em { font-weight:400; }
 .offering-list { display:grid; grid-template-columns:1fr 1fr; gap:32px; border-top:1px solid #ffffff40; margin-top:32px; padding-top:28px; }
 .offering-list h4 { font-size:21px; margin-bottom:10px; }
 .offering-list p { color:#e6d8cc; font-size:16px; }
-.closing { display:flex; justify-content:space-between; align-items:center; gap:40px; padding-block:76px; }
+.closing { display:grid; grid-template-columns:1.1fr 1fr; align-items:start; gap:80px; padding-block:76px; }
 .closing h2 { font-size:clamp(32px,3.4vw,46px); margin:16px 0; }
 .closing p:not(.eyebrow) { color:var(--muted); }
 .closing .button { flex-shrink:0; }
@@ -126,4 +126,17 @@ h1 em { font-weight:400; }
   .teacher-compact h1 { font-size:clamp(48px, calc(var(--teacher-viewport) * .105), 80px); margin-block:18px; }
   .teacher-compact .intro { font-size:18px; margin-bottom:24px; }
   .teacher-compact .hero-note { margin-top:16px; }
+}
+
+.closing-copy p:not(.eyebrow) { max-width:540px; font-size:20px; line-height:1.65; }
+.closing-copy a { color:var(--maroon); overflow-wrap:anywhere; }
+.closing-reminders { padding:32px; background:var(--cream); }
+.closing-reminder h3 { margin-bottom:12px; color:var(--maroon); font-size:25px; }
+.closing-reminder p { font-size:17px; line-height:1.6; }
+.closing-reminder + .closing-reminder { margin-top:24px; padding-top:24px; border-top:1px solid var(--line); }
+.closing-reminders a { color:var(--maroon); }
+@media (max-width:800px) {
+  .closing { grid-template-columns:1fr; gap:32px; }
+  .closing-copy p:not(.eyebrow) { font-size:18px; }
+  .closing-reminders { padding:24px; }
 }
