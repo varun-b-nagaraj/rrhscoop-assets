@@ -29,8 +29,8 @@
       eyebrow: 'Meet the art behind the celebration',
       title: 'What is henna?',
       body: `<p>Henna is a plant whose leaves are made into a paste used to draw temporary designs on the skin. The art of creating these patterns is often called <em>mehndi</em>.</p>
-        <p>Artists create everything from delicate flowers and leaves to flowing geometric patterns. The dye leaves a temporary stain that gradually fades, so each design is a little piece of art to enjoy for a while.</p>
-        <p>Henna is part of celebrations and special occasions across South Asia, the Middle East, and North Africa. For our Diwali celebration, we’re inviting you to experience it at the Co-op.</p>
+        <p>Artists create everything from delicate flowers and leaves to flowing geometric patterns. Your design will last around 2–3 days and gradually fade.</p>
+        <p>Henna is part of celebrations and special occasions across South Asia, the Middle East, and North Africa. Join our Diwali celebration and try it for yourself. Swing by the Co-op to learn more!</p>
         <div class="rrhs-launch__offer"><h3>Your free henna design</h3><p>Order through e-commerce, then bring your receipt to the Co-op during <strong>3rd period on November 9</strong>.</p></div>
         <a class="rrhs-launch__source" href="https://australian.museum/about/history/exhibitions/body-art/henna/" target="_blank" rel="noopener noreferrer">Learn more at the Australian Museum</a>`
     },
