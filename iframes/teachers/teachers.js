@@ -1,6 +1,21 @@
 /* Resize the teacher page embed and route section links through its host page. */
 (function () {
-  if (window.parent === window) return;
+  const root = document.documentElement;
+  const guide = document.querySelector('.jump-nav');
+  function measureGuide() {
+    root.style.setProperty('--teacher-nav-height', guide.getBoundingClientRect().height + 'px');
+  }
+  function setViewport(height) {
+    root.style.setProperty('--teacher-viewport', Math.round(height) + 'px');
+  }
+  // Use a fixed measurement so an auto-sized iframe cannot inflate its own hero.
+  setViewport(window.innerHeight);
+  measureGuide();
+  new ResizeObserver(measureGuide).observe(guide);
+  if (window.parent === window) {
+    window.addEventListener('resize', () => setViewport(window.innerHeight));
+    return;
+  }
   let parentOrigin = '*';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
   let lastHeight = 0;
@@ -20,6 +35,10 @@
   });
   window.addEventListener('message', (event) => {
     if (event.source !== window.parent || (parentOrigin !== '*' && event.origin !== parentOrigin)) return;
+    if (event.data && event.data.type === 'rrhs-teachers-viewport' &&
+        Number.isFinite(event.data.height) && event.data.height >= 320 && event.data.height <= 10000) {
+      setViewport(event.data.height);
+    }
     if (event.data && event.data.type === 'rrhs-teachers-request-height') {
       lastHeight = 0;
       sendHeight();
@@ -29,4 +48,5 @@
   window.addEventListener('load', sendHeight, { once: true });
   if (document.fonts) document.fonts.ready.then(sendHeight);
   sendHeight();
+  window.parent.postMessage({ type: 'rrhs-teachers-ready' }, parentOrigin);
 }());

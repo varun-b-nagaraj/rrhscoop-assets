@@ -239,4 +239,7 @@ credits, source links, and the preorder prices checked during implementation are
 recorded in `iframes/teachers/ASSETS.md`. The paste-once embed loads its parent-page
 bridge from `iframes/teachers/embed.js`. Hosting headers require revalidation for
 the teacher files and shared theme CSS, so future deployed changes appear when the
-host page opens or refreshes. No embed version edits are required.
+host page opens or refreshes. No embed version edits are required. The hosted
+bridge also passes the available viewport height to the page so the hero and guide
+navigation fill the opening view without sizing against the full iframe height.
+On small screens or when the content needs more room, the page scrolls naturally.

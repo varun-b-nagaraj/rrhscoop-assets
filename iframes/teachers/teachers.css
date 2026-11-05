@@ -112,3 +112,11 @@ h1 em { font-weight:400; }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { transition:none !important; } a:hover .arrow,a:focus-visible .arrow { transform:none; } }
 
 .credits a { display:inline-flex; align-items:center; min-height:44px; }
+
+/* Keep the guide bar at the bottom of the opening viewport when content fits. */
+@media (min-width:641px) {
+  .hero { min-height:calc(var(--teacher-viewport, 787px) - var(--teacher-nav-height, 77px)); }
+}
+@media (max-width:640px) {
+  .hero { min-height:0; }
+}
