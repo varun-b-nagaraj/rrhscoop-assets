@@ -236,5 +236,7 @@ origin and source. Google Forms open in a new tab; the shop link opens the main 
 The page uses the shared Playfair Display / Spectral theme, the guide's faculty and
 blue-pass information, and the actual form links from the supplied email. Photo
 credits, source links, and the preorder prices checked during implementation are
-recorded in `iframes/teachers/ASSETS.md`. Update the page and asset query versions
-when changing its content.
+recorded in `iframes/teachers/ASSETS.md`. The paste-once embed loads its parent-page
+bridge from `iframes/teachers/embed.js`. Hosting headers require revalidation for
+the teacher files and shared theme CSS, so future deployed changes appear when the
+host page opens or refreshes. No embed version edits are required.

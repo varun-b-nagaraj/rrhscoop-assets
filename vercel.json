@@ -126,6 +126,24 @@
           "value": "no-store, no-cache, must-revalidate, max-age=0"
         }
       ]
+    },
+    {
+      "source": "/iframes/teachers/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/custom-visuals/theme-tokens.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
     }
   ]
 }

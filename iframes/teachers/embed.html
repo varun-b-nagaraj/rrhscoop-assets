@@ -1,32 +1,10 @@
-<!-- Paste this block into the Teacher Information page's HTML embed. -->
+<!-- Paste once. Hosted files revalidate on each page visit or refresh. -->
 <iframe
   id="rrhs-teachers-frame"
   title="RRHS CO-OP teacher information and resources"
-  src="https://rrhscoop-assets.vercel.app/iframes/teachers/index.html?v=3"
+  src="https://rrhscoop-assets.vercel.app/iframes/teachers/index.html?live=1"
   loading="eager"
   height="900"
   style="display:block;width:100%;border:0;margin:0;background:#faf8f4;"
 ></iframe>
-<script>
-(function () {
-  var frame = document.getElementById('rrhs-teachers-frame');
-  if (!frame || frame.dataset.bridgeReady) return;
-  frame.dataset.bridgeReady = '1';
-  var origin = new URL(frame.src).origin;
-  window.addEventListener('message', function (event) {
-    if (event.source !== frame.contentWindow || event.origin !== origin || !event.data) return;
-    if (event.data.type === 'rrhs-teachers-height' && Number.isFinite(event.data.height) && event.data.height > 0 && event.data.height < 50000) {
-      frame.style.height = Math.ceil(event.data.height) + 'px';
-    }
-    if (event.data.type === 'rrhs-teachers-scroll' && Number.isFinite(event.data.top) && event.data.top >= 0 && event.data.top <= frame.offsetHeight) {
-      var header = document.querySelector('.ins-header');
-      var offset = header ? header.getBoundingClientRect().height + 16 : 24;
-      var top = frame.getBoundingClientRect().top + window.scrollY + event.data.top - offset;
-      window.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    }
-  });
-  frame.addEventListener('load', function () {
-    frame.contentWindow.postMessage({ type: 'rrhs-teachers-request-height' }, origin);
-  });
-}());
-</script>
+<script src="https://rrhscoop-assets.vercel.app/iframes/teachers/embed.js?live=1"></script>
