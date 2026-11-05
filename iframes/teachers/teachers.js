@@ -7,6 +7,7 @@
   }
   function setViewport(height) {
     root.style.setProperty('--teacher-viewport', Math.round(height) + 'px');
+    root.classList.toggle('teacher-compact', height < 800);
   }
   // Use a fixed measurement so an auto-sized iframe cannot inflate its own hero.
   setViewport(window.innerHeight);

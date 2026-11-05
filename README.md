@@ -242,4 +242,6 @@ the teacher files and shared theme CSS, so future deployed changes appear when t
 host page opens or refreshes. No embed version edits are required. The hosted
 bridge also passes the available viewport height to the page so the hero and guide
 navigation fill the opening view without sizing against the full iframe height.
+It recalculates when late-loaded banners or other host-page layout changes move
+the iframe, and reduces hero spacing on shorter desktop viewports.
 On small screens or when the content needs more room, the page scrolls naturally.

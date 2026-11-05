@@ -120,3 +120,10 @@ h1 em { font-weight:400; }
 @media (max-width:640px) {
   .hero { min-height:0; }
 }
+
+@media (min-width:1001px) {
+  .teacher-compact .hero-copy { padding-block:clamp(24px, calc(var(--teacher-viewport) * .06), 48px); }
+  .teacher-compact h1 { font-size:clamp(48px, calc(var(--teacher-viewport) * .105), 80px); margin-block:18px; }
+  .teacher-compact .intro { font-size:18px; margin-bottom:24px; }
+  .teacher-compact .hero-note { margin-top:16px; }
+}
