@@ -224,3 +224,17 @@ For an Ecwid-authored celebration menu item, use `#celebrate` as its link destin
 The launch script intercepts that link and replays the celebration without navigating.
 Existing menu items titled **Celebrate**, **Celebrate Nov 9**, or **Diwali** also work. If no matching item exists in the header, the script adds a
 **Happy Diwali!** button beside the header icons, including on mobile.
+
+## Teacher Information embed
+
+The faculty landing page is in `iframes/teachers/`. Paste the full contents of
+`iframes/teachers/embed.html` into an HTML block on the Teacher Information page.
+It loads the hosted page, resizes to its content, and scrolls the parent page to
+sections selected in the guide navigation. The message bridge checks the iframe's
+origin and source. Google Forms open in a new tab; the shop link opens the main site.
+
+The page uses the shared Playfair Display / Spectral theme, the guide's faculty and
+blue-pass information, and the actual form links from the supplied email. Photo
+credits, source links, and the preorder prices checked during implementation are
+recorded in `iframes/teachers/ASSETS.md`. Update the page and asset query versions
+when changing its content.
