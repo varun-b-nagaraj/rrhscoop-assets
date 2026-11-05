@@ -200,10 +200,11 @@ if loaded later), it dims the screen, animates paint splashes, and reveals a dia
 The header button and announcement replay it on demand. Other routes, including
 checkout, do not open it automatically.
 
-The dialog presents the November 9 e-commerce launch and the PDF's Deepawali offer:
+The dialog presents the November 9 e-commerce launch and the PDF's Diwali offer:
 order online, then show the receipt at the Co-op during 3rd period on November 9
 for a free henna design. Additional festival and classroom-delivery information is
-available in the expandable section. It uses native dialog keyboard handling,
+available in overlay panels that keep the announcement layout in place. The dialog
+uses native keyboard handling,
 restores focus on dismissal, and skips the animation for reduced-motion preferences.
 
 To retire the promotion, remove the `loadScript(launchCelebration)` step and its URL
@@ -219,6 +220,5 @@ embed is needed. Bump the stylesheet's query version in `index.js` when editing 
 
 For an Ecwid-authored celebration menu item, use `#celebrate` as its link destination.
 The launch script intercepts that link and replays the celebration without navigating.
-Existing menu items titled **Celebrate**, **Celebrate Nov 9**, **Deepawali**, or
-**Diwali** also work. If no matching item exists in the header, the script adds a
+Existing menu items titled **Celebrate**, **Celebrate Nov 9**, or **Diwali** also work. If no matching item exists in the header, the script adds a
 **Celebrate Nov 9** button beside the header icons, including on mobile.
