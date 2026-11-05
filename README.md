@@ -190,3 +190,35 @@ Run unit tests (Node 18+):
 ```bash
 node --test
 ```
+
+## November 9 launch celebration
+
+`custom-visuals/rrhs-launch-celebration.js` and its companion CSS are loaded by `index.js`.
+The script adds a top announcement and a **Celebrate Nov 9** header button across the
+storefront. On the homepage, three seconds after the window loads (or script setup,
+if loaded later), it dims the screen, animates paint splashes, and reveals a dialog.
+The header button and announcement replay it on demand. Other routes, including
+checkout, do not open it automatically.
+
+The dialog presents the November 9 e-commerce launch and the PDF's Deepawali offer:
+order online, then show the receipt at the Co-op during 3rd period on November 9
+for a free henna design. Additional festival and classroom-delivery information is
+available in the expandable section. It uses native dialog keyboard handling,
+restores focus on dismissal, and skips the animation for reduced-motion preferences.
+
+To retire the promotion, remove the `loadScript(launchCelebration)` step and its URL
+constant from `index.js`. Update the launch script and CSS URL versions when changing
+these assets so returning visitors receive the new files.
+
+### Hosted storefront CSS and Ecwid menu trigger
+
+`custom-visuals/rrhs-site.css` contains the CSS formerly pasted into Ecwid's custom
+CSS editor. The existing `index.js` embed loads it automatically. Once these assets
+are deployed, remove that duplicated CSS from Ecwid. No additional stylesheet
+embed is needed. Bump the stylesheet's query version in `index.js` when editing it.
+
+For an Ecwid-authored celebration menu item, use `#celebrate` as its link destination.
+The launch script intercepts that link and replays the celebration without navigating.
+Existing menu items titled **Celebrate**, **Celebrate Nov 9**, **Deepawali**, or
+**Diwali** also work. If no matching item exists in the header, the script adds a
+**Celebrate Nov 9** button beside the header icons, including on mobile.

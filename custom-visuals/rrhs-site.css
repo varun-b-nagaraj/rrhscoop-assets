@@ -1,0 +1,77 @@
+/* Storefront CSS previously maintained in Ecwid's custom CSS editor. */
+.ins-tile__text p,
+.ins-tile__text p span,
+.ins-tile__text p a {
+  color: #670000 !important;
+}
+
+/* RRHS: Ecwid page background */
+#ecwid-products,
+#ecwid-products .ecwid-productBrowser,
+#ecwid-products .ec-storefront-v3,
+#ecwid-products .ec-wrapper,
+#ecwid-products .ec-store,
+#ecwid-products .ec-store__content-wrapper,
+#ecwid-products .ec-store__content-wrapper--wide,
+#ecwid-products .ec-grid,
+#ecwid-products .grid__wrap,
+#ecwid-products .grid__wrap-inner,
+#ecwid-products .ec-filters,
+#ecwid-products .ec-filters__wrap,
+#ecwid-products .ec-filters__products,
+#tile-product-details,
+#tile-product-details .ins-tile__wrap,
+#tile-product-details .section__content,
+#tile-product-details .grid-layout-with-bleed {
+  background: #f3f1f0 !important;
+}
+
+/* Allow tile to match background. */
+.ins-tile--transparent {
+  background: #f3f1f0 !important;
+}
+
+/* Remove product and category tile tint overlays. */
+#ecwid-products .grid-product__shadow,
+#ecwid-products .grid-category__shadow {
+  background-color: transparent !important;
+}
+
+/* Match the container and transparent filter backgrounds. */
+.ins-tiles,
+.ins-tiles--main,
+#ecwid-products .ec-filters__wrap-inner,
+#ecwid-products .ec-filters__body,
+#ecwid-products .ec-filter,
+#ecwid-products .ec-filter__body,
+#ecwid-products .filter-section-button-container,
+#ecwid-products .grid__filters {
+  background: #f3f1f0 !important;
+}
+
+/* Center header menu. */
+.ins-header__menu-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.ins-header__menu-inner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.grid-category__shadow {
+  background-image: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+}
+
+.ins-header {
+  position: relative;
+  border-bottom: 1px solid rgba(110, 31, 42, 0.18);
+  box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08);
+  z-index: 20;
+}
