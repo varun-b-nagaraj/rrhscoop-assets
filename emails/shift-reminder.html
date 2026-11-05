@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>You're on the schedule tomorrow</title>
+  <!--
+    RRHS CO-OP shift reminder email.
+    Placeholders: {{first_name}} {{shift_name}} {{shift_weekday}} {{shift_month}}
+    {{shift_day}} {{shift_date_long}} {{coworkers}} {{hr_email}}
+    Fonts match custom-visuals/theme-tokens.css; Georgia is the fallback where
+    clients (Gmail, Outlook) block web fonts.
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; }
+    table { border-collapse: collapse; }
+    img { border: 0; display: block; }
+    a { color: #6e1f2a; }
+    .display { font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
+    .body { font-family: "Spectral", Georgia, "Times New Roman", serif; }
+    .btn:hover { background: #4f0d17 !important; }
+    @media (max-width: 620px) {
+      .shell { width: 100% !important; }
+      .pad { padding-left: 24px !important; padding-right: 24px !important; }
+      .hero-title { font-size: 34px !important; }
+      .stack { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+      .date-cell { border-right: 0 !important; border-bottom: 1px solid #ddd5c6 !important; padding: 22px 24px !important; }
+      .detail-cell { padding: 22px 24px !important; }
+      .btn-wrap, .btn { width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#ebe5d7;">
+  <!-- Preheader (inbox preview text) -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#ebe5d7;">
+    {{shift_name}} at the Co-Op, {{shift_date_long}}. Need a change? Let HR know.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ebe5d7;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <table role="presentation" class="shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background:#faf8f4;">
+
+          <!-- Masthead -->
+          <tr>
+            <td class="pad" style="padding:26px 44px 22px; border-bottom:1px solid #ddd5c6;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="display" style="font-family:'Playfair Display', Georgia, serif; font-size:19px; font-weight:700; letter-spacing:-0.01em; color:#1d1a18;">
+                    RRHS <span style="color:#6e1f2a;">Co-Op</span>
+                  </td>
+                  <td align="right" class="body" style="font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.26em; text-transform:uppercase; color:#776f68;">
+                    Shift reminder
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Greeting -->
+          <tr>
+            <td class="pad" style="padding:48px 44px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="width:34px; border-top:1px solid #6e1f2a; font-size:0; line-height:0;">&nbsp;</td>
+                  <td class="body" style="padding-left:14px; font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.31em; text-transform:uppercase; color:#6e1f2a;">
+                    See you tomorrow
+                  </td>
+                </tr>
+              </table>
+              <h1 class="display hero-title" style="margin:22px 0 0; font-family:'Playfair Display', Georgia, serif; font-size:42px; font-weight:500; letter-spacing:-0.035em; line-height:1.04; color:#1d1a18;">
+                You're on the schedule, <em style="font-style:italic; color:#6e1f2a;">{{first_name}}.</em>
+              </h1>
+              <p class="body" style="margin:16px 0 0; max-width:440px; font-family:'Spectral', Georgia, serif; font-size:17px; line-height:1.55; color:#776f68;">
+                Here's your Co-Op assignment for tomorrow. Everything you need is below.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Shift card -->
+          <tr>
+            <td class="pad" style="padding:36px 44px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #ddd5c6; background:#f3efe6;">
+                <tr>
+                  <td class="stack date-cell" width="150" valign="middle" align="center" style="width:150px; padding:28px 16px; border-right:1px solid #ddd5c6;">
+                    <div class="body" style="font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.26em; text-transform:uppercase; color:#6e1f2a;">{{shift_weekday}}</div>
+                    <div class="display" style="margin:6px 0 2px; font-family:'Playfair Display', Georgia, serif; font-size:56px; font-weight:700; letter-spacing:-0.04em; line-height:1; color:#1d1a18;">{{shift_day}}</div>
+                    <div class="body" style="font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.26em; text-transform:uppercase; color:#776f68;">{{shift_month}}</div>
+                  </td>
+                  <td class="stack detail-cell" valign="middle" style="padding:26px 30px;">
+                    <div class="body" style="font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.22em; text-transform:uppercase; color:#776f68;">Your shift</div>
+                    <div class="display" style="margin-top:4px; font-family:'Playfair Display', Georgia, serif; font-size:24px; font-weight:600; letter-spacing:-0.02em; line-height:1.2; color:#1d1a18;">{{shift_name}}</div>
+                    <div style="height:1px; margin:18px 0; background:#ddd5c6; font-size:0; line-height:0;">&nbsp;</div>
+                    <div class="body" style="font-family:'Spectral', Georgia, serif; font-size:11px; font-weight:600; letter-spacing:0.22em; text-transform:uppercase; color:#776f68;">Working with</div>
+                    <div class="body" style="margin-top:4px; font-family:'Spectral', Georgia, serif; font-size:17px; line-height:1.45; color:#1d1a18;">{{coworkers}}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Reminder note -->
+          <tr>
+            <td class="pad" style="padding:22px 44px 0;">
+              <p class="body" style="margin:0; font-family:'Spectral', Georgia, serif; font-size:15px; font-style:italic; line-height:1.6; color:#776f68;">
+                Please arrive on time and follow the posted schedule unless a change has been approved.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Schedule change -->
+          <tr>
+            <td class="pad" style="padding:40px 44px 48px;">
+              <div style="height:1px; background:#ddd5c6; font-size:0; line-height:0;">&nbsp;</div>
+              <h2 class="display" style="margin:34px 0 0; font-family:'Playfair Display', Georgia, serif; font-size:24px; font-weight:600; letter-spacing:-0.025em; line-height:1.2; color:#1d1a18;">
+                Can't make it?
+              </h2>
+              <p class="body" style="margin:8px 0 24px; max-width:440px; font-family:'Spectral', Georgia, serif; font-size:16px; line-height:1.6; color:#776f68;">
+                Email the HR team with the change you need and why. The sooner they hear from you, the easier it is to cover.
+              </p>
+              <table role="presentation" class="btn-wrap" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background:#6e1f2a;">
+                    <a class="btn body" href="mailto:{{hr_email}}?subject=Schedule%20change%20request%20%E2%80%94%20{{shift_date_long}}" style="display:inline-block; padding:17px 28px; background:#6e1f2a; font-family:'Spectral', Georgia, serif; font-size:15px; font-weight:600; letter-spacing:0.04em; color:#fffaf1; text-decoration:none;">
+                      Request a schedule change &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="pad" style="padding:30px 44px; background:#65101c;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="40" valign="middle" style="width:40px;">
+                    <img src="https://rrhscoop-assets.vercel.app/custom-visuals/rrhs-header-logo-inverted.png" width="32" height="48" alt="Round Rock Co-Op" style="width:32px; height:48px;">
+                  </td>
+                  <td valign="middle" style="padding-left:14px;">
+                    <div class="display" style="font-family:'Playfair Display', Georgia, serif; font-size:18px; font-weight:700; letter-spacing:-0.01em; color:#fffaf1;">Round Rock Co-Op</div>
+                    <div class="body" style="margin-top:2px; font-family:'Spectral', Georgia, serif; font-size:13px; color:#d9c3b8;">Student-run at Round Rock High School</div>
+                  </td>
+                  <td align="right" valign="middle" class="body" style="font-family:'Spectral', Georgia, serif; font-size:13px; white-space:nowrap;">
+                    <a href="https://rrhscoop.roundrockisd.org" style="color:#f5eee2; text-decoration:underline; text-underline-offset:3px;">Visit the store</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+
+        <p class="body" style="margin:18px 0 0; font-family:'Spectral', Georgia, serif; font-size:12px; line-height:1.5; color:#8a8178; text-align:center;">
+          You're receiving this because you're on the RRHS Co-Op staff schedule. Please contact us at rrhs_coop_store@roundrockisd.org if you think this is a mistake.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
