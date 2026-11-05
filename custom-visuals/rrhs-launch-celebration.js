@@ -10,6 +10,15 @@
   let dialog;
   let revealTimer;
   let autoTimer;
+  const seenKey = 'rrhs-diwali-launch-2026-seen';
+  function hasSeenCelebration() {
+    try { return sessionStorage.getItem(seenKey) === '1'; }
+    catch (_) { return window.RRHS_LAUNCH_SEEN === true; }
+  }
+  function rememberCelebration() {
+    window.RRHS_LAUNCH_SEEN = true;
+    try { sessionStorage.setItem(seenKey, '1'); } catch (_) {}
+  }
   let previousFocus;
   let previousOverflow;
   let infoTrigger;
@@ -154,6 +163,7 @@
 
   function open(trigger) {
     clearTimeout(autoTimer);
+    if (!trigger && hasSeenCelebration()) return;
     if (!dialog) createDialog();
     if (dialog.open) return;
     // Don't interrupt checkout, another dialog, or text entry with the automatic reveal.
@@ -165,6 +175,7 @@
     previousOverflow = document.documentElement.style.overflow;
     dialog.classList.remove('rrhs-launch--revealed');
     dialog.showModal();
+    rememberCelebration();
     document.documentElement.style.overflow = 'hidden';
     if (reducedMotion.matches) dialog.classList.add('rrhs-launch--revealed');
     else revealTimer = setTimeout(() => dialog.classList.add('rrhs-launch--revealed'), 1000);
@@ -178,7 +189,7 @@
       if (hash === '#celebrate' || hash === '#launch-celebration') return true;
     }
     return element.matches('.ins-header__menu-link-title') &&
-      /^(celebrate(?: nov(?:ember)?\.? 9(?:th)?)?|deepawali|diwali|launch celebration)$/i.test(element.textContent.trim());
+      /^(celebrate(?: nov(?:ember)?\.? 9(?:th)?)?|happy diwali!?|deepawali|diwali|launch celebration)$/i.test(element.textContent.trim());
   }
 
   document.addEventListener('click', (event) => {
@@ -204,6 +215,8 @@
         .find(isCelebrationTrigger);
       const fallback = header.querySelector('.rrhs-launch-nav');
       if (existingTrigger) {
+        if (existingTrigger.textContent.trim() !== 'Happy Diwali!') existingTrigger.textContent = 'Happy Diwali!';
+        if (existingTrigger.getAttribute('aria-label') !== 'Happy Diwali!') existingTrigger.setAttribute('aria-label', 'Happy Diwali!');
         if (fallback) fallback.remove();
         if (existingTrigger.getAttribute('aria-haspopup') !== 'dialog') existingTrigger.setAttribute('aria-haspopup', 'dialog');
         return;
@@ -214,7 +227,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'rrhs-launch-nav';
-      button.textContent = 'Celebrate Nov 9';
+      button.textContent = 'Happy Diwali!';
       button.setAttribute('aria-haspopup', 'dialog');
       button.addEventListener('click', () => open(button));
       host.prepend(button);
@@ -225,7 +238,10 @@
     mount();
     if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
     else new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
-    const schedule = () => { autoTimer = setTimeout(() => { if (isHome()) open(); }, 3000); };
+    const schedule = () => {
+      if (hasSeenCelebration()) return;
+      autoTimer = setTimeout(() => { if (isHome()) open(); }, 3000);
+    };
     if (document.readyState === 'complete') schedule();
     else window.addEventListener('load', schedule, { once: true });
   }
