@@ -87,6 +87,7 @@ h1 em { font-weight:400; }
 .ticket-bottom { font-size:9px; }
 .pass-caption { font-size:16px; font-style:italic; color:#3a5369; }
 .pass-copy h2 { margin:18px 0 24px; }
+.pass-copy h3 { margin:32px 0 12px; color:var(--maroon); }
 .pass-copy>p:not(.eyebrow) { color:var(--muted); margin-bottom:20px; }
 .pass-copy .button { margin-top:8px; }
 .pass-copy .small-note { font-size:14px; margin:20px 0 0; }
