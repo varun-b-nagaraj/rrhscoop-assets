@@ -74,7 +74,7 @@
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const isHome = () => /^\/$/.test(location.pathname) && !location.hash.match(/cart|checkout|product|account|search/i);
   // Pages where the top announcement banner should not appear.
-  const hidesBanner = () => /^\/pass\/teacher\/?$/i.test(location.pathname);
+  const hidesBanner = () => /^\/pass(\/teacher)?\/?$/i.test(location.pathname);
 
   function close() {
     clearTimeout(revealTimer);
