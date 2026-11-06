@@ -73,6 +73,8 @@
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const isHome = () => /^\/$/.test(location.pathname) && !location.hash.match(/cart|checkout|product|account|search/i);
+  // Pages where the top announcement banner should not appear.
+  const hidesBanner = () => /^\/teacher-pass-portal\/?$/i.test(location.pathname);
 
   function close() {
     clearTimeout(revealTimer);
@@ -202,7 +204,10 @@
 
   function mount() {
     if (!document.body) return;
-    if (!document.getElementById('rrhs-launch-announcement')) {
+    const existingBanner = document.getElementById('rrhs-launch-announcement');
+    if (hidesBanner()) {
+      if (existingBanner) existingBanner.remove();
+    } else if (!existingBanner) {
       const banner = document.createElement('div');
       banner.id = 'rrhs-launch-announcement';
       banner.className = 'rrhs-launch-banner';

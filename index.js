@@ -34,7 +34,7 @@
   const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=5', base).href;
   const projectDeepLinks = new URL('custom-visuals/rrhs-project-deeplinks.js?v=7', base).href;
   const footer = new URL('custom-visuals/rrhs-footer.js?v=5', base).href;
-  const launchCelebration = new URL('custom-visuals/rrhs-launch-celebration.js?v=4', base).href;
+  const launchCelebration = new URL('custom-visuals/rrhs-launch-celebration.js?v=5', base).href;
   const checkout = new URL('check-out-page/rrhscoop-checkout.js', base).href;
   const inventoryGuard = new URL('check-out-page/rrhs-inventory-guard.js', base).href;
   const stoleDrawer = new URL('check-out-page/rrhs-stole-drawer.js', base).href;
