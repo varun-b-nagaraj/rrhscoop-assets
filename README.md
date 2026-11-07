@@ -256,7 +256,7 @@ to remeasure after delayed images, fonts, content changes, and disclosure toggle
 The iframe files revalidate on subsequent visits, so existing pasted embeds receive
 these fixes without replacing their HTML. The home hero keeps its viewport sizing.
 
-The teacher pass section has two links with expandable info controls. The request
+The teacher pass section has two links with hover and keyboard-focus info tooltips. The request
 form and dashboard navigate through the parent bridge because the storefront's
 iframe sandbox blocks opening new tabs. The bridge checks the sending frame's
 origin and source and allows only those two destinations.

@@ -1,5 +1,14 @@
 /* Resize the teacher page embed and route section links through its host page. */
 (function () {
+  document.querySelectorAll('.pass-info').forEach((info) => {
+    info.addEventListener('pointerenter', () => info.classList.remove('dismissed'));
+    info.addEventListener('focusin', () => info.classList.remove('dismissed'));
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      document.querySelectorAll('.pass-info').forEach((info) => info.classList.add('dismissed'));
+    }
+  });
   const root = document.documentElement;
   const guide = document.querySelector('.jump-nav');
   function measureGuide() {
