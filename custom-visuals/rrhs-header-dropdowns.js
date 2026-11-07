@@ -9,9 +9,9 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      /* Child panels sit flush against their parent panel. */
+      /* Small gap between a parent panel and its child panel. */
       .ins-header .ins-header__dropdown-container {
-        column-gap: 0 !important;
+        column-gap: 8px !important;
       }
 
       /* Ecwid's negative margins pull child panels into their parent panel. */
