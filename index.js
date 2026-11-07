@@ -31,7 +31,7 @@
   const embedBridge = new URL('custom-visuals/rrhs-embed-bridge.js?v=1', base).href;
   const runtime = new URL('rrhs-runtime.js', base).href;
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=55', base).href;
-  const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=8', base).href;
+  const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=9', base).href;
   const faqStickyNav = new URL('custom-visuals/rrhs-faq-sticky-nav.js?v=5', base).href;
   const projectDeepLinks = new URL('custom-visuals/rrhs-project-deeplinks.js?v=7', base).href;
   const footer = new URL('custom-visuals/rrhs-footer.js?v=5', base).href;

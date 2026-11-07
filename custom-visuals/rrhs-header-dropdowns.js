@@ -1,4 +1,4 @@
-/* Keep header navigation links square while leaving the site in control of the menu. */
+/* Space header navigation panels and keep links square. */
 (function () {
   const STYLE_ID = "rrhs-square-header-nav-links";
 
@@ -8,6 +8,23 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+      .ins-header .ins-header__menu-inner {
+        column-gap: clamp(8px, 1vw, 16px) !important;
+      }
+
+      .ins-header .ins-header__dropdown-container {
+        column-gap: 24px !important;
+      }
+
+      /* Ecwid's negative margins pull child panels into their parent panel. */
+      .ins-header .ins-header__dropdown-container .ins-header__dropdown-subcategory {
+        margin-inline: 0 !important;
+      }
+
+      .ins-header .ins-header__dropdown-inner {
+        column-gap: 24px !important;
+      }
+
       .ins-header .ins-header__menu-link-title,
       .ins-header .ins-header__dropdown-wrap,
       .ins-header .ins-header__dropdown-bg,
