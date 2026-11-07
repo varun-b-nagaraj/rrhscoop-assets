@@ -1,4 +1,5 @@
-/* Space header navigation panels and keep links square. */
+/* Space header dropdown panels and keep links square.
+ * Top-level menu spacing is left to Ecwid; an extra gap there overflows the row. */
 (function () {
   const STYLE_ID = "rrhs-square-header-nav-links";
 
@@ -8,10 +9,6 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      .ins-header .ins-header__menu-inner {
-        column-gap: clamp(8px, 1vw, 16px) !important;
-      }
-
       .ins-header .ins-header__dropdown-container {
         column-gap: 24px !important;
       }
