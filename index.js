@@ -122,7 +122,7 @@
     url('custom-visuals/rrhs-project-deeplinks.js?v=7'),
     url('custom-visuals/rrhscoop-visuals.js?v=55'),
     url('custom-visuals/rrhs-footer.js?v=5'),
-    url('custom-visuals/rrhs-header-dropdowns.js?v=10'),
+    url('custom-visuals/rrhs-header-dropdowns.js?v=11'),
     url('custom-visuals/rrhs-launch-celebration.js?v=6'),
     url('check-out-page/rrhscoop-checkout.js'),
     inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
