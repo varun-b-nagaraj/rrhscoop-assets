@@ -124,7 +124,7 @@
     url('custom-visuals/rrhs-footer.js?v=5'),
     url('custom-visuals/rrhs-header-dropdowns.js?v=12'),
     url('custom-visuals/rrhs-launch-celebration.js?v=6'),
-    url('check-out-page/rrhscoop-checkout.js'),
+    url('check-out-page/rrhscoop-checkout.js?v=2'),
     inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
     stoleDrawerEnabled && url('check-out-page/rrhs-stole-drawer.js'),
     url('order-validate/rrhs-iced-tea-gate.js'),

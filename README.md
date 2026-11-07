@@ -85,9 +85,11 @@ To restrict (or expand) which class periods can place orders, edit the matrix in
 
 - `check-out-page/rrhscoop-checkout.js` → `RRHS_ORDERING_PERIOD_MATRIX`
 
-Default behavior is **only the first two delivery windows**:
-- A Day: `A: [1, 2]`
-- B Day: `B: [1, 2]` (base periods that map to Periods `5, 6`)
+Current setting is **every period except 3rd and 7th**:
+- A Day: `A: [1, 2, 4]`
+- B Day: `B: [5, 6, 8]`
+
+Empty lists for both days close regular ordering site-wide (shows the maintenance message).
 
 Notes:
 - The checkout UI always displays the *actual* period number (so B Day will show `Period 5` / `Period 6`, not `Period 1/5`).
