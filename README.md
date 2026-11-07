@@ -32,6 +32,8 @@ Note: HAC login/switch UI flows are intentionally disabled by default (`RRHS_HAC
 
 File: `check-out-page/rrhs-inventory-guard.js`
 
+**Currently disabled** (`inventoryGuardEnabled = false` in `index.js`), so low-stock items can be ordered. Flip the flag to re-enable.
+
 - Runs `Ecwid.Cart.get()` on page load and listens to `Ecwid.OnCartChanged`.
 - Checks cart items against Ecwid REST inventory endpoints.
 - Uses variation-level lookup when `item.product.variation` exists.
