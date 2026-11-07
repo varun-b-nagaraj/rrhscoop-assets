@@ -19,6 +19,13 @@
   }
   let parentOrigin = '*';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
+  document.querySelectorAll('[data-pass-link]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      window.parent.postMessage({ type: 'rrhs-teachers-navigate', href: link.href }, parentOrigin);
+    });
+  });
   let lastHeight = 0;
   function sendHeight() {
     const height = Math.ceil(document.body.scrollHeight);
@@ -46,6 +53,7 @@
     }
   });
   new ResizeObserver(sendHeight).observe(document.body);
+  window.addEventListener("rrhs-embed-resize", sendHeight);
   window.addEventListener('load', sendHeight, { once: true });
   if (document.fonts) document.fonts.ready.then(sendHeight);
   sendHeight();

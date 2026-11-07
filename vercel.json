@@ -128,7 +128,7 @@
       ]
     },
     {
-      "source": "/iframes/teachers/(.*)",
+      "source": "/iframes/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

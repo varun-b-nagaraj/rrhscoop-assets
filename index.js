@@ -28,6 +28,7 @@
     stylesheet.href = new URL('custom-visuals/rrhs-site.css?v=1', base).href;
     (document.head || document.documentElement).appendChild(stylesheet);
   }
+  const embedBridge = new URL('custom-visuals/rrhs-embed-bridge.js?v=1', base).href;
   const runtime = new URL('rrhs-runtime.js', base).href;
   const visuals = new URL('custom-visuals/rrhscoop-visuals.js?v=55', base).href;
   const headerDropdowns = new URL('custom-visuals/rrhs-header-dropdowns.js?v=8', base).href;
@@ -48,10 +49,13 @@
     return loadScript(src).catch(() => {});
   }
 
-  // Load runtime -> visuals -> checkout -> inventory guard -> optional stole drawer
+  // Load the embed bridge before page scripts, then runtime and storefront features.
+  // Visuals -> checkout -> inventory guard -> optional stole drawer
   // -> iced tea gate -> optional assistant (sequential to keep deterministic ordering).
   // The optional scripts and their implementations remain available for future use.
-  loadScript(runtime)
+  loadScript(embedBridge)
+    .catch(() => {})
+    .then(() => loadScript(runtime))
     .catch(() => {})
     .then(() => loadScript(faqStickyNav).catch(() => {}))
     .then(() => loadScript(projectDeepLinks).catch(() => {}))

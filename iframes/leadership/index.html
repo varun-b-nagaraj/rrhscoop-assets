@@ -759,7 +759,7 @@
       };
 
       function sendHeight() {
-        var height = document.documentElement.scrollHeight;
+        var height = Math.ceil(document.body.getBoundingClientRect().bottom + window.scrollY);
         document.documentElement.dataset.pageHeight = String(height);
         window.parent.postMessage({ type: "rrhs-leadership-height", height: height }, "*");
       }
@@ -883,11 +883,13 @@
           }
         }
       });
+      window.addEventListener("rrhs-embed-resize", sendHeight);
       window.addEventListener("load", sendHeight);
       window.addEventListener("resize", sendHeight);
       if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body);
       document.fonts && document.fonts.ready.then(sendHeight);
     }());
   </script>
+<script src="/iframes/embed-resize.js?v=1"></script>
 </body>
 </html>

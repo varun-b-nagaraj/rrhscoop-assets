@@ -245,3 +245,18 @@ navigation fill the opening view without sizing against the full iframe height.
 It recalculates when late-loaded banners or other host-page layout changes move
 the iframe, and reduces hero spacing on shorter desktop viewports.
 On small screens or when the content needs more room, the page scrolls naturally.
+
+### Embed sizing and pass links
+
+`custom-visuals/rrhs-embed-bridge.js` loads before the storefront scripts. It listens
+for height messages from the current hosted frames, including frames inserted during
+page navigation, and requests fresh measurements after load, resize, visibility
+changes, and page restoration. Each content embed loads `iframes/embed-resize.js`
+to remeasure after delayed images, fonts, content changes, and disclosure toggles.
+The iframe files revalidate on subsequent visits, so existing pasted embeds receive
+these fixes without replacing their HTML. The home hero keeps its viewport sizing.
+
+The teacher pass section has two links with expandable info controls. The request
+form and dashboard navigate through the parent bridge because the storefront's
+iframe sandbox blocks opening new tabs. The bridge checks the sending frame's
+origin and source and allows only those two destinations.

@@ -6,6 +6,9 @@
   var origin = new URL(frame.src).origin;
   window.addEventListener('message', function (event) {
     if (event.source !== frame.contentWindow || event.origin !== origin || !event.data) return;
+    if (event.data.type === 'rrhs-teachers-navigate' && !window.__rrhsEmbedBridge) {
+      if (event.data.href === 'https://rrhscoop.roundrockisd.org/pass/teacher' || event.data.href === 'https://forms.gle/iiwbDnSHzayg5gaK8') window.location.assign(event.data.href);
+    }
     if (event.data.type === 'rrhs-teachers-ready') sendViewport(true);
     if (event.data.type === 'rrhs-teachers-height' && Number.isFinite(event.data.height) && event.data.height > 0 && event.data.height < 50000) {
       frame.style.height = Math.ceil(event.data.height) + 'px';

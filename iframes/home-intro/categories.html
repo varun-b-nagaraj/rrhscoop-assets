@@ -489,9 +489,10 @@ body{
   function reportHeight() {
     window.parent.postMessage({
       type: "rrhs-home-categories-height",
-      height: Math.ceil(document.documentElement.scrollHeight)
+      height: Math.ceil(document.body.getBoundingClientRect().bottom + window.scrollY)
     }, "*");
   }
+  window.addEventListener("rrhs-embed-resize", reportHeight);
   window.addEventListener("load", reportHeight);
   window.addEventListener("resize", reportHeight);
   window.addEventListener("message", function (event) {
@@ -500,5 +501,6 @@ body{
   if (typeof ResizeObserver === "function") new ResizeObserver(reportHeight).observe(document.body);
 }());
 </script>
+<script src="/iframes/embed-resize.js?v=1"></script>
 </body>
 </html>

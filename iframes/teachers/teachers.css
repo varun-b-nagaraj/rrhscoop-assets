@@ -87,10 +87,16 @@ h1 em { font-weight:400; }
 .ticket-bottom { font-size:9px; }
 .pass-caption { font-size:16px; font-style:italic; color:#3a5369; }
 .pass-copy h2 { margin:18px 0 24px; }
-.pass-copy h3 { margin:32px 0 12px; color:var(--maroon); }
 .pass-copy>p:not(.eyebrow) { color:var(--muted); margin-bottom:20px; }
 .pass-copy .button { margin-top:8px; }
-.pass-copy .small-note { font-size:14px; margin:20px 0 0; }
+.pass-actions { margin-top:28px; border-top:1px solid var(--line); }
+.pass-action { position:relative; padding:18px 44px 18px 0; border-bottom:1px solid var(--line); }
+.pass-action>a { display:inline-flex; gap:16px; align-items:center; color:var(--maroon); font-weight:600; }
+.pass-info summary { position:absolute; right:0; top:14px; display:grid; place-items:center; width:36px; height:36px; cursor:pointer; list-style:none; color:var(--maroon); }
+.pass-info summary::-webkit-details-marker { display:none; }
+.pass-info summary span { display:grid; place-items:center; width:20px; height:20px; border:1px solid currentColor; border-radius:50%; font:italic 14px Georgia,serif; }
+.pass-info[open] summary,.pass-info summary:hover { background:var(--cream); }
+.pass-info p { margin-top:12px; color:var(--muted); font-size:15px; line-height:1.6; }
 .impact-section { padding-block:88px; background:var(--maroon); color:var(--paper); }
 .impact-section h2,.impact-section .eyebrow { color:var(--paper); }
 .impact-section .section-heading>p { color:#e6d8cc; }

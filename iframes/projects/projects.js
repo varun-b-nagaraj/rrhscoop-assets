@@ -624,6 +624,7 @@ window.addEventListener("message", event => {
   if (event.data && event.data.type === "rrhs-projects-request-height") notifyHeight();
   if (event.data && event.data.type === "rrhs-projects-open-id") openProjectById(event.data.id);
 });
+window.addEventListener("rrhs-embed-resize", notifyHeight);
 window.addEventListener("load", notifyHeight);
 window.addEventListener("resize", notifyHeight);
 if (window.ResizeObserver) new ResizeObserver(notifyHeight).observe(document.body);

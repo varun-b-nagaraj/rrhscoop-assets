@@ -307,6 +307,7 @@ window.addEventListener("message", event => {
     scrollToElement(document.getElementById(event.data.id));
   }
 });
+window.addEventListener("rrhs-embed-resize", notifyHeight);
 window.addEventListener("load", notifyHeight);
 window.addEventListener("resize", notifyHeight);
 
