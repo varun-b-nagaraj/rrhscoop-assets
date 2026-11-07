@@ -86,7 +86,9 @@ h1 em { font-weight:400; }
 .pass-copy .button { margin-top:8px; }
 .pass-actions { margin-top:28px; border-top:1px solid var(--line); }
 .pass-action { position:relative; padding:18px 44px 18px 0; border-bottom:1px solid var(--line); }
-.pass-action>a { display:inline-flex; gap:16px; align-items:center; color:var(--maroon); font-weight:600; }
+.pass-action>a { display:inline-flex; gap:10px; align-items:center; color:var(--maroon); font-weight:600; text-decoration:none; }
+.pass-link-label { text-decoration:underline; text-underline-offset:5px; }
+.pass-action .arrow { flex-basis:18px; width:18px; height:18px; }
 .pass-info summary { position:absolute; right:0; top:14px; display:grid; place-items:center; width:36px; height:36px; cursor:pointer; list-style:none; color:var(--maroon); }
 .pass-info summary::-webkit-details-marker { display:none; }
 .pass-info summary span { display:grid; place-items:center; width:20px; height:20px; border:1px solid currentColor; border-radius:50%; font:italic 14px Georgia,serif; }
