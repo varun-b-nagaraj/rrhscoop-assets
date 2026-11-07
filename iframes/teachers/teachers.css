@@ -78,13 +78,8 @@ h1 em { font-weight:400; }
 .steps h3 { font-size:24px; color:var(--maroon); margin-bottom:10px; }
 .steps p { font-size:17px; color:var(--muted); }
 .pass-layout { display:grid; grid-template-columns:.95fr 1.05fr; gap:100px; align-items:center; }
-.pass-art { background:#e5eaf0; padding:36px; text-align:center; overflow:hidden; }
-.pass-stamp { font:600 10px/1.5 Arial,sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#3a5369; }
-.ticket { max-width:285px; margin:28px auto; padding:30px 28px; text-align:left; background:#b8cfdf; border:1px solid #92afc3; color:#223f54; transform:rotate(-5deg); box-shadow:8px 14px 0 #193c5312; }
-.ticket-top,.ticket-bottom { font:600 10px/1.6 Arial,sans-serif; letter-spacing:.14em; }
-.ticket-title { display:block; margin:32px 0; font:40px/1.12 var(--display); letter-spacing:-.03em; }
-.ticket-line { display:block; border-top:1px dashed #5d7b90; margin-bottom:24px; }
-.ticket-bottom { font-size:9px; }
+.pass-art { margin:0; background:#e5eaf0; padding:36px; text-align:center; }
+.pass-photo { width:100%; max-width:380px; height:auto; margin:0 auto 24px; }
 .pass-caption { font-size:16px; font-style:italic; color:#3a5369; }
 .pass-copy h2 { margin:18px 0 24px; }
 .pass-copy>p:not(.eyebrow) { color:var(--muted); margin-bottom:20px; }

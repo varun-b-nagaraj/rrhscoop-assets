@@ -30,3 +30,5 @@ reinvestment section uses the owner’s revised copy and focuses on CO-OP operat
   images, not open-source assets.
 - Blue pass artwork is HTML/CSS, not an official pass or authorization to leave class.
 - Arrow and clock icons are inline SVG primitives.
+
+The blue hall pass photo uses the user-supplied `custom-visuals/pass.png`, showing the 2026–2027 RRHS CO-OP pass.
