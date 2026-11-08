@@ -5409,27 +5409,54 @@
     );
   }
 
-  function rrhsLockQtyFieldFromManualEdits(input) {
-    if (!input || input.dataset.rrhsQtyFieldLocked === "1") return;
+  function rrhsIsQtyLockActive(input) {
+    return Boolean(input && input.dataset.rrhsQtyFieldLocked === "1");
+  }
+
+  function rrhsBlockQtyEdit(e) {
+    if (!rrhsIsQtyLockActive(e.currentTarget)) return;
+    if (e.type === "keydown" && e.key === "Tab") return;
+    e.preventDefault();
+  }
+
+  function rrhsLockQtyFieldFromManualEdits(input, maxQty) {
+    if (!input) return;
     input.dataset.rrhsQtyFieldLocked = "1";
     input.readOnly = true;
     input.setAttribute("readonly", "readonly");
     input.inputMode = "none";
     input.autocomplete = "off";
     input.min = "0";
-    input.max = "5";
+    input.max = String(maxQty);
     input.step = "1";
     input.style.cursor = "not-allowed";
 
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Tab") return;
-      e.preventDefault();
+    if (input.dataset.rrhsQtyLockBound === "1") return;
+    input.dataset.rrhsQtyLockBound = "1";
+    ["keydown", "beforeinput", "paste", "drop"].forEach((type) =>
+      input.addEventListener(type, rrhsBlockQtyEdit)
+    );
+    input.addEventListener("wheel", rrhsBlockQtyEdit, { passive: false });
+    input.addEventListener("input", () => {
+      if (rrhsIsQtyLockActive(input)) rrhsSyncStoleTypeQtyField();
     });
-    input.addEventListener("beforeinput", (e) => e.preventDefault());
-    input.addEventListener("input", () => rrhsSyncStoleTypeQtyField());
-    input.addEventListener("paste", (e) => e.preventDefault());
-    input.addEventListener("drop", (e) => e.preventDefault());
-    input.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+  }
+
+  function rrhsUnlockQtyField(input) {
+    if (!input || input.dataset.rrhsQtyFieldLocked !== "1") return;
+    input.dataset.rrhsQtyFieldLocked = "0";
+    input.readOnly = false;
+    input.removeAttribute("readonly");
+    input.removeAttribute("max");
+    input.inputMode = "numeric";
+    input.style.cursor = "";
+  }
+
+  function rrhsIsChickFilAProductPage() {
+    const pattern = /chick[\s-]*fil[\s-]*a/i;
+    if (pattern.test(decodeURIComponent(window.location.pathname || ""))) return true;
+    const title = document.querySelector(".product-details__product-title");
+    return Boolean(title && pattern.test(title.textContent || ""));
   }
 
   function rrhsSyncStoleTypeQtyField() {
@@ -5438,14 +5465,25 @@
       document.querySelector('input.form-control__text[type="number"][name="ec-qty"]');
     if (!qtyInput) return;
 
-    rrhsLockQtyFieldFromManualEdits(qtyInput);
-
-    const checkedCount = rrhsGetStoleTypeCheckboxes().reduce(
-      (count, checkbox) => count + (checkbox && checkbox.checked ? 1 : 0),
-      0
-    );
-    const clamped = Math.max(0, Math.min(5, checkedCount));
-    const nextValue = String(clamped);
+    // Quantity is locked only on Chick-fil-A product pages (fixed at 1) and on
+    // stole pages (driven by the Stole Type checkbox count). Everywhere else the
+    // shopper can enter any quantity.
+    const stoleCheckboxes = rrhsGetStoleTypeCheckboxes();
+    let nextValue;
+    if (stoleCheckboxes.length) {
+      rrhsLockQtyFieldFromManualEdits(qtyInput, 5);
+      const checkedCount = stoleCheckboxes.reduce(
+        (count, checkbox) => count + (checkbox && checkbox.checked ? 1 : 0),
+        0
+      );
+      nextValue = String(Math.max(0, Math.min(5, checkedCount)));
+    } else if (rrhsIsChickFilAProductPage()) {
+      rrhsLockQtyFieldFromManualEdits(qtyInput, 1);
+      nextValue = "1";
+    } else {
+      rrhsUnlockQtyField(qtyInput);
+      return;
+    }
     if (String(qtyInput.value || "") === nextValue) return;
 
     qtyInput.value = nextValue;
