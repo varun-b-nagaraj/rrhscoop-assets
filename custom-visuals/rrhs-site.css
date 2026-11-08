@@ -75,28 +75,3 @@
   box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08);
   z-index: 20;
 }
-
-/* Category cards: show the square category collages edge to edge.
-   Ecwid's grid is set to 3:4 and letterboxes square images with a sampled
-   background color, which left maroon bars above and below. */
-#ecwid-products .grid__categories .grid-category__image-spacer-inner {
-  padding-top: 100% !important;
-  height: 0 !important;
-}
-
-#ecwid-products .grid__categories .grid-category__spacer {
-  display: none !important;
-}
-
-#ecwid-products .grid__categories img.grid-category__picture-img {
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
-  object-fit: cover !important;
-}
-
-#ecwid-products .grid__categories .grid-category__bg-color {
-  background-color: transparent !important;
-}
