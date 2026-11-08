@@ -6036,6 +6036,7 @@
     const input = rrhsGetEmployeeInput();
     const typed = input ? String(input.value || "").trim() : "";
     if (!rrhsIsSNumber(typed || rrhsGetEmployeeIdForAccess())) return false;
+    if (rrhsIsAlwaysAllowEnabled()) return true;
     // Nothing to deliver to when the store is closed (weekend, no-school day, or after the last period).
     const day = rrhsGetNowDate().getDay();
     return day !== 0 && day !== 6 && !rrhsIsPastLastDeliveryWindow();
