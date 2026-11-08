@@ -10,9 +10,9 @@
 
   const FEATURED = {
     name: "Print Paper",
-    price: "From $0.25", // Black & White $0.25, Color $0.50
-    url: "https://rrhscoop.roundrockisd.org/products/Print-Paper-p876651487",
-    image: "https://d2j6dbq0eux0bg.cloudfront.net/images/104841648/products/876651487/6394103799.png"
+    price: "$0.10",
+    url: "https://rrhscoop.roundrockisd.org/products/Print-Paper-p876659445",
+    image: "https://d2j6dbq0eux0bg.cloudfront.net/images/104841648/products/876659445/6394129477.png"
   };
   const FRAME_SELECTOR = 'iframe[title="RRHS CO-OP featured product"]';
 
