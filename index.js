@@ -106,7 +106,7 @@
 
   // Stylesheets first so fonts and colors are in place before the reveal.
   // theme-tokens id/version must match ensureThemeTokens() in rrhscoop-visuals.js.
-  addStylesheet('rrhs-site-css', url('custom-visuals/rrhs-site.css?v=1'));
+  addStylesheet('rrhs-site-css', url('custom-visuals/rrhs-site.css?v=2'));
   addStylesheet('rrhs-theme-tokens', url('custom-visuals/theme-tokens.css?v=18'));
 
   const stoleDrawerEnabled = false;
