@@ -10,7 +10,7 @@
 
   const FEATURED = {
     name: "Print Paper",
-    price: "$0.25",
+    price: "From $0.25", // Black & White $0.25, Color $0.50
     url: "https://rrhscoop.roundrockisd.org/products/Print-Paper-p876651487",
     image: "https://d2j6dbq0eux0bg.cloudfront.net/images/104841648/products/876651487/6394103799.png"
   };
