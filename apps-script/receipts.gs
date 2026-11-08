@@ -73,6 +73,19 @@ function sendPendingReceipts() {
   }
 }
 
+/**
+ * Sends receipts for paid orders from the last hour that haven't been emailed
+ * yet (e.g. orders placed just before setup() was run). Safe to run again.
+ */
+function catchUpLastHour() {
+  const props = PropertiesService.getScriptProperties();
+  const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+  const startAt = Number(props.getProperty('START_AT')) || hourAgo;
+  props.setProperty('START_AT', String(Math.min(startAt, hourAgo)));
+  sendPendingReceipts();
+  Logger.log('Sent any missing receipts from the last hour. Check Executions for errors.');
+}
+
 /** Emails the most recent paid order's receipt to you, without marking it sent. */
 function sendTestReceipt() {
   const weekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
