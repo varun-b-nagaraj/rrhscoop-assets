@@ -1488,12 +1488,23 @@
     rrhsHacState.inFlight = true;
     try {
       await rrhsHacPost("/api/login", { username: user, password: pass });
-      const studentsResp = await rrhsHacPost("/lookup/students", { username: user, password: pass });
-      const students = Array.isArray(studentsResp && studentsResp.students)
+      // Parent accounts list their students; a student's own account has none, so
+      // fall back to the S-number they signed in with.
+      let studentsResp = null;
+      try {
+        studentsResp = await rrhsHacPost("/lookup/students", { username: user, password: pass });
+      } catch (lookupErr) {
+        if (!/^s\d+$/i.test(user)) throw lookupErr;
+      }
+      let students = Array.isArray(studentsResp && studentsResp.students)
         ? studentsResp.students
         : [];
       if (!students.length) {
-        throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
+        const own = user.match(/^s(\d+)$/i);
+        if (!own) {
+          throw new Error("No students found for this HAC account. Use your HAC username (not S-number).");
+        }
+        students = [{ id: own[1], student_id: own[1], name: user.toLowerCase() }];
       }
       rrhsHacState.students = students;
       rrhsSetHacUsername(user);
