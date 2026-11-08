@@ -346,6 +346,7 @@
   // A/B day calendar (check-out-page/aday-bday.json). Checked before the HAC day-type API.
   const RRHS_DAY_CALENDAR_FILENAME = "aday-bday.json";
   let rrhsDayCalendarPromise = null;
+  let rrhsDayCalendarDates = null; // filled once the calendar loads
 
   function rrhsLoadDayCalendar() {
     if (rrhsDayCalendarPromise) return rrhsDayCalendarPromise;
@@ -355,9 +356,29 @@
     } catch (_) {}
     rrhsDayCalendarPromise = fetch(url, { cache: "no-cache" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((json) => (json && json.dates && typeof json.dates === "object" ? json.dates : null))
-      .catch(() => null);
+      .then((json) => {
+        rrhsDayCalendarDates = json && json.dates && typeof json.dates === "object" ? json.dates : null;
+        if (rrhsDayCalendarDates) rrhsRefreshEverything("daytype:calendar-loaded");
+        return rrhsDayCalendarDates;
+      })
+      .catch(() => {
+        rrhsDayCalendarPromise = null; // retry on the next check
+        return null;
+      });
     return rrhsDayCalendarPromise;
+  }
+
+  // True on weekdays the calendar marks as no A/B day (holidays, staff days, testing days).
+  function rrhsIsNoSchoolDayByCalendar(isoDate) {
+    if (rrhsSim.dayType === "A" || rrhsSim.dayType === "B") return false;
+    if (!rrhsDayCalendarDates) {
+      rrhsLoadDayCalendar();
+      return false;
+    }
+    const entry = rrhsDayCalendarDates[isoDate];
+    if (!entry) return false;
+    const dt = String(entry.dayType || "").trim().toUpperCase();
+    return dt !== "A" && dt !== "B";
   }
 
   async function rrhsDayTypeFromCalendar(isoDate) {
@@ -3741,6 +3762,8 @@
     const now = nowDate instanceof Date ? nowDate : rrhsGetNowDate();
     const day = now.getDay();
     if (day === 0 || day === 6) return false;
+    // No A/B day on the school calendar (holiday, staff day, testing day): closed all day.
+    if (rrhsIsNoSchoolDayByCalendar(rrhsTodayIsoDate())) return true;
     const dt = (dayType === "A" || dayType === "B") ? dayType : getTodayDayType();
     const lastClose = rrhsGetLastCloseMinuteForDay(dt);
     if (!Number.isFinite(lastClose)) return false;
@@ -5911,12 +5934,11 @@
         transition: opacity .18s ease; font-family: var(--rrhs-font-body, "Spectral", Georgia, serif); }
       #${RRHS_ROOM_FINDER_ID}.is-open { opacity: 1; }
       #${RRHS_ROOM_FINDER_ID} * { box-sizing: border-box; }
-      .rrhs-rf-panel { position: relative; width: min(680px, 100%); max-height: calc(100vh - 40px); overflow: auto;
+      .rrhs-rf-panel { position: relative; width: min(420px, 100%); max-height: calc(100vh - 40px); overflow: auto;
         padding: 32px 32px 28px; background: #faf8f4; color: #141414; border-top: 4px solid #6e1f2a;
         box-shadow: 0 24px 60px rgba(20, 10, 10, .3); transform: translateY(8px);
         transition: transform .22s cubic-bezier(.22, 1, .36, 1); }
       #${RRHS_ROOM_FINDER_ID}.is-open .rrhs-rf-panel { transform: none; }
-      .rrhs-rf-panel.is-narrow { width: min(420px, 100%); }
       .rrhs-rf-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0;
         background: none; color: #6e1f2a; font: 28px/1 Georgia, serif; cursor: pointer; }
       .rrhs-rf-close:hover { background: #f1eee8; }
@@ -5934,31 +5956,20 @@
         transition: background-color .15s ease; }
       .rrhs-rf-primary:hover:not(:disabled) { background: #4d111c; }
       .rrhs-rf-primary:disabled { opacity: .45; cursor: not-allowed; }
-      .rrhs-rf-primary:focus-visible, .rrhs-rf-cell:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 2px; }
-      .rrhs-rf-day { margin-bottom: 16px; }
-      .rrhs-rf-day-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
-        font: 600 18px/1.2 var(--rrhs-font-title, "Playfair Display", Georgia, serif); }
-      .rrhs-rf-today { padding: 2px 8px; background: #6e1f2a; color: #fff; font: 600 11px/1.6 var(--rrhs-font-body, "Spectral", Georgia, serif);
-        letter-spacing: .08em; text-transform: uppercase; }
-      .rrhs-rf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-      .rrhs-rf-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; min-height: 96px;
-        padding: 10px 12px; border: 1px solid #d8cfc4; background: #fff; color: #141414; text-align: left;
-        font-family: inherit; cursor: pointer; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
-      .rrhs-rf-cell:hover:not(:disabled) { border-color: #6e1f2a; }
-      .rrhs-rf-cell[aria-pressed="true"] { border-color: #6e1f2a; background: #f6eef0; box-shadow: inset 0 0 0 1px #6e1f2a; }
-      .rrhs-rf-cell:disabled { cursor: default; background: transparent; color: #9b918c; }
-      .rrhs-rf-period { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6e1f2a; }
-      .rrhs-rf-cell:disabled .rrhs-rf-period { color: #9b918c; }
-      .rrhs-rf-room { font: 600 20px/1.15 var(--rrhs-font-title, "Playfair Display", Georgia, serif); }
-      .rrhs-rf-meta { font-size: 13px; line-height: 1.3; color: #5c5350; overflow-wrap: anywhere; }
-      .rrhs-rf-actions { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 12px 16px; margin-top: 20px; }
-      .rrhs-rf-actions .rrhs-rf-primary { flex: 1 1 220px; width: auto; }
-      .rrhs-rf-text-btn { flex: 0 0 auto; min-height: 44px; padding: 0 4px; border: 0; background: none; color: #5c5350;
-        font-family: inherit; font-size: 15px; line-height: 1; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+      .rrhs-rf-primary:focus-visible, .rrhs-rf-text-btn:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 2px; }
+      .rrhs-rf-card { display: flex; flex-direction: column; gap: 4px; margin: 18px 0 20px; padding: 18px 20px;
+        background: #fff; border: 1px solid #d8cfc4; border-left: 4px solid #6e1f2a; }
+      .rrhs-rf-when { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6e1f2a; }
+      .rrhs-rf-room { font: 600 30px/1.1 var(--rrhs-font-title, "Playfair Display", Georgia, serif); color: #141414; }
+      .rrhs-rf-teacher { font-size: 17px; color: #141414; }
+      .rrhs-rf-course { font-size: 15px; color: #5c5350; }
+      .rrhs-rf-text-btn { display: block; width: 100%; min-height: 44px; margin-top: 8px; padding: 0; border: 0;
+        background: none; color: #5c5350; font-family: inherit; font-size: 15px; line-height: 1;
+        text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+      .rrhs-rf-text-btn:hover { color: #141414; }
       @media (max-width: 600px) {
         #rrhs-room-finder { align-items: flex-start; padding: 12px; }
         .rrhs-rf-panel { padding: 26px 16px 20px; max-height: calc(100vh - 24px); }
-        .rrhs-rf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       @media (prefers-reduced-motion: reduce) {
         #${RRHS_ROOM_FINDER_ID}, .rrhs-rf-panel { transition: none; }
@@ -5970,7 +5981,10 @@
   function rrhsRoomFinderEligible() {
     const input = rrhsGetEmployeeInput();
     const typed = input ? String(input.value || "").trim() : "";
-    return rrhsIsSNumber(typed || rrhsGetEmployeeIdForAccess());
+    if (!rrhsIsSNumber(typed || rrhsGetEmployeeIdForAccess())) return false;
+    // Nothing to deliver to when the store is closed (weekend, no-school day, or after the last period).
+    const day = rrhsGetNowDate().getDay();
+    return day !== 0 && day !== 6 && !rrhsIsPastLastDeliveryWindow();
   }
 
   function rrhsEnsureRoomFinderLink() {
@@ -6076,7 +6090,6 @@
     overlay.querySelector(".rrhs-rf-close").addEventListener("click", close);
 
     function renderLogin(message) {
-      panel.classList.add("is-narrow");
       const employeeInput = rrhsGetEmployeeInput();
       const sNumber = String((employeeInput && employeeInput.value) || rrhsGetEmployeeIdForAccess() || "").trim();
       body.innerHTML =
@@ -6126,71 +6139,40 @@
         renderLogin("We couldn’t find any classes on that account.");
         return;
       }
-      panel.classList.remove("is-narrow");
-      const today = getTodayDayType();
-      const current = rrhsGetCurrentOrNextPeriodForToday();
-      let selected = schedule[current] ? current : null;
+      const day = getTodayDayType();
+      const period = rrhsGetCurrentOrNextPeriodForToday();
+      const choice = schedule[period] || null;
+      const ordinal = ["1st", "2nd", "3rd", "4th"][(Number(period) - 1) % 4] || "";
+      const when = `${day} Day · ${ordinal} period`;
 
-      const ordinal = ["1st", "2nd", "3rd", "4th"];
-      const dayBlock = (day, periods) => {
-        const cells = periods
-          .map((p, i) => {
-            const c = schedule[p];
-            const label = `${ordinal[i]} period`;
-            if (!c) {
-              return `<button type="button" class="rrhs-rf-cell" disabled><span class="rrhs-rf-period">${label}</span><span class="rrhs-rf-meta">No class</span></button>`;
-            }
-            const roomLabel = /^\d/.test(c.room) ? `Room ${c.room}` : c.room;
-            const meta = [c.course, c.teacher].filter(Boolean).map(rrhsEscapeRoomFinderText).join("<br>");
-            return (
-              `<button type="button" class="rrhs-rf-cell" data-period="${p}" aria-pressed="${p === selected}">` +
-              `<span class="rrhs-rf-period">${label}</span>` +
-              `<span class="rrhs-rf-room">${rrhsEscapeRoomFinderText(roomLabel)}</span>` +
-              (meta ? `<span class="rrhs-rf-meta">${meta}</span>` : "") +
-              "</button>"
-            );
-          })
-          .join("");
-        return (
-          `<section class="rrhs-rf-day"><div class="rrhs-rf-day-head">${day} Day` +
-          (today === day ? '<span class="rrhs-rf-today">Today</span>' : "") +
-          `</div><div class="rrhs-rf-grid">${cells}</div></section>`
-        );
-      };
-
-      const days = today === "B" ? [["B", [5, 6, 7, 8]], ["A", [1, 2, 3, 4]]] : [["A", [1, 2, 3, 4]], ["B", [5, 6, 7, 8]]];
-      body.innerHTML =
-        '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Your classes</h2>' +
-        '<p class="rrhs-rf-sub">Pick where we should deliver your order.</p>' +
-        days.map(([d, ps]) => dayBlock(d, ps)).join("") +
-        '<div class="rrhs-rf-actions"><button type="button" class="rrhs-rf-text-btn" data-action="switch">Use a different account</button>' +
-        '<button type="button" class="rrhs-rf-primary" data-action="confirm">Confirm</button></div>';
-
-      const confirmBtn = body.querySelector('[data-action="confirm"]');
-      const sync = () => {
-        body.querySelectorAll(".rrhs-rf-cell[data-period]").forEach((el) => {
-          el.setAttribute("aria-pressed", String(Number(el.dataset.period) === selected));
+      if (!choice) {
+        body.innerHTML =
+          '<h2 class="rrhs-rf-title" id="rrhs-rf-title">No class found</h2>' +
+          `<p class="rrhs-rf-sub">HAC doesn’t show a class for ${rrhsEscapeRoomFinderText(when)}. Type your room in the Delivery Location box instead.</p>` +
+          '<button type="button" class="rrhs-rf-primary" data-action="manual">Type my room</button>';
+      } else {
+        const roomLabel = /^\d/.test(choice.room) ? `Room ${choice.room}` : choice.room;
+        body.innerHTML =
+          '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Is this your class?</h2>' +
+          '<div class="rrhs-rf-card">' +
+          `<span class="rrhs-rf-when">${rrhsEscapeRoomFinderText(when)}</span>` +
+          `<span class="rrhs-rf-room">${rrhsEscapeRoomFinderText(roomLabel)}</span>` +
+          (choice.teacher ? `<span class="rrhs-rf-teacher">${rrhsEscapeRoomFinderText(choice.teacher)}</span>` : "") +
+          (choice.course ? `<span class="rrhs-rf-course">${rrhsEscapeRoomFinderText(choice.course)}</span>` : "") +
+          "</div>" +
+          '<button type="button" class="rrhs-rf-primary" data-action="confirm">Confirm</button>' +
+          '<button type="button" class="rrhs-rf-text-btn" data-action="manual">Type my room instead</button>';
+        body.querySelector('[data-action="confirm"]').addEventListener("click", () => {
+          close();
+          rrhsFillDeliveryFromRoomFinder(choice);
         });
-        confirmBtn.disabled = !selected;
-      };
-      body.querySelectorAll(".rrhs-rf-cell[data-period]").forEach((el) => {
-        el.addEventListener("click", () => {
-          selected = Number(el.dataset.period);
-          sync();
-        });
-      });
-      body.querySelector('[data-action="switch"]').addEventListener("click", () => {
-        rrhsClearHacSessionState();
-        renderLogin();
-      });
-      confirmBtn.addEventListener("click", () => {
-        const choice = selected ? schedule[selected] : null;
-        if (!choice) return;
+      }
+      body.querySelector('[data-action="manual"]').addEventListener("click", () => {
         close();
-        rrhsFillDeliveryFromRoomFinder(choice);
+        const input = document.querySelector('input[name="z7rty2b"]');
+        if (input) input.focus();
       });
-      sync();
-      (body.querySelector('.rrhs-rf-cell[aria-pressed="true"]') || confirmBtn).focus();
+      body.querySelector(".rrhs-rf-primary").focus();
     }
 
     const hasSchedule = rrhsHacState.authenticated && Object.keys(rrhsRoomFinderSchedule()).length > 0;
