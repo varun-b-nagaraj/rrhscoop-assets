@@ -126,6 +126,7 @@
     url('custom-visuals/rrhs-launch-celebration.js?v=6'),
     url('custom-visuals/rrhs-by-the-numbers.js?v=1'),
     url('custom-visuals/rrhs-featured-product.js?v=1'),
+    url('custom-visuals/rrhs-select.js?v=1'),
     url('check-out-page/rrhscoop-checkout.js?v=2'),
     inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
     stoleDrawerEnabled && url('check-out-page/rrhs-stole-drawer.js'),
