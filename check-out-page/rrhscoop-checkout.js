@@ -2619,8 +2619,8 @@
   }
 
   function rrhsEmployeeIdIsValid(value) {
-    // Accept numeric IDs with optional leading letter and optional hyphen (e.g. 123456, e123456, e-123456).
-    return /^[a-zA-Z]?-?\d+$/.test(String(value || "").trim());
+    // Require an S (student) or E (employee) prefix, optional hyphen, then digits (e.g. s151570, E-123456).
+    return /^[sSeE]-?\d+$/.test(String(value || "").trim());
   }
 
   function rrhsPersistEmployeeId(value) {
@@ -2715,7 +2715,7 @@
     // Keep this as text so IDs like "e123456" are typeable even if Ecwid renders a numeric field.
     input.type = "text";
     input.inputMode = "text";
-    input.pattern = "[a-zA-Z]?-?\\d+";
+    input.pattern = "[sSeE]-?\\d+";
     input.autocomplete = "off";
     rrhsMaybeAutofillEmployeeId(input);
 
@@ -2724,7 +2724,7 @@
       const errorMsg = document.createElement("div");
       errorMsg.dataset.rrhsEmployeeError = "true";
       errorMsg.style.cssText = "display:none;color:#d32f2f;font-size:12px;margin-top:6px;font-weight:500;";
-      errorMsg.textContent = "Please enter your full employee number.";
+      errorMsg.textContent = "Start with S (students) or E (staff), then your number. Example: S151570";
       container.appendChild(errorMsg);
     }
 
@@ -2764,7 +2764,7 @@
       document.querySelector(".ec-cart__button--checkout") ||
       document.querySelector(".ec-cart__button--checkout button");
     if (checkoutShell) shakeElement(checkoutShell);
-    createModal("Please input your full employee number (example: 123456).", { autoCloseMs: 6000 });
+    createModal("Please enter your S-number or E-number with the letter first (example: S151570 or E123456).", { autoCloseMs: 6000 });
     return true;
   }
 
