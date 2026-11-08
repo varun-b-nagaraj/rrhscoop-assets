@@ -5978,10 +5978,16 @@
     const style = document.createElement("style");
     style.id = "rrhs-room-finder-styles";
     style.textContent = `
-      .rrhs-rf-link { margin-left: 12px; padding: 0; border: 0; background: none; color: #6e1f2a;
-        font: 500 14px/1.3 var(--rrhs-font-body, "Spectral", Georgia, serif); text-decoration: underline;
-        text-underline-offset: 3px; cursor: pointer; vertical-align: middle; }
-      .rrhs-rf-link:hover { color: #4d111c; }
+      /* Ecwid styles every button inside the store, so these need to outrank its rules. */
+      .ec-size .ec-store button.rrhs-rf-link, button.rrhs-rf-link {
+        display: inline !important; width: auto !important; min-width: 0 !important; height: auto !important;
+        margin: 0 0 0 14px !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+        background: none !important; box-shadow: none !important; color: #6e1f2a !important;
+        font-family: var(--rrhs-font-body, "Spectral", Georgia, serif) !important; font-size: 15px !important;
+        font-weight: 500 !important; line-height: inherit !important; letter-spacing: 0 !important;
+        text-transform: none !important; text-decoration: underline !important; text-underline-offset: 3px;
+        vertical-align: baseline !important; cursor: pointer; }
+      .ec-size .ec-store button.rrhs-rf-link:hover, button.rrhs-rf-link:hover { color: #4d111c !important; }
       .rrhs-rf-link:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 3px; }
       #${RRHS_ROOM_FINDER_ID} { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center;
         justify-content: center; padding: 20px; background: rgba(20, 12, 10, .55); opacity: 0;
