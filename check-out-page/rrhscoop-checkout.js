@@ -5842,6 +5842,23 @@
     });
   }
 
+  // "Ordering is closed right now…" with when the next delivery period opens today.
+  function rrhsNextOrderingWindowMessage() {
+    const now = rrhsGetNowDate();
+    const nowMin = getNowMinutes(now);
+    const periods = rrhsGetDisplayPeriodsForDay(getTodayDayType());
+    for (let i = 0; i < periods.length; i++) {
+      const w = getPeriodWindow(periods[i]);
+      if (!w || nowMin >= w.closeMin) continue;
+      if (nowMin < w.startMin) {
+        const ordinal = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"][periods[i] - 1] || rrhsFormatPeriodLabel(periods[i]);
+        return `Ordering is closed right now. The next delivery is ${ordinal} period, and ordering opens at ${formatMinutes(w.startMin)}.`;
+      }
+      return "";
+    }
+    return RRHS_STORE_CLOSED_FOR_DAY_MESSAGE;
+  }
+
   function getRestrictionMessage() {
     const now = rrhsGetNowDate();
     const dow = now.getDay();
@@ -5880,6 +5897,9 @@
         })
         .filter(Boolean);
     }
+
+    const nextWindowMessage = rrhsNextOrderingWindowMessage();
+    if (nextWindowMessage) return nextWindowMessage;
 
     const aLines = buildLinesForPeriods(getAllowedPeriodsForDay("A"));
     const bLines = buildLinesForPeriods(getAllowedPeriodsForDay("B"));
@@ -6369,6 +6389,40 @@
 
   if (window.RRHS_RUNTIME && typeof window.RRHS_RUNTIME.onDomChanged === "function") {
     window.RRHS_RUNTIME.onDomChanged(rrhsEnsureRoomFinderLink);
+  }
+
+  /* Final guard: re-check the delivery window the moment "Place Order" is clicked,
+   * so an order can't go through after ordering closed (e.g. someone waited on the
+   * payment step past the cutoff). Runs in the capture phase, before Ecwid's handler. */
+  function rrhsIsPlaceOrderButton(el) {
+    const btn = el && el.closest ? el.closest("button") : null;
+    if (!btn) return null;
+    const text = String(btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return /^place order\b/.test(text) ? btn : null;
+  }
+
+  function rrhsGuardPlaceOrder(e) {
+    const btn = rrhsIsPlaceOrderButton(e.target);
+    if (!btn) return;
+    if (checkOrderingWindow()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+    shakeElement(btn);
+    createModal(getRestrictionMessage(), { autoCloseMs: 11000 });
+    log("RRHS: blocked Place Order outside the delivery window");
+  }
+
+  if (typeof window !== "undefined" && !window.__rrhsPlaceOrderGuard) {
+    window.__rrhsPlaceOrderGuard = true;
+    window.addEventListener("click", rrhsGuardPlaceOrder, true);
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if ((e.key === "Enter" || e.key === " ") && rrhsIsPlaceOrderButton(e.target)) rrhsGuardPlaceOrder(e);
+      },
+      true
+    );
   }
 
   let rrhsCartChangedListenerAdded = false;
