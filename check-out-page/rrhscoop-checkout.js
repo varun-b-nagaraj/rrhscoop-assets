@@ -343,8 +343,44 @@
     } catch (e) {}
   }
 
+  // A/B day calendar (check-out-page/aday-bday.json). Checked before the HAC day-type API.
+  const RRHS_DAY_CALENDAR_FILENAME = "aday-bday.json";
+  let rrhsDayCalendarPromise = null;
+
+  function rrhsLoadDayCalendar() {
+    if (rrhsDayCalendarPromise) return rrhsDayCalendarPromise;
+    let url = RRHS_DAY_CALENDAR_FILENAME;
+    try {
+      url = new URL(RRHS_DAY_CALENDAR_FILENAME, RRHS_ASSET_BASE_URL || window.location.href).toString();
+    } catch (_) {}
+    rrhsDayCalendarPromise = fetch(url, { cache: "no-cache" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => (json && json.dates && typeof json.dates === "object" ? json.dates : null))
+      .catch(() => null);
+    return rrhsDayCalendarPromise;
+  }
+
+  async function rrhsDayTypeFromCalendar(isoDate) {
+    const dates = await rrhsLoadDayCalendar();
+    const entry = dates ? dates[isoDate] : null;
+    const dt = entry ? String(entry.dayType || "").trim().toUpperCase() : "";
+    return dt === "A" || dt === "B" ? dt : null;
+  }
+
   async function rrhsFetchDayTypeForDate(targetDate) {
     if (rrhsDayTypeState.inFlight) return;
+    const calendarDateKey = rrhsNormalizeIsoDate(targetDate) || String(targetDate || "").trim();
+    const calendarDayType = await rrhsDayTypeFromCalendar(calendarDateKey);
+    if (calendarDayType) {
+      const changed =
+        rrhsDayTypeState.value !== calendarDayType || rrhsDayTypeState.targetDate !== calendarDateKey;
+      rrhsDayTypeState.value = calendarDayType;
+      rrhsDayTypeState.targetDate = calendarDateKey;
+      rrhsDayTypeState.lastError = null;
+      rrhsPersistDayType(calendarDayType, calendarDateKey);
+      if (changed) rrhsRefreshEverything("daytype:calendar");
+      return;
+    }
     const normalizedTargetDate = rrhsNormalizeIsoDate(targetDate) || String(targetDate || "").trim();
     if (
       rrhsDayTypeState.nextRetryAt &&
@@ -528,7 +564,8 @@
       if (typeof raw === "object") {
         out[key] = {
           room: String(raw.room == null ? "" : raw.room).trim(),
-          teacher: String(raw.teacher == null ? "" : raw.teacher).trim()
+          teacher: String(raw.teacher == null ? "" : raw.teacher).trim(),
+          course: String(raw.course == null ? "" : raw.course).trim()
         };
       }
     });
@@ -1164,6 +1201,9 @@
     const normalized = headers.map(normalizeHeaderValue);
     const periodIdx = normalized.findIndex((h) => h === "period");
     const roomIdx = normalized.findIndex((h) => h === "room");
+    const courseIdx = normalized.findIndex(
+      (h) => h === "course" || h === "coursename" || h === "description" || h === "class" || h === "classname"
+    );
     const teacherIdx = normalized.findIndex(
       (h) =>
         h === "teacher" ||
@@ -1183,8 +1223,10 @@
       const periodNum = Number(periodRaw.replace(/[^\d]/g, ""));
       if (!Number.isFinite(periodNum) || periodNum < 1 || periodNum > 8) return;
       if (!roomRaw) return;
+      const courseRaw =
+        courseIdx !== -1 ? String(row[courseIdx] == null ? "" : row[courseIdx]).trim() : "";
       if (!out[periodNum]) {
-        out[periodNum] = { room: roomRaw, teacher: teacherRaw };
+        out[periodNum] = { room: roomRaw, teacher: teacherRaw, course: courseRaw };
       } else if (typeof out[periodNum] === "object" && out[periodNum] && !out[periodNum].teacher && teacherRaw) {
         out[periodNum].teacher = teacherRaw;
       }
@@ -5847,6 +5889,329 @@
     );
   }
 
+  /* ---------------------------------------------------------------------------
+   * "Find your room through HAC" — link beside Delivery Location (S-numbers only).
+   * Signs in to HAC, shows A/B Day classes, preselects the current period, and
+   * fills the Delivery Location field with the chosen room.
+   * ------------------------------------------------------------------------- */
+  const RRHS_ROOM_FINDER_ID = "rrhs-room-finder";
+
+  function rrhsEnsureRoomFinderStyles() {
+    if (document.getElementById("rrhs-room-finder-styles")) return;
+    const style = document.createElement("style");
+    style.id = "rrhs-room-finder-styles";
+    style.textContent = `
+      .rrhs-rf-link { margin-left: 12px; padding: 0; border: 0; background: none; color: #6e1f2a;
+        font: 500 14px/1.3 var(--rrhs-font-body, "Spectral", Georgia, serif); text-decoration: underline;
+        text-underline-offset: 3px; cursor: pointer; vertical-align: middle; }
+      .rrhs-rf-link:hover { color: #4d111c; }
+      .rrhs-rf-link:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 3px; }
+      #${RRHS_ROOM_FINDER_ID} { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center;
+        justify-content: center; padding: 20px; background: rgba(20, 12, 10, .55); opacity: 0;
+        transition: opacity .18s ease; font-family: var(--rrhs-font-body, "Spectral", Georgia, serif); }
+      #${RRHS_ROOM_FINDER_ID}.is-open { opacity: 1; }
+      #${RRHS_ROOM_FINDER_ID} * { box-sizing: border-box; }
+      .rrhs-rf-panel { position: relative; width: min(680px, 100%); max-height: calc(100vh - 40px); overflow: auto;
+        padding: 32px 32px 28px; background: #faf8f4; color: #141414; border-top: 4px solid #6e1f2a;
+        box-shadow: 0 24px 60px rgba(20, 10, 10, .3); transform: translateY(8px);
+        transition: transform .22s cubic-bezier(.22, 1, .36, 1); }
+      #${RRHS_ROOM_FINDER_ID}.is-open .rrhs-rf-panel { transform: none; }
+      .rrhs-rf-panel.is-narrow { width: min(420px, 100%); }
+      .rrhs-rf-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0;
+        background: none; color: #6e1f2a; font: 28px/1 Georgia, serif; cursor: pointer; }
+      .rrhs-rf-close:hover { background: #f1eee8; }
+      .rrhs-rf-title { margin: 0 44px 6px 0; font: 600 28px/1.1 var(--rrhs-font-title, "Playfair Display", Georgia, serif); color: #141414; }
+      .rrhs-rf-sub { margin: 0 0 22px; color: #5c5350; font-size: 16px; line-height: 1.45; }
+      .rrhs-rf-field { display: block; margin-bottom: 14px; }
+      .rrhs-rf-field span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;
+        letter-spacing: .06em; text-transform: uppercase; color: #5c5350; }
+      .rrhs-rf-field input { width: 100%; min-height: 48px; padding: 10px 14px; border: 1px solid #d8cfc4;
+        background: #fff; color: #141414; font-family: inherit; font-size: 16px; line-height: 1.3; }
+      .rrhs-rf-field input:focus { outline: none; border-color: #6e1f2a; box-shadow: 0 0 0 3px rgba(110, 31, 42, .15); }
+      .rrhs-rf-error { min-height: 20px; margin: 4px 0 10px; color: #b3261e; font-size: 14px; }
+      .rrhs-rf-primary { width: 100%; min-height: 48px; border: 0; background: #6e1f2a; color: #fff;
+        font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1; letter-spacing: .02em; cursor: pointer;
+        transition: background-color .15s ease; }
+      .rrhs-rf-primary:hover:not(:disabled) { background: #4d111c; }
+      .rrhs-rf-primary:disabled { opacity: .45; cursor: not-allowed; }
+      .rrhs-rf-primary:focus-visible, .rrhs-rf-cell:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 2px; }
+      .rrhs-rf-day { margin-bottom: 16px; }
+      .rrhs-rf-day-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
+        font: 600 18px/1.2 var(--rrhs-font-title, "Playfair Display", Georgia, serif); }
+      .rrhs-rf-today { padding: 2px 8px; background: #6e1f2a; color: #fff; font: 600 11px/1.6 var(--rrhs-font-body, "Spectral", Georgia, serif);
+        letter-spacing: .08em; text-transform: uppercase; }
+      .rrhs-rf-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+      .rrhs-rf-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; min-height: 96px;
+        padding: 10px 12px; border: 1px solid #d8cfc4; background: #fff; color: #141414; text-align: left;
+        font-family: inherit; cursor: pointer; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+      .rrhs-rf-cell:hover:not(:disabled) { border-color: #6e1f2a; }
+      .rrhs-rf-cell[aria-pressed="true"] { border-color: #6e1f2a; background: #f6eef0; box-shadow: inset 0 0 0 1px #6e1f2a; }
+      .rrhs-rf-cell:disabled { cursor: default; background: transparent; color: #9b918c; }
+      .rrhs-rf-period { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6e1f2a; }
+      .rrhs-rf-cell:disabled .rrhs-rf-period { color: #9b918c; }
+      .rrhs-rf-room { font: 600 20px/1.15 var(--rrhs-font-title, "Playfair Display", Georgia, serif); }
+      .rrhs-rf-meta { font-size: 13px; line-height: 1.3; color: #5c5350; overflow-wrap: anywhere; }
+      .rrhs-rf-actions { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 12px 16px; margin-top: 20px; }
+      .rrhs-rf-actions .rrhs-rf-primary { flex: 1 1 220px; width: auto; }
+      .rrhs-rf-text-btn { flex: 0 0 auto; min-height: 44px; padding: 0 4px; border: 0; background: none; color: #5c5350;
+        font-family: inherit; font-size: 15px; line-height: 1; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+      @media (max-width: 600px) {
+        #rrhs-room-finder { align-items: flex-start; padding: 12px; }
+        .rrhs-rf-panel { padding: 26px 16px 20px; max-height: calc(100vh - 24px); }
+        .rrhs-rf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #${RRHS_ROOM_FINDER_ID}, .rrhs-rf-panel { transition: none; }
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function rrhsRoomFinderEligible() {
+    const input = rrhsGetEmployeeInput();
+    const typed = input ? String(input.value || "").trim() : "";
+    return rrhsIsSNumber(typed || rrhsGetEmployeeIdForAccess());
+  }
+
+  function rrhsEnsureRoomFinderLink() {
+    const title = document.querySelector(".ec-cart-step__section--z7rty2b .ec-cart-step__subtitle");
+    const existing = document.querySelector(".rrhs-rf-link");
+    if (!title || !rrhsRoomFinderEligible()) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing && title.contains(existing)) return;
+    if (existing) existing.remove();
+    rrhsEnsureRoomFinderStyles();
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "rrhs-rf-link";
+    link.textContent = "Find your room through HAC";
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      rrhsOpenRoomFinder();
+    });
+    title.appendChild(link);
+  }
+
+  function rrhsRoomFinderSchedule() {
+    const report = rrhsHacState.reportByPeriod || Object.create(null);
+    const out = Object.create(null);
+    for (let p = 1; p <= 8; p++) {
+      const raw = report[p];
+      if (!raw) continue;
+      const entry = typeof raw === "string" ? { room: raw } : raw;
+      const room = String(entry.room || "").trim();
+      if (!room) continue;
+      out[p] = { room, teacher: String(entry.teacher || "").trim(), course: String(entry.course || "").trim() };
+    }
+    return out;
+  }
+
+  function rrhsFillDeliveryFromRoomFinder(choice) {
+    const input = document.querySelector('input[name="z7rty2b"]');
+    if (!input || !choice || !choice.room) return;
+    const room = String(choice.room).trim();
+    rrhsDeliverySelection.dayType = getTodayDayType();
+    rrhsDeliverySelection.teacher = rrhsFindCsvTeacherName(choice.teacher) || null;
+    rrhsDeliverySelection.period = rrhsGetCurrentOrNextPeriodForToday();
+    rrhsDeliverySelection.room = room;
+    rrhsDeliverySelection.mode = "hac";
+    rrhsDeliverySelection.specialId = null;
+    input.value = room;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    // Run the field's own blur check so it confirms the room, then leave it unfocused.
+    input.focus({ preventScroll: true });
+    input.blur();
+  }
+
+  function rrhsOpenRoomFinder() {
+    rrhsEnsureRoomFinderStyles();
+    const prior = document.getElementById(RRHS_ROOM_FINDER_ID);
+    if (prior) prior.remove();
+    const returnFocus = document.activeElement;
+
+    const overlay = document.createElement("div");
+    overlay.id = RRHS_ROOM_FINDER_ID;
+    overlay.innerHTML =
+      '<div class="rrhs-rf-panel" role="dialog" aria-modal="true" aria-labelledby="rrhs-rf-title">' +
+      '<button type="button" class="rrhs-rf-close" aria-label="Close">&times;</button>' +
+      '<div class="rrhs-rf-body"></div></div>';
+    document.body.appendChild(overlay);
+    const panel = overlay.querySelector(".rrhs-rf-panel");
+    const body = overlay.querySelector(".rrhs-rf-body");
+
+    function close() {
+      document.removeEventListener("keydown", onKey, true);
+      overlay.classList.remove("is-open");
+      setTimeout(() => overlay.remove(), 180);
+      if (returnFocus && typeof returnFocus.focus === "function") returnFocus.focus({ preventScroll: true });
+    }
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const focusables = Array.from(panel.querySelectorAll("button:not(:disabled), input")).filter(
+        (el) => el.offsetParent !== null
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey, true);
+    overlay.addEventListener("mousedown", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector(".rrhs-rf-close").addEventListener("click", close);
+
+    function renderLogin(message) {
+      panel.classList.add("is-narrow");
+      const employeeInput = rrhsGetEmployeeInput();
+      const sNumber = String((employeeInput && employeeInput.value) || rrhsGetEmployeeIdForAccess() || "").trim();
+      body.innerHTML =
+        '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Find your room</h2>' +
+        '<p class="rrhs-rf-sub">Sign in to HAC and we’ll pull up your classes.</p>' +
+        '<form novalidate>' +
+        '<label class="rrhs-rf-field"><span>S-number</span><input name="user" autocomplete="username" autocapitalize="off" spellcheck="false"></label>' +
+        '<label class="rrhs-rf-field"><span>HAC password</span><input name="pass" type="password" autocomplete="current-password"></label>' +
+        '<div class="rrhs-rf-error" role="alert"></div>' +
+        '<button type="submit" class="rrhs-rf-primary">Find my schedule</button>' +
+        "</form>";
+      const form = body.querySelector("form");
+      const user = form.querySelector('[name="user"]');
+      const pass = form.querySelector('[name="pass"]');
+      const error = form.querySelector(".rrhs-rf-error");
+      const submit = form.querySelector("button");
+      user.value = sNumber;
+      if (message) error.textContent = message;
+      (user.value ? pass : user).focus();
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        error.textContent = "";
+        if (!user.value.trim() || !pass.value) {
+          error.textContent = "Enter your S-number and HAC password.";
+          return;
+        }
+        submit.disabled = true;
+        submit.textContent = "Finding your schedule…";
+        try {
+          await rrhsAuthenticateAndLoadHac(user.value.trim(), pass.value);
+          try {
+            await loadRoomSchedule();
+          } catch (_) {}
+          await rrhsPrimeDayTypeForToday();
+          renderSchedule();
+        } catch (err) {
+          submit.disabled = false;
+          submit.textContent = "Find my schedule";
+          error.textContent = rrhsHumanizeHacError(err) || "Couldn’t sign in to HAC. Try again.";
+        }
+      });
+    }
+
+    function renderSchedule() {
+      const schedule = rrhsRoomFinderSchedule();
+      if (!Object.keys(schedule).length) {
+        renderLogin("We couldn’t find any classes on that account.");
+        return;
+      }
+      panel.classList.remove("is-narrow");
+      const today = getTodayDayType();
+      const current = rrhsGetCurrentOrNextPeriodForToday();
+      let selected = schedule[current] ? current : null;
+
+      const ordinal = ["1st", "2nd", "3rd", "4th"];
+      const dayBlock = (day, periods) => {
+        const cells = periods
+          .map((p, i) => {
+            const c = schedule[p];
+            const label = `${ordinal[i]} period`;
+            if (!c) {
+              return `<button type="button" class="rrhs-rf-cell" disabled><span class="rrhs-rf-period">${label}</span><span class="rrhs-rf-meta">No class</span></button>`;
+            }
+            const roomLabel = /^\d/.test(c.room) ? `Room ${c.room}` : c.room;
+            const meta = [c.course, c.teacher].filter(Boolean).map(rrhsEscapeRoomFinderText).join("<br>");
+            return (
+              `<button type="button" class="rrhs-rf-cell" data-period="${p}" aria-pressed="${p === selected}">` +
+              `<span class="rrhs-rf-period">${label}</span>` +
+              `<span class="rrhs-rf-room">${rrhsEscapeRoomFinderText(roomLabel)}</span>` +
+              (meta ? `<span class="rrhs-rf-meta">${meta}</span>` : "") +
+              "</button>"
+            );
+          })
+          .join("");
+        return (
+          `<section class="rrhs-rf-day"><div class="rrhs-rf-day-head">${day} Day` +
+          (today === day ? '<span class="rrhs-rf-today">Today</span>' : "") +
+          `</div><div class="rrhs-rf-grid">${cells}</div></section>`
+        );
+      };
+
+      const days = today === "B" ? [["B", [5, 6, 7, 8]], ["A", [1, 2, 3, 4]]] : [["A", [1, 2, 3, 4]], ["B", [5, 6, 7, 8]]];
+      body.innerHTML =
+        '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Your classes</h2>' +
+        '<p class="rrhs-rf-sub">Pick where we should deliver your order.</p>' +
+        days.map(([d, ps]) => dayBlock(d, ps)).join("") +
+        '<div class="rrhs-rf-actions"><button type="button" class="rrhs-rf-text-btn" data-action="switch">Use a different account</button>' +
+        '<button type="button" class="rrhs-rf-primary" data-action="confirm">Confirm</button></div>';
+
+      const confirmBtn = body.querySelector('[data-action="confirm"]');
+      const sync = () => {
+        body.querySelectorAll(".rrhs-rf-cell[data-period]").forEach((el) => {
+          el.setAttribute("aria-pressed", String(Number(el.dataset.period) === selected));
+        });
+        confirmBtn.disabled = !selected;
+      };
+      body.querySelectorAll(".rrhs-rf-cell[data-period]").forEach((el) => {
+        el.addEventListener("click", () => {
+          selected = Number(el.dataset.period);
+          sync();
+        });
+      });
+      body.querySelector('[data-action="switch"]').addEventListener("click", () => {
+        rrhsClearHacSessionState();
+        renderLogin();
+      });
+      confirmBtn.addEventListener("click", () => {
+        const choice = selected ? schedule[selected] : null;
+        if (!choice) return;
+        close();
+        rrhsFillDeliveryFromRoomFinder(choice);
+      });
+      sync();
+      (body.querySelector('.rrhs-rf-cell[aria-pressed="true"]') || confirmBtn).focus();
+    }
+
+    const hasSchedule = rrhsHacState.authenticated && Object.keys(rrhsRoomFinderSchedule()).length > 0;
+    if (hasSchedule) renderSchedule();
+    else renderLogin();
+    void overlay.offsetWidth;
+    overlay.classList.add("is-open");
+  }
+
+  function rrhsEscapeRoomFinderText(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  if (window.RRHS_RUNTIME && typeof window.RRHS_RUNTIME.onDomChanged === "function") {
+    window.RRHS_RUNTIME.onDomChanged(rrhsEnsureRoomFinderLink);
+  }
+
   let rrhsCartChangedListenerAdded = false;
   function initCartChangedListener() {
     if (rrhsCartChangedListenerAdded) return;
@@ -5865,6 +6230,7 @@
         rrhsSyncAllDayOnlyRoomField();
         initEmployeeCheckoutValidation();
         initRoomAutocomplete();
+        rrhsEnsureRoomFinderLink();
         initSauceDropdown();
         initSauceQtyFields();
         initStoleTypeQtySync();
