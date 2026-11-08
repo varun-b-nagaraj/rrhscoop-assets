@@ -40,7 +40,7 @@
         position: fixed !important; z-index: 2147483000 !important;
         box-sizing: border-box; margin: 0; padding: 6px;
         max-height: min(320px, 60vh); overflow-y: auto; overscroll-behavior: contain;
-        border: 1px solid rgba(20, 20, 20, .14); border-radius: 12px; background: #fff;
+        border: 1px solid rgba(20, 20, 20, .14); border-radius: 0; background: #fff;
         box-shadow: 0 18px 40px rgba(20, 10, 10, .16), 0 2px 6px rgba(20, 10, 10, .06);
         font-family: var(--rrhs-font-body, "Spectral", Georgia, serif);
         opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top center;
@@ -54,7 +54,7 @@
       .rrhs-select-menu *, .rrhs-select-menu *::before, .rrhs-select-menu *::after { box-sizing: border-box; }
       .rrhs-select-menu__option {
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 8px;
+        min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 0;
         color: var(--rs-ink); font-size: 16px; font-weight: 400; line-height: 1.3;
         cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
         transition: background-color .14s ease, color .14s ease;
