@@ -23,6 +23,15 @@ const REPLY_TO = 'rrhs_coop_store@roundrockisd.org';
 const FROM_ALIAS = '';
 const MAX_SENT_IDS = 400;
 
+/**
+ * Default entry point. New Apps Script projects start with "myFunction"
+ * selected in the Run menu, so keeping it here means pressing Run just works:
+ * it turns receipts on (safe to run again; it never re-sends old orders).
+ */
+function myFunction() {
+  setup();
+}
+
 function setup() {
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('RECEIPTS_SECRET')) {
