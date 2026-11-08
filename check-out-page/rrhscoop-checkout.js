@@ -778,6 +778,52 @@
     rrhsHydrateHacCache();
   }
 
+  // Saved HAC logins: the browser keeps only an AES-GCM token sealed by our server
+  // (api/v1/hac/vault). The password itself is never stored or sent back here.
+  const RRHS_HAC_VAULT_STORAGE_KEY = "rrhs_hac_vault_v1";
+  const RRHS_HAC_SAVED_LOGIN = "__rrhs_saved_hac_login__";
+
+  function rrhsHacVaultUrl() {
+    try {
+      if (RRHS_ASSET_BASE_URL) return new URL("/api/v1/hac/vault", RRHS_ASSET_BASE_URL).toString();
+    } catch (_) {}
+    return "https://rrhscoop-assets.vercel.app/api/v1/hac/vault";
+  }
+
+  function rrhsGetSavedHacLogin() {
+    try {
+      const raw = window.localStorage.getItem(RRHS_HAC_VAULT_STORAGE_KEY);
+      const saved = raw ? JSON.parse(raw) : null;
+      return saved && saved.token && saved.username ? saved : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rrhsForgetSavedHacLogin() {
+    try {
+      window.localStorage.removeItem(RRHS_HAC_VAULT_STORAGE_KEY);
+    } catch (_) {}
+  }
+
+  async function rrhsSaveHacLogin(username, password) {
+    try {
+      const res = await fetch(rrhsHacVaultUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ action: "seal", username, password })
+      });
+      const json = res.ok ? await res.json() : null;
+      if (json && json.token) {
+        window.localStorage.setItem(
+          RRHS_HAC_VAULT_STORAGE_KEY,
+          JSON.stringify({ token: json.token, username: String(username), savedAt: Date.now() })
+        );
+      }
+    } catch (_) {}
+  }
+
   async function rrhsHacPost(path, payload) {
     const cfg = rrhsGetHacApiConfig();
     if (!cfg.baseUrl || !cfg.hacBaseUrl) throw new Error("HAC API config missing.");
@@ -799,7 +845,13 @@
       const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
       const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
       try {
-        const res = await fetch(`${cfg.baseUrl}${path}`, {
+        const saved = password === RRHS_HAC_SAVED_LOGIN ? rrhsGetSavedHacLogin() : null;
+        if (password === RRHS_HAC_SAVED_LOGIN && !saved) throw new Error("Saved login expired. Please sign in again.");
+        const forwardPayload = Object.assign({}, fullPayload);
+        delete forwardPayload.username;
+        delete forwardPayload.password;
+        delete forwardPayload.base_url;
+        const res = await fetch(saved ? rrhsHacVaultUrl() : `${cfg.baseUrl}${path}`, {
           method: "POST",
           headers: {
             "Accept": "*/*",
@@ -808,7 +860,9 @@
           cache: "no-store",
           mode: "cors",
           referrerPolicy: "origin",
-          body: JSON.stringify(fullPayload),
+          body: JSON.stringify(
+            saved ? { action: "proxy", token: saved.token, path, payload: forwardPayload } : fullPayload
+          ),
           signal: controller ? controller.signal : undefined
         });
         const text = await res.text().catch(() => "");
@@ -6120,6 +6174,7 @@
         submit.textContent = "Finding your schedule…";
         try {
           await rrhsAuthenticateAndLoadHac(user.value.trim(), pass.value);
+          rrhsSaveHacLogin(user.value.trim(), pass.value);
           try {
             await loadRoomSchedule();
           } catch (_) {}
@@ -6161,7 +6216,13 @@
           (choice.course ? `<span class="rrhs-rf-course">${rrhsEscapeRoomFinderText(choice.course)}</span>` : "") +
           "</div>" +
           '<button type="button" class="rrhs-rf-primary" data-action="confirm">Confirm</button>' +
-          '<button type="button" class="rrhs-rf-text-btn" data-action="manual">Type my room instead</button>';
+          '<button type="button" class="rrhs-rf-text-btn" data-action="manual">Type my room instead</button>' +
+          '<button type="button" class="rrhs-rf-text-btn" data-action="signout">Not you? Sign out</button>';
+        body.querySelector('[data-action="signout"]').addEventListener("click", () => {
+          rrhsForgetSavedHacLogin();
+          rrhsClearHacSessionState();
+          renderLogin();
+        });
         body.querySelector('[data-action="confirm"]').addEventListener("click", () => {
           close();
           rrhsFillDeliveryFromRoomFinder(choice);
@@ -6175,8 +6236,27 @@
       body.querySelector(".rrhs-rf-primary").focus();
     }
 
+    async function renderFromSavedLogin(saved) {
+      body.innerHTML =
+        '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Finding your class\u2026</h2>' +
+        '<p class="rrhs-rf-sub" role="status">Signing in to HAC as ' + rrhsEscapeRoomFinderText(saved.username) + ".</p>";
+      try {
+        await rrhsAuthenticateAndLoadHac(saved.username, RRHS_HAC_SAVED_LOGIN);
+        try {
+          await loadRoomSchedule();
+        } catch (_) {}
+        await rrhsPrimeDayTypeForToday();
+        if (document.body.contains(overlay)) renderSchedule();
+      } catch (err) {
+        rrhsForgetSavedHacLogin();
+        if (document.body.contains(overlay)) renderLogin("Please sign in to HAC again.");
+      }
+    }
+
     const hasSchedule = rrhsHacState.authenticated && Object.keys(rrhsRoomFinderSchedule()).length > 0;
+    const savedLogin = rrhsGetSavedHacLogin();
     if (hasSchedule) renderSchedule();
+    else if (savedLogin) renderFromSavedLogin(savedLogin);
     else renderLogin();
     void overlay.offsetWidth;
     overlay.classList.add("is-open");
