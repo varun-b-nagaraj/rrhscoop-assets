@@ -837,7 +837,7 @@
     }
     console.log("[RRHS HAC debug] API request:", path, safePayload);
     const maxAttempts = path === "/api/getReport" ? 3 : 1;
-    const timeoutMs = path === "/api/getReport"
+    const timeoutMs = path === "/api/getReport" || path === "/api/getSchedule"
       ? Math.max(12000, Number(cfg.requestTimeoutMs) || 0)
       : cfg.requestTimeoutMs;
     let lastErr = null;
@@ -1016,6 +1016,17 @@
       return String(fallbackDigits[1]);
     }
     return "";
+  }
+
+  // Prefer HAC's Schedule page (every period with its A/B day). Older API
+  // deployments only have the progress report, which lists each course once.
+  async function rrhsFetchScheduleReport(username, password, studentId) {
+    const payload = rrhsBuildGetReportPayload(username, password, studentId);
+    try {
+      const schedule = await rrhsHacPost("/api/getSchedule", payload);
+      if (schedule && Array.isArray(schedule.data) && schedule.data.length) return schedule;
+    } catch (_) {}
+    return rrhsHacPost("/api/getReport", payload);
   }
 
   function rrhsBuildGetReportPayload(username, password, studentId) {
@@ -1224,10 +1235,7 @@
         return { ok: false, studentId: sid, studentName: String(student && student.name ? student.name : sid).trim(), error: "Could not resolve student_id for report." };
       }
       try {
-        const reportResp = await rrhsHacPost(
-          "/api/getReport",
-          rrhsBuildGetReportPayload(user, pass, reportStudentId)
-        );
+        const reportResp = await rrhsFetchScheduleReport(user, pass, reportStudentId);
         return {
           ok: true,
           studentId: sid,
@@ -1274,11 +1282,12 @@
       ? reportPayload.data
       : [];
     const normalized = headers.map(normalizeHeaderValue);
-    const periodIdx = normalized.findIndex((h) => h === "period");
+    const periodIdx = normalized.findIndex((h) => h === "period" || h === "periods");
     const roomIdx = normalized.findIndex((h) => h === "room");
-    const courseIdx = normalized.findIndex(
-      (h) => h === "course" || h === "coursename" || h === "description" || h === "class" || h === "classname"
-    );
+    // Course name: the Schedule page's "Course" column is a code, so prefer Description/Class.
+    const courseIdx = ["description", "class", "classname", "coursename", "course"]
+      .map((name) => normalized.indexOf(name))
+      .find((i) => i !== -1) ?? -1;
     const teacherIdx = normalized.findIndex(
       (h) =>
         h === "teacher" ||
@@ -1292,10 +1301,24 @@
     const dayIdx = normalized.findIndex(
       (h) => h === "day" || h === "days" || h === "daytype" || h === "ab" || h === "abday" || h === "rotation"
     );
+    const mpIdx = normalized.findIndex((h) => h === "markingperiods" || h === "markingperiod" || h === "terms");
+    const statusIdx = normalized.findIndex((h) => h === "status");
     if (periodIdx === -1 || roomIdx === -1) return out;
+
+    // Schedule rows repeat per semester (MP1/MP2 vs MP3/MP4); keep the current one.
+    const month = rrhsGetNowDate().getMonth(); // 0 = Jan
+    const currentMps = month >= 6 ? ["MP1", "MP2"] : ["MP3", "MP4"];
 
     rows.forEach((row) => {
       if (!Array.isArray(row)) return;
+      if (statusIdx !== -1) {
+        const status = String(row[statusIdx] == null ? "" : row[statusIdx]).trim().toLowerCase();
+        if (status && status !== "active") return;
+      }
+      if (mpIdx !== -1) {
+        const mps = String(row[mpIdx] == null ? "" : row[mpIdx]).toUpperCase();
+        if (/MP\d/.test(mps) && !currentMps.some((mp) => mps.includes(mp))) return;
+      }
       const periodRaw = String(row[periodIdx] == null ? "" : row[periodIdx]).trim();
       const dayRaw = dayIdx !== -1 ? String(row[dayIdx] == null ? "" : row[dayIdx]).trim().toUpperCase() : "";
       const roomRaw = String(row[roomIdx] == null ? "" : row[roomIdx]).trim();
@@ -1307,6 +1330,7 @@
       if (dayLetter === "B" && periodNum >= 1 && periodNum <= 4) periodNum += 4;
       if (!Number.isFinite(periodNum) || periodNum < 1 || periodNum > 8) return;
       if (!roomRaw) return;
+      if (/^oc$/i.test(roomRaw) || /off campus/i.test(row.join(" "))) return;
       const courseRaw =
         courseIdx !== -1 ? String(row[courseIdx] == null ? "" : row[courseIdx]).trim() : "";
       if (!out[periodNum]) {
@@ -1609,10 +1633,7 @@
         if (!reportStudentId) {
           throw new Error("Could not resolve numeric student_id for HAC report. Re-select student and try again.");
         }
-        const reportResp = await rrhsHacPost(
-          "/api/getReport",
-          rrhsBuildGetReportPayload(user, pass, reportStudentId)
-        );
+        const reportResp = await rrhsFetchScheduleReport(user, pass, reportStudentId);
         rrhsSetReportCacheEntryForStudent(sid, {
           studentId: sid,
           studentName: selected && selected.name ? selected.name : sid,

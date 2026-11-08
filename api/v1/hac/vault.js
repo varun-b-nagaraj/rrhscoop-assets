@@ -19,7 +19,7 @@ const crypto = require('crypto');
 
 const HAC_API_BASE = 'https://hacapi-hh.vercel.app';
 const HAC_BASE_URL = 'https://accesscenter.roundrockisd.org/';
-const ALLOWED_PATHS = new Set(['/api/login', '/lookup/students', '/api/getReport']);
+const ALLOWED_PATHS = new Set(['/api/login', '/lookup/students', '/api/getReport', '/api/getSchedule']);
 const TOKEN_MAX_AGE_DAYS = 180;
 const TOKEN_PREFIX = 'v1.';
 const AAD = Buffer.from('rrhs-hac-vault-v1');
