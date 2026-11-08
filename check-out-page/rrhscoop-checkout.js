@@ -1514,6 +1514,13 @@
       if (studentId && !students.some((s) => String((s && s.id) || "").trim() === String(studentId))) {
         studentId = "";
       }
+      if (!studentId) {
+        // Prefer the student HAC itself marks as active on parent accounts.
+        const flagged = students.find(
+          (st) => st && (st.active === true || st.is_active === true || st.selected === true || st.current === true)
+        );
+        if (flagged && flagged.id) studentId = String(flagged.id);
+      }
       if (!studentId && students[0] && students[0].id) {
         studentId = String(students[0].id);
       }
@@ -6028,6 +6035,16 @@
       .rrhs-rf-primary:hover:not(:disabled) { background: #4d111c; }
       .rrhs-rf-primary:disabled { opacity: .45; cursor: not-allowed; }
       .rrhs-rf-primary:focus-visible, .rrhs-rf-text-btn:focus-visible { outline: 2px solid #6e1f2a; outline-offset: 2px; }
+      .rrhs-rf-student { margin: 16px 0 0; }
+      .rrhs-rf-select-wrap { position: relative; }
+      .rrhs-rf-select-wrap::after { content: ""; position: absolute; right: 16px; top: 50%; width: 8px; height: 8px;
+        margin-top: -6px; border-right: 2px solid #6e1f2a; border-bottom: 2px solid #6e1f2a; transform: rotate(45deg);
+        pointer-events: none; }
+      .rrhs-rf-select { width: 100%; min-height: 48px; padding: 10px 40px 10px 14px; border: 1px solid #d8cfc4;
+        border-radius: 0; background: #fff; color: #141414; font-family: inherit; font-size: 16px;
+        -webkit-appearance: none; appearance: none; }
+      .rrhs-rf-select-wrap:hover .rrhs-rf-select { border-color: #6e1f2a; }
+      .rrhs-rf-select:focus-visible { outline: none; border-color: #6e1f2a; box-shadow: 0 0 0 3px rgba(110, 31, 42, .15); }
       .rrhs-rf-card { display: flex; flex-direction: column; gap: 4px; margin: 18px 0 20px; padding: 18px 20px;
         background: #fff; border: 1px solid #d8cfc4; border-left: 4px solid #6e1f2a; }
       .rrhs-rf-when { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6e1f2a; }
@@ -6136,6 +6153,7 @@
     }
     function onKey(e) {
       if (e.key === "Escape") {
+        if (document.querySelector(".rrhs-select-menu.is-open")) return; // let the open dropdown close first
         e.preventDefault();
         close();
         return;
@@ -6215,18 +6233,37 @@
       const day = getTodayDayType();
       const period = rrhsGetCurrentOrNextPeriodForToday();
       const choice = schedule[period] || null;
+      const students = (Array.isArray(rrhsHacState.students) ? rrhsHacState.students : []).filter(
+        (st) => st && st.id && rrhsGetReportCacheEntryForStudent(String(st.id))
+      );
+      const activeId = String(rrhsHacState.activeStudentId || "");
+      const picker =
+        students.length > 1
+          ? '<div class="rrhs-rf-field rrhs-rf-student"><span id="rrhs-rf-student-label">Student</span>' +
+            '<div class="form-control rrhs-rf-select-wrap"><select class="rrhs-rf-select" data-rrhs-themed-select aria-labelledby="rrhs-rf-student-label">' +
+            students
+              .map((st) => {
+                const id = String(st.id);
+                const name = String(st.name || id).trim();
+                return `<option value="${rrhsEscapeRoomFinderText(id)}"${id === activeId ? " selected" : ""}>${rrhsEscapeRoomFinderText(name)}</option>`;
+              })
+              .join("") +
+            "</select></div></div>"
+          : "";
       const ordinal = ["1st", "2nd", "3rd", "4th"][(Number(period) - 1) % 4] || "";
       const when = `${day} Day · ${ordinal} period`;
 
       if (!choice) {
         body.innerHTML =
           '<h2 class="rrhs-rf-title" id="rrhs-rf-title">No class found</h2>' +
+          picker +
           `<p class="rrhs-rf-sub">HAC doesn’t show a class for ${rrhsEscapeRoomFinderText(when)}. Type your room in the Delivery Location box instead.</p>` +
           '<button type="button" class="rrhs-rf-primary" data-action="manual">Type my room</button>';
       } else {
         const roomLabel = /^\d/.test(choice.room) ? `Room ${choice.room}` : choice.room;
         body.innerHTML =
           '<h2 class="rrhs-rf-title" id="rrhs-rf-title">Is this your class?</h2>' +
+          picker +
           '<div class="rrhs-rf-card">' +
           `<span class="rrhs-rf-when">${rrhsEscapeRoomFinderText(when)}</span>` +
           `<span class="rrhs-rf-room">${rrhsEscapeRoomFinderText(roomLabel)}</span>` +
@@ -6244,6 +6281,18 @@
         body.querySelector('[data-action="confirm"]').addEventListener("click", () => {
           close();
           rrhsFillDeliveryFromRoomFinder(choice);
+        });
+      }
+      const studentSelect = body.querySelector(".rrhs-rf-select");
+      if (studentSelect) {
+        studentSelect.addEventListener("change", () => {
+          const id = String(studentSelect.value || "");
+          const entry = rrhsGetReportCacheEntryForStudent(id);
+          if (!entry) return;
+          rrhsSetActiveStudent(id, entry.studentName || "");
+          rrhsApplyActiveStudentReportFromCache();
+          rrhsPersistHacCache();
+          renderSchedule();
         });
       }
       body.querySelector('[data-action="manual"]').addEventListener("click", () => {

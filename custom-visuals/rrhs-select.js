@@ -13,7 +13,7 @@
   if (window.__rrhsSelectInstalled) return;
   window.__rrhsSelectInstalled = true;
 
-  const SELECT_SELECTOR = ".product-details select.form-control__select";
+  const SELECT_SELECTOR = ".product-details select.form-control__select, select[data-rrhs-themed-select]";
   const STYLE_ID = "rrhs-select-styles";
   const GAP = 6;
   const MIN_WIDTH = 220;
