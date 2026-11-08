@@ -169,8 +169,8 @@
     activeStudentId: "rrhs_hac_active_student_id_v1",
     activeStudentName: "rrhs_hac_active_student_name_v1",
     activeSchedulePayload: "rrhs_hac_active_schedule_payload_v1",
-    cacheLocal: "rrhs_hac_cache_v1",
-    cacheSession: "rrhs_hac_cache_session_v1"
+    cacheLocal: "rrhs_hac_cache_v2",
+    cacheSession: "rrhs_hac_cache_session_v2"
   });
   const RRHS_HAC_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 
@@ -1287,15 +1287,24 @@
         h === "staff" ||
         h === "staffname"
     );
+    // Some HAC reports number both days 1-4 and mark A/B separately ("Days" column,
+    // or periods like "3B" / "B3"). B Day periods 1-4 are our periods 5-8.
+    const dayIdx = normalized.findIndex(
+      (h) => h === "day" || h === "days" || h === "daytype" || h === "ab" || h === "abday" || h === "rotation"
+    );
     if (periodIdx === -1 || roomIdx === -1) return out;
 
     rows.forEach((row) => {
       if (!Array.isArray(row)) return;
       const periodRaw = String(row[periodIdx] == null ? "" : row[periodIdx]).trim();
+      const dayRaw = dayIdx !== -1 ? String(row[dayIdx] == null ? "" : row[dayIdx]).trim().toUpperCase() : "";
       const roomRaw = String(row[roomIdx] == null ? "" : row[roomIdx]).trim();
       const teacherRaw =
         teacherIdx !== -1 ? String(row[teacherIdx] == null ? "" : row[teacherIdx]).trim() : "";
-      const periodNum = Number(periodRaw.replace(/[^\d]/g, ""));
+      let periodNum = Number(periodRaw.replace(/[^\d]/g, ""));
+      const periodLetter = (periodRaw.toUpperCase().match(/(?:^|[^A-Z])([AB])(?:[^A-Z]|$)/) || [])[1] || "";
+      const dayLetter = /^B\b|B[- ]?DAY/.test(dayRaw) || dayRaw === "B" ? "B" : periodLetter;
+      if (dayLetter === "B" && periodNum >= 1 && periodNum <= 4) periodNum += 4;
       if (!Number.isFinite(periodNum) || periodNum < 1 || periodNum > 8) return;
       if (!roomRaw) return;
       const courseRaw =
@@ -6250,7 +6259,7 @@
               .join("") +
             "</select></div></div>"
           : "";
-      const ordinal = ["1st", "2nd", "3rd", "4th"][(Number(period) - 1) % 4] || "";
+      const ordinal = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"][Number(period) - 1] || "";
       const when = `${day} Day · ${ordinal} period`;
 
       if (!choice) {
