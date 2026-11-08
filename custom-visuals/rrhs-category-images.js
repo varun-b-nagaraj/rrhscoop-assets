@@ -46,14 +46,44 @@
     if (document.getElementById("rrhs-category-image-styles")) return;
     const style = document.createElement("style");
     style.id = "rrhs-category-image-styles";
+    // Selectors start with ".ec-size .ec-store" to outrank Ecwid's own rules.
     style.textContent = `
-      #ecwid-products .grid__categories .grid-category__card {
-        border: 1px solid rgba(110, 31, 42, .22);
-        overflow: hidden;
-        background: #fff;
+      .ec-size .ec-store .grid__categories .grid-category__wrap-inner {
+        transition: transform .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease !important;
       }
-      #ecwid-products .grid__categories .grid-category__bg-color {
+      .ec-size .ec-store .grid__categories .grid-category__card {
+        position: relative !important;
+        overflow: hidden !important;
+        background: #fff !important;
+      }
+      /* Border drawn on top of the image so nothing inside can cover it. */
+      .ec-size .ec-store .grid__categories .grid-category__card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        border: 2px solid #6e1f2a;
+        pointer-events: none;
+      }
+      .ec-size .ec-store .grid__categories .grid-category__bg-color {
         background-color: #fff !important;
+      }
+
+      /* Hover: grow the whole card instead of zooming the picture inside it. */
+      .ec-size .ec-store .grid__categories .grid-category__wrap-inner:hover .grid-category__bg-image,
+      .ec-size .ec-store .grid__categories .grid-category__wrap-inner:hover .grid-category__picture,
+      .ec-size .ec-store .grid__categories .grid-category__wrap-inner:hover .grid-category__picture-img {
+        transform: none !important;
+        filter: none !important;
+      }
+      .ec-size .ec-store .grid__categories .grid-category__wrap-inner:hover {
+        transform: scale(1.03) !important;
+        box-shadow: 0 18px 36px rgba(20, 10, 10, .16) !important;
+        z-index: 2;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ec-size .ec-store .grid__categories .grid-category__wrap-inner { transition: none !important; }
+        .ec-size .ec-store .grid__categories .grid-category__wrap-inner:hover { transform: none !important; }
       }
     `;
     (document.head || document.documentElement).appendChild(style);
