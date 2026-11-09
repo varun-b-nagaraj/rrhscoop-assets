@@ -1,4 +1,4 @@
-/* November 9 e-commerce launch and Diwali promotion. */
+/* November 10 e-commerce launch and Diwali promotion. */
 (function () {
   if (window.RRHS_LAUNCH) return;
   const base = new URL('.', document.currentScript.src);
@@ -31,7 +31,7 @@
       body: `<p>Henna is a plant whose leaves are made into a paste used to draw temporary designs on the skin. The art of creating these patterns is often called <em>mehndi</em>.</p>
         <p>Artists create everything from delicate flowers and leaves to flowing geometric patterns. Your design will last around 2–3 days and gradually fade.</p>
         <p>Henna is part of celebrations and special occasions across South Asia, the Middle East, and North Africa. Join our Diwali celebration and try it for yourself. Swing by the Co-op to learn more!</p>
-        <div class="rrhs-launch__offer"><h3>Your free henna design</h3><p>Order through e-commerce, then bring your receipt to the Co-op during <strong>3rd period on November 9</strong>.</p></div>
+        <div class="rrhs-launch__offer"><h3>Your free henna design</h3><p>Order through e-commerce, then bring your receipt to the Co-op during <strong>7th period on November 10</strong>.</p></div>
         <a class="rrhs-launch__source" href="https://australian.museum/about/history/exhibitions/body-art/henna/" target="_blank" rel="noopener noreferrer">Learn more at the Australian Museum</a>`
     },
     diwali: {
@@ -39,8 +39,8 @@
       title: 'Diwali at the Co-op',
       body: `<p>Diwali, the Festival of Lights, is a major Hindu festival celebrating light over darkness, good over evil, and knowledge over ignorance.</p>
         <p>Celebrated over five days, it includes lighting oil lamps called <em>diyas</em>, fireworks, and decorating homes to welcome prosperity and good fortune.</p>
-        <p>We’re bringing that spirit to the Co-op’s e-commerce reopening on November 9. Students and staff can order online for classroom delivery.</p>
-        <div class="rrhs-launch__offer"><h3>Come celebrate with us.</h3><p>Show your e-commerce receipt at the Co-op during <strong>3rd period on November 9</strong> for a free henna design.</p></div>`
+        <p>We’re bringing that spirit to the Co-op’s e-commerce reopening on November 10. Students and staff can order online for classroom delivery.</p>
+        <div class="rrhs-launch__offer"><h3>Come celebrate with us.</h3><p>Show your e-commerce receipt at the Co-op during <strong>7th period on November 10</strong> for a free henna design.</p></div>`
     }
   };
 
@@ -94,25 +94,25 @@
       <article class="rrhs-launch__card">
         <div class="rrhs-launch__art" aria-hidden="true">
           <span class="rrhs-launch__eyebrow">A little light. A lot to celebrate.</span>
-          <span class="rrhs-launch__date">NOV<span>09</span></span>
+          <span class="rrhs-launch__date">NOV<span>10</span></span>
           <svg class="rrhs-launch__diya" viewBox="0 0 240 170" fill="none"><path class="rrhs-launch__flame" d="M120 82C79 54 118 23 124 8c3 25 37 49-4 74Z" fill="currentColor"/><path d="M34 103c19 68 153 68 172 0H34Z" fill="currentColor"/><ellipse cx="120" cy="103" rx="86" ry="15" stroke="currentColor" stroke-width="3"/><path d="M79 135c25 17 57 17 82 0M120 111v12" stroke="#6e1f2a" stroke-width="4" stroke-linecap="round"/></svg>
           <span class="rrhs-launch__art-label">Diwali at the CO-OP</span>
         </div>
         <div class="rrhs-launch__content">
-          <p class="rrhs-launch__eyebrow">E-commerce launch · November 9</p>
+          <p class="rrhs-launch__eyebrow">E-commerce launch · November 10</p>
           <h2 id="rrhs-launch-title">A brighter way to shop.</h2>
-          <p id="rrhs-launch-description">We’re launching e-commerce on November 9, alongside a Diwali celebration. Come celebrate with us at the Co-op!</p>
+          <p id="rrhs-launch-description">We’re launching e-commerce on November 10, alongside a Diwali celebration. Come celebrate with us at the Co-op!</p>
           <div class="rrhs-launch__offer">
             <span class="rrhs-launch__eyebrow">Your purchase. A little extra celebration.</span>
             <h3>Shop online. Get free henna.</h3>
-            <p>Place an e-commerce order, then show your receipt at the Co-op during <strong>3rd period on November 9</strong> to redeem your free henna design.</p>
+            <p>Place an e-commerce order, then show your receipt at the Co-op during <strong>7th period on November 10</strong> to redeem your free henna design.</p>
           </div>
           <button type="button" class="rrhs-launch__learn" data-launch-info="diwali" aria-controls="rrhs-launch-info" aria-expanded="false">About Diwali &amp; our online store ${arrow}</button>
           <div class="rrhs-launch__actions">
             <button type="button" class="rrhs-launch__primary" data-launch-info="henna" aria-controls="rrhs-launch-info" aria-expanded="false">What is henna? ${arrow}</button>
             <button type="button" class="rrhs-launch__secondary">Keep browsing</button>
           </div>
-          <p class="rrhs-launch__footnote">November 9 · 3rd period · At the Co-op</p>
+          <p class="rrhs-launch__footnote">November 10 · 7th period · At the Co-op</p>
         </div>
       </article>
       <div class="rrhs-launch__info-layer" hidden>
@@ -211,7 +211,7 @@
       const banner = document.createElement('div');
       banner.id = 'rrhs-launch-announcement';
       banner.className = 'rrhs-launch-banner';
-      banner.innerHTML = `<button type="button"><strong>E-commerce launches November 9</strong><span>Celebrate Diwali with us. Shop online &amp; get free henna.</span><span class="rrhs-launch-banner__cta">See the celebration ${arrow}</span></button>`;
+      banner.innerHTML = `<button type="button"><strong>E-commerce launches November 10</strong><span>Celebrate Diwali with us. Shop online &amp; get free henna.</span><span class="rrhs-launch-banner__cta">See the celebration ${arrow}</span></button>`;
       banner.querySelector('button').addEventListener('click', (event) => open(event.currentTarget));
       document.body.prepend(banner);
     }

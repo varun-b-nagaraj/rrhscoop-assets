@@ -195,7 +195,7 @@ Run unit tests (Node 18+):
 node --test
 ```
 
-## November 9 launch celebration
+## November 10 launch celebration
 
 `custom-visuals/rrhs-launch-celebration.js` and its companion CSS are loaded by `index.js`.
 The script adds a top announcement and a **Happy Diwali!** header button across the
@@ -206,8 +206,8 @@ back to the homepage. Opening it manually also marks it as seen. The header butt
 and announcement still replay it on demand. Other routes, including
 checkout, do not open it automatically.
 
-The dialog presents the November 9 e-commerce launch and the PDF's Diwali offer:
-order online, then show the receipt at the Co-op during 3rd period on November 9
+The dialog presents the November 10 e-commerce launch and the PDF's Diwali offer:
+order online, then show the receipt at the Co-op during 7th period on November 10
 for a free henna design. Additional festival and classroom-delivery information is
 available in overlay panels that keep the announcement layout in place. The dialog
 uses native keyboard handling,
