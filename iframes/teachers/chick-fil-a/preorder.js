@@ -12,6 +12,7 @@
   let expiryTimer = null;
   let widgetReady = null, preparing = false, checkoutValid = false, currentView = 'menu', resendUntil = 0;
   const drawer = $('preorder-drawer');
+  const drawerShell = drawer.querySelector('.drawer-shell');
   const drawerScroll = $('drawer-scroll');
   let parentOrigin = 'https://rrhscoop.roundrockisd.org';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
@@ -99,23 +100,23 @@
   function presentDrawer() {
     document.documentElement.classList.add('preorder-open');
     drawer.showModal();
+    // Commit the offscreen position before starting the transition.
+    drawerShell.getBoundingClientRect();
+    drawer.classList.add('is-visible');
     $(`${currentView}-title`)?.focus({ preventScroll: true });
   }
-  function closeDrawer() {
-    if (!drawer.open) return;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      drawer.close();
-      return;
-    }
-    if (drawer.classList.contains('is-closing')) return;
-    drawer.classList.add('is-closing');
-    setTimeout(() => { if (drawer.open) drawer.close(); }, 190);
+  async function closeDrawer() {
+    if (!drawer.open || !drawer.classList.contains('is-visible')) return;
+    drawer.classList.remove('is-visible');
+    const transition = drawerShell.getAnimations?.().find(animation => animation.transitionProperty === 'transform');
+    if (transition) await transition.finished.catch(() => {});
+    if (drawer.open) drawer.close();
   }
   $('close-preorder').addEventListener('click', closeDrawer);
   drawer.addEventListener('cancel', event => { event.preventDefault(); closeDrawer(); });
   drawer.addEventListener('click', event => { if (event.target === drawer) closeDrawer(); });
   drawer.addEventListener('close', () => {
-    drawer.classList.remove('is-closing');
+    drawer.classList.remove('is-visible');
     document.documentElement.classList.remove('preorder-open', 'preorder-overlay');
     checkoutValid = false;
     clearTimeout(expiryTimer);

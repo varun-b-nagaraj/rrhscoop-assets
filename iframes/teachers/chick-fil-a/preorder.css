@@ -142,15 +142,18 @@ html.preorder-overlay .page {
 .preorder-drawer {
   position:fixed; inset:0 0 0 auto; margin:0;
   width:min(680px,100%); max-width:none; height:100%; max-height:none;
-  padding:0; border:0; overflow:hidden; color:var(--ink); background:transparent;
+  padding:0; border:0; overflow:clip; color:var(--ink); background:transparent;
 }
-.preorder-drawer::backdrop { background:rgba(26,17,16,.42); animation:drawer-dim 220ms ease-out both; }
-.drawer-shell { display:flex; flex-direction:column; height:100%; background:var(--paper); animation:drawer-enter 290ms var(--ease) both; }
-.preorder-drawer.is-closing .drawer-shell { animation:drawer-exit 190ms ease-in both; }
-.preorder-drawer.is-closing::backdrop { animation:drawer-dim 190ms ease-in reverse both; }
-@keyframes drawer-enter { from { transform:translateX(100%); } to { transform:translateX(0); } }
-@keyframes drawer-exit { from { transform:translateX(0); } to { transform:translateX(100%); } }
-@keyframes drawer-dim { from { opacity:0; } to { opacity:1; } }
+.preorder-drawer::backdrop { background:rgba(26,17,16,.42); opacity:0; transition:opacity 180ms ease; }
+.drawer-shell {
+  display:flex; flex-direction:column; height:100%; background:var(--paper);
+  transform:translateX(100%); transition:transform 260ms var(--ease);
+}
+.preorder-drawer.is-visible::backdrop { opacity:1; }
+.preorder-drawer.is-visible .drawer-shell { transform:translateX(0); }
+@media(prefers-reduced-motion:reduce) {
+  .preorder-drawer::backdrop,.drawer-shell { transition:none; }
+}
 .drawer-header { display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); padding:18px 30px; background:var(--cream); }
 #drawer-label { font-size:16px; color:var(--muted); }
 .drawer-close { display:grid; place-items:center; width:44px; height:44px; flex:0 0 44px; background:var(--paper); color:var(--maroon); border:1px solid var(--line); }
