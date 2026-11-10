@@ -279,3 +279,23 @@ page. Confirm that the order appears in Ecwid with its room, delivery date, and
 sauces, and that a regular cart containing any of the three SKUs cannot continue.
 The regular cart restriction runs in the storefront. It is not an Ecwid
 server-side product access rule.
+
+### Schedule the faculty order email
+
+Replace the code in the existing district Apps Script project with the updated
+[verification and dispatch script](apps-script/teacher-preorder-verification.gs),
+then update the web app deployment to a new version. Keep the existing verification
+properties and deployment URL.
+
+1. Add `RRHS_CFA_DISPATCH_SECRET` from the local `.env` to Vercel Production and
+   redeploy. In Apps Script, add the same value as the `CFA_DISPATCH_SECRET` Script
+   Property.
+2. Run `installCfaDispatchTrigger` once from the Apps Script editor and approve the
+   requested permissions.
+3. Run `sendCfaDispatchPreview` to send a sample HTML dispatch to the test inbox.
+
+The daily trigger sends on the first available run at or after 2:30 p.m. Central.
+It lists faculty preorders placed before 2 p.m. Central that day, with paid and
+awaiting-payment orders labeled. It sends an empty report if there were none. The students receive order numbers,
+items, sauces, and classroom delivery details. The test Gmail address can also
+verify and place an order through the standard preorder flow.

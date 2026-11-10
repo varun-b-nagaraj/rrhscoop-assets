@@ -41,7 +41,7 @@
       ? `<div class="receipt-line"><strong>Sauces</strong><small>${packets.join(' · ')}</small></div>`
       : '';
     document.querySelectorAll('[data-summary]').forEach(el => {
-      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.<br>Chick-fil-A is excluded from faculty discounts.</p><p class="receipt-date">Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}</p>`;
+      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.</p><p class="receipt-date">Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}</p>`;
     });
     $('subtotal').textContent = money(subtotal());
     $('review-order').disabled = selectedItems().length === 0;
@@ -119,8 +119,7 @@
   }
   $('delivery-form').addEventListener('submit', event => {
     event.preventDefault();
-    const email = $('teacher-email'); email.setCustomValidity('');
-    if (!/^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/i.test(email.value.trim())) { email.setCustomValidity('Please use your district email ending in @roundrockisd.org.'); email.reportValidity(); return; }
+    const email = $('teacher-email');
     details = { name:$('teacher-name').value.trim(), room:$('teacher-room').value.trim(), time:$('delivery-time').value, email:email.value.trim().toLowerCase() };
     busy($('send-code'), 'Checking your email…', async()=> {
       if (token && verifiedEmail === details.email) { try { await request({ action:'session', token }); rememberVerification(); review(); return; } catch (err) { if (err.status !== 401) throw err; forget(); } }
@@ -128,7 +127,6 @@
       await sendCode();
     }, 'details-error');
   });
-  $('teacher-email').addEventListener('input',()=> $('teacher-email').setCustomValidity(''));
   $('verification-form').addEventListener('submit', event => {
     event.preventDefault(); const button = event.submitter;
     busy(button, 'Verifying…', async()=> {
