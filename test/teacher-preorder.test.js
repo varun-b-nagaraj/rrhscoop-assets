@@ -61,6 +61,7 @@ test('order comments carry the exact date, room, email, and order-level sauce co
 });
 test('normal-cart gate detects all supplied SKUs and IDs, including mixed carts',()=> {
   for(const item of s.MENU){assert.equal(products.cartHasPreorder({items:[{product:{sku:'normal'}},{product:{sku:item.sku}}]}),true);assert.equal(products.isPreorder({id:item.id}),true);}
+  assert.equal(products.cartHasPreorder({items:[null,{productId:s.MENU[0].id,product:{name:'Sandwich'}}]}),true);
   assert.equal(products.cartHasPreorder({items:[{product:{sku:'normal',id:1}}]}),false);
 });
 test('checkout requires server verification before fetching any product',async()=> {
