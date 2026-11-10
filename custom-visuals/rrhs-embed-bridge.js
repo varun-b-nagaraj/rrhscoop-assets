@@ -11,6 +11,7 @@
     'home-categories': 'home-intro/categories.html'
   };
   const connected = new WeakMap();
+  let preorderBridgeRequested = false;
   function identify(frame) {
     try {
       const url = new URL(frame.src, location.href);
@@ -33,6 +34,13 @@
       const key = identify(frame);
       if (!key || connected.get(frame) === frame.src) return;
       connected.set(frame, frame.src);
+      if (key === 'cfa-preorder' && !frame.dataset.cfaDrawerBridge && !preorderBridgeRequested) {
+        preorderBridgeRequested = true;
+        const script = document.createElement('script');
+        script.src = assetOrigin + '/iframes/teachers/chick-fil-a/embed.js?live=2';
+        script.onerror = () => { preorderBridgeRequested = false; };
+        document.head.appendChild(script);
+      }
       const refresh = () => {
         request(frame, key);
         // Cover delayed child scripts and font/layout work after load.
@@ -50,7 +58,7 @@
     const key = identify(frame);
     if (!key) return;
     const data = event.data;
-    if (data.type === 'rrhs-' + key + '-height' && Number.isFinite(data.height) && data.height > 0 && data.height < 200000) {
+    if (data.type === 'rrhs-' + key + '-height' && !frame.dataset.cfaDrawerOpen && Number.isFinite(data.height) && data.height > 0 && data.height < 200000) {
       frame.style.setProperty('height', Math.ceil(data.height) + 'px', 'important');
     }
     if (key === 'teachers' && data.type === 'rrhs-teachers-navigate') {

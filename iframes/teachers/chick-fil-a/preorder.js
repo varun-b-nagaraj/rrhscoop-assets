@@ -11,6 +11,8 @@
   let token = '', verifiedEmail = '', details = {}, challenge = '', checkout = null;
   let expiryTimer = null;
   let widgetReady = null, preparing = false, checkoutValid = false, currentView = 'menu', resendUntil = 0;
+  const drawer = $('preorder-drawer');
+  const drawerScroll = $('drawer-scroll');
   let parentOrigin = 'https://rrhscoop.roundrockisd.org';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
   try { token = localStorage.getItem(STORE_KEY) || ''; } catch (_) {}
@@ -45,66 +47,125 @@
         ? 'Store pickup<strong>Choose a time in checkout</strong>'
         : `Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}`}</p>`;
     });
-    $('subtotal').textContent = money(subtotal());
+    const total = money(subtotal());
+    $('subtotal').textContent = total;
+    $('drawer-subtotal').textContent = total;
+    $('continue-preorder').disabled = selectedItems().length === 0;
     $('review-order').disabled = selectedItems().length === 0;
   }
+  const stepLabels = {
+    selections: '01 / Your order', details: '02 / Fulfillment', verify: '03 / Email verification',
+    review: '04 / Checkout', payment: '04 / Checkout', complete: 'Order received',
+  };
   function show(view) {
     currentView = view;
-    document.querySelectorAll('.view').forEach(el => { el.hidden = el.id !== `${view}-view`; });
-    const step = { menu: 0, details: 1, verify: 2, review: 3, payment: 3, complete: 3 }[view];
-    document.querySelectorAll('.progress li').forEach((el,i) => { if (i === step) el.setAttribute('aria-current','step'); else el.removeAttribute('aria-current'); });
+    drawer.querySelectorAll('.view').forEach(section => { section.hidden = section.id !== `${view}-view`; });
+    $('drawer-step').textContent = stepLabels[view];
+    drawerScroll.scrollTop = 0;
     summary();
-    const heading = $(`${view}-title`);
-    if (heading) { heading.focus({ preventScroll: true }); if (window.parent === window) heading.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); else window.parent.postMessage({ type: 'rrhs-cfa-preorder-scroll', top: heading.getBoundingClientRect().top + scrollY - 24 }, parentOrigin); }
-    sendHeight();
+    if (drawer.open) $(`${view}-title`)?.focus({ preventScroll: true });
   }
+  function openDrawer(view) {
+    if (!drawer.open) {
+      show(view);
+      document.documentElement.classList.add('preorder-open');
+      drawer.showModal();
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
+      }
+    }
+    show(view);
+  }
+  function closeDrawer() {
+    if (!drawer.open) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      drawer.close();
+      return;
+    }
+    if (drawer.classList.contains('is-closing')) return;
+    drawer.classList.add('is-closing');
+    setTimeout(() => { if (drawer.open) drawer.close(); }, 190);
+  }
+  $('close-preorder').addEventListener('click', closeDrawer);
+  drawer.addEventListener('cancel', event => { event.preventDefault(); closeDrawer(); });
+  drawer.addEventListener('click', event => { if (event.target === drawer) closeDrawer(); });
+  drawer.addEventListener('close', () => {
+    drawer.classList.remove('is-closing');
+    document.documentElement.classList.remove('preorder-open', 'preorder-overlay');
+    checkoutValid = false;
+    clearTimeout(expiryTimer);
+    try { sessionStorage.removeItem('rrhs-cfa-pending'); } catch (_) {}
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: false }, parentOrigin);
+    }
+    $('review-order').focus({ preventScroll: true });
+    sendHeight();
+  });
   const descriptions = { '601_sku': 'The original, with pickles on a toasted buttered bun.', '782_sku': 'Grilled chicken, crisp greens, eggs, and a little crunch.', '698_sku': 'Eight bite-sized favorites, ready for your favorite sauce.' };
+  function stepper(key, label, count, max, kind, disabled = false) {
+    return `<div class="stepper" data-counter="${kind}" data-key="${escape(key)}" data-max="${max}" data-available="${!disabled}">
+      <button type="button" data-delta="-1" aria-label="Remove one ${escape(label)}" ${count === 0 || disabled ? 'disabled' : ''}>−</button>
+      <output aria-live="polite" aria-label="${escape(label)} quantity">${count}</output>
+      <button type="button" data-delta="1" aria-label="Add one ${escape(label)}" ${count >= max || disabled ? 'disabled' : ''}>+</button>
+    </div>`;
+  }
   function renderMenu() {
-    $('menu').innerHTML = menu.map((p,i) => `<article class="food-card" data-sku="${p.sku}"><div class="food-image"><span class="menu-index" aria-hidden="true">0${i+1}</span><img src="../assets/${p.image}" width="700" height="700" alt="${escape(p.name)}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}></div><div class="food-title"><h3>${escape(p.name)}</h3><span class="price">${money(p.price)}</span></div><p class="food-description">${escape(descriptions[p.sku])}</p><div class="quantity-row"><label for="qty-${p.sku}">Quantity</label><div class="stepper"><button type="button" data-delta="-1" aria-label="Remove one ${escape(p.name)}">−</button><input id="qty-${p.sku}" data-quantity type="number" inputmode="numeric" min="0" max="20" step="1" value="${selection.get(p.sku)?.quantity || 0}" ${!p.available ? 'disabled' : ''}><button type="button" data-delta="1" aria-label="Add one ${escape(p.name)}" ${!p.available ? 'disabled' : ''}>+</button></div></div>${!p.available ? '<p class="inline-error">Temporarily unavailable.</p>' : ''}</article>`).join('');
+    $('menu').innerHTML = menu.map((product, index) => `
+      <article class="food-card" data-sku="${product.sku}">
+        <div class="food-image"><img src="../assets/${product.image}" width="700" height="700" alt="${escape(product.name)}" ${index ? 'loading="lazy"' : 'fetchpriority="high"'}></div>
+        <div class="food-title"><h3>${escape(product.name)}</h3><span class="price">${money(product.price)}</span></div>
+        <p class="food-description">${escape(descriptions[product.sku])}</p>
+        <div class="quantity-row"><span>Quantity</span>${stepper(product.sku, product.name, selection.get(product.sku)?.quantity || 0, 20, 'item', !product.available)}</div>
+        ${!product.available ? '<p class="inline-error">Temporarily unavailable.</p>' : ''}
+      </article>`).join('');
     $('menu').setAttribute('aria-busy', 'false');
-    updateQuantities();
+  }
+  function renderDrawerItems() {
+    $('drawer-items').innerHTML = selectedItems().map(item => `
+      <li class="drawer-line"><div><strong>${escape(item.name)}</strong><small>${money(item.price)} each</small></div>
+      ${stepper(item.sku, item.name, item.quantity, 20, 'item')}</li>`).join('');
+    if (!$('drawer-items').childElementCount) {
+      $('drawer-items').innerHTML = '<li class="muted">Add a lunch item to continue.</li>';
+    }
   }
   function renderSauces() {
-    $('sauce-options').innerHTML = Object.entries(sauces).map(([key, label]) => {
-      const choices = [0, 1, 2, 3].map(count => `
-        <label class="sauce-choice">
-          <input type="radio" name="sauce-${key}" data-sauce="${key}" value="${count}"
-            aria-label="${count} ${count === 1 ? 'packet' : 'packets'}"
-            ${count === (sauceCounts[key] || 0) ? 'checked' : ''}>
-          <span aria-hidden="true">${count}</span>
-        </label>`).join('');
-      return `<fieldset class="sauce-option" aria-describedby="sauce-limit">
-        <legend>${escape(label)}</legend>
-        <div class="sauce-choices">${choices}</div>
-      </fieldset>`;
-    }).join('');
-    $('sauce-section').hidden = false;
+    $('sauce-options').innerHTML = Object.entries(sauces).map(([key, label]) => `
+      <div class="drawer-line"><span>${escape(label)}</span>${stepper(key, label + ' packet', sauceCounts[key] || 0, 3, 'sauce')}</div>`).join('');
   }
-  $('sauce-options').addEventListener('change', event => {
-    if (!event.target.matches('[data-sauce]')) return;
-    sauceCounts[event.target.dataset.sauce] = Number(event.target.value);
+  function updateCounter(counter, count, animate) {
+    const output = counter.querySelector('output');
+    output.textContent = count;
+    const available = counter.dataset.available === 'true';
+    counter.querySelector('[data-delta="-1"]').disabled = !available || count <= 0;
+    counter.querySelector('[data-delta="1"]').disabled = !available || count >= Number(counter.dataset.max);
+    if (animate && output.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      output.getAnimations().forEach(animation => animation.cancel());
+      output.animate([{ opacity: .4, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 175, easing: 'ease-out' });
+    }
+  }
+  function adjustQuantity(event) {
+    const button = event.target.closest('[data-delta]');
+    if (!button) return;
+    const counter = button.closest('[data-counter]');
+    const { key, counter: kind, max } = counter.dataset;
+    const current = kind === 'sauce' ? sauceCounts[key] || 0 : selection.get(key)?.quantity || 0;
+    const count = Math.max(0, Math.min(Number(max), current + Number(button.dataset.delta)));
+    if (kind === 'sauce') sauceCounts[key] = count;
+    else selection.set(key, { quantity: count });
+    document.querySelectorAll(`[data-counter="${kind}"][data-key="${key}"]`).forEach(control => updateCounter(control, count, control === counter));
+    // Keep keyboard focus on an enabled control when a limit is reached.
+    if (document.activeElement === button && button.disabled) counter.querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
     summary();
-  });
-  function updateQuantities() {
-    document.querySelectorAll('.food-card').forEach(card => {
-      const input = card.querySelector('[data-quantity]');
-      card.querySelector('[data-delta="-1"]').disabled = Number(input.value) <= 0;
-      card.querySelector('[data-delta="1"]').disabled = input.disabled || Number(input.value) >= 20;
-    });
   }
-  function updateSelection(card) {
-    const quantity = card.querySelector('[data-quantity]');
-    quantity.value = String(Math.max(0, Math.min(20, Math.floor(Number(quantity.value) || 0))));
-    selection.set(card.dataset.sku, { quantity: Number(quantity.value) });
-    updateQuantities(); summary();
-  }
-  $('menu').addEventListener('click', event => {
-    const button = event.target.closest('[data-delta]'); if (!button) return;
-    const card = button.closest('.food-card'), input = card.querySelector('[data-quantity]');
-    input.value = String(Number(input.value) + Number(button.dataset.delta)); updateSelection(card);
+  $('menu').addEventListener('click', adjustQuantity);
+  $('drawer-items').addEventListener('click', adjustQuantity);
+  $('sauce-options').addEventListener('click', adjustQuantity);
+  $('review-order').addEventListener('click', () => {
+    renderDrawerItems();
+    renderSauces();
+    openDrawer('selections');
   });
-  $('menu').addEventListener('change', event => { const card = event.target.closest('.food-card'); if (card) updateSelection(card); });
-  $('review-order').addEventListener('click', () => show('details'));
+  $('continue-preorder').addEventListener('click', () => show('details'));
   document.querySelectorAll('[data-back]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.back)));
   function rememberVerification() {
     try { if ($('remember-email').checked) localStorage.setItem(STORE_KEY, token); else localStorage.removeItem(STORE_KEY); } catch (_) {}
@@ -245,12 +306,14 @@
   }
   async function prepareCheckout() {
     checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
+    if (!drawer.open) return;
     try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
     checkoutExpiry();
     $('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;
     show('payment'); preparing = true; checkoutValid = false; $('ecwid-checkout').inert = true; $('checkout-status').hidden = false;
     try {
       await loadWidget();
+      if (!drawer.open) return;
       await clearCart();
       window.ec.order = window.ec.order || {}; window.ec.order.extraFields = window.ec.order.extraFields || {};
       const fields = {
@@ -281,6 +344,7 @@
       await ecwidCall('setOrderComments',checkout.comments);
       const cart = await getCart();
       if (!matchingCart(cart)) throw new Error('Your checkout items changed. Please return to preorder review and try again.');
+      if (!drawer.open) return;
       checkoutValid = true; $('ecwid-checkout').inert = false; $('checkout-status').hidden = true;
       window.Ecwid.Cart.canGotoCheckout(allowed => { if (allowed) window.Ecwid.Cart.gotoCheckout(); else window.Ecwid.openPage('cart'); });
     } catch (err) {
@@ -301,14 +365,25 @@
   },true);
   let lastHeight=0;
   function sendHeight() {
-    if (window.parent===window) return;
-    const height=Math.ceil(document.body.scrollHeight);
+    if (window.parent === window || drawer.open) return;
+    const height = Math.ceil(document.querySelector('.page').getBoundingClientRect().height);
     if (height===lastHeight) return;
     lastHeight=height; window.parent.postMessage({type:'rrhs-cfa-preorder-height',height},parentOrigin);
   }
   new ResizeObserver(sendHeight).observe(document.body);
   window.addEventListener('rrhs-embed-resize',sendHeight);
-  window.addEventListener('message',event=>{if(event.source===parent && event.origin===parentOrigin && event.data?.type==='rrhs-cfa-preorder-request-height'){lastHeight=0;sendHeight();}});
+  window.addEventListener('message', event => {
+    if (event.source !== parent || event.origin !== parentOrigin) return;
+    if (event.data?.type === 'rrhs-cfa-preorder-drawer-ready' && drawer.open) {
+      document.documentElement.classList.add('preorder-overlay');
+    }
+    if (event.data?.type === 'rrhs-cfa-preorder-request-height') {
+      if (drawer.open) window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
+      document.documentElement.classList.add('preorder-embedded');
+      lastHeight = 0;
+      sendHeight();
+    }
+  });
   (async()=> {
     try {
       const data=await request(); menu=data.menu;sauces=data.sauces;delivery=data.delivery;storeId=data.storeId;
@@ -316,7 +391,7 @@
       renderMenu();renderSauces();summary();
       if(token) { try {const session=await request({action:'session',token});verifiedEmail=session.email;$('teacher-email').value=verifiedEmail;$('send-code').innerHTML='Review delivery details <span aria-hidden="true">→</span>';}catch(_){forget();} }
       let pending=null; try { pending=JSON.parse(sessionStorage.getItem('rrhs-cfa-pending') || 'null'); } catch (_) {}
-      if(pending && location.hash) {
+      if(pending && /checkout/i.test(location.hash)) {
         try {
           const resumed=await request({action:'resume',token:pending.token,grant:pending.grant});
           token=pending.token;verifiedEmail=resumed.email;checkout=resumed;
@@ -329,7 +404,7 @@
           renderMenu();
           renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],['delivery-time',details.time]])$(id).value=value;
-          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;show('payment');preparing=true;await loadWidget();preparing=false;
+          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;openDrawer('payment');preparing=true;await loadWidget();preparing=false;
           checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();
         } catch (err) {
           preparing = false;
