@@ -7,6 +7,7 @@ const MENU = Object.freeze([
   { sku: '782_sku', id: 864700011, name: 'Grilled Chicken Cobb Salad', price: 12, image: 'cobb-salad.webp' },
   { sku: '698_sku', id: 813619469, name: '8-count Chicken Nuggets', price: 6.5, image: 'chicken-nuggets.webp' },
 ]);
+const SAUCE_LIMIT = 10;
 const SAUCES = Object.freeze({ ranch: 'Garden Herb Ranch', cfa: 'Chick-fil-A Sauce', buffalo: 'Zesty Buffalo', ketchup: 'Ketchup' });
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
 
@@ -75,11 +76,11 @@ function validateOrder(body) {
     if (input == null) continue;
     if (typeof input !== 'object' || Array.isArray(input)) fail(400, 'Check your sauce quantities.');
     for (const [key, count] of Object.entries(input)) {
-      if (!Object.hasOwn(SAUCES, key) || !Number.isInteger(count) || count < 0 || count > 3) {
-        fail(400, 'Choose up to 3 packets of each sauce per order.');
+      if (!Object.hasOwn(SAUCES, key) || !Number.isInteger(count) || count < 0 || count > SAUCE_LIMIT) {
+        fail(400, `Choose up to ${SAUCE_LIMIT} packets of each sauce per order.`);
       }
       sauces[key] = (sauces[key] || 0) + count;
-      if (sauces[key] > 3) fail(400, 'Choose up to 3 packets of each sauce per order.');
+      if (sauces[key] > SAUCE_LIMIT) fail(400, `Choose up to ${SAUCE_LIMIT} packets of each sauce per order.`);
     }
   }
   const name = String(body.name || '').trim();
@@ -148,4 +149,4 @@ function orderComments(order, email, delivery) {
     `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');
 }
-module.exports = { MENU, SAUCES, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments, pickupScheduleLabel };
+module.exports = { MENU, SAUCES, SAUCE_LIMIT, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments, pickupScheduleLabel };

@@ -17,17 +17,31 @@
   }
 
   function openDrawer() {
-    if (overlay || !frame.isConnected) return;
+    if (!frame.isConnected) return;
+    if (overlay) {
+      sendDrawerGeometry(overlay.placeholder.getBoundingClientRect());
+      return;
+    }
     const bounds = frame.getBoundingClientRect();
     const placeholder = document.createElement('div');
     placeholder.setAttribute('aria-hidden', 'true');
     placeholder.style.height = bounds.height + 'px';
+    const root = document.documentElement;
     overlay = {
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      gutter: root.style.getPropertyValue('scrollbar-gutter'),
+      gutterPriority: root.style.getPropertyPriority('scrollbar-gutter'),
+      anchor: root.style.getPropertyValue('overflow-anchor'),
+      anchorPriority: root.style.getPropertyPriority('overflow-anchor'),
       placeholder,
       style: frame.getAttribute('style'),
       overflow: document.body.style.getPropertyValue('overflow'),
       overflowPriority: document.body.style.getPropertyPriority('overflow'),
     };
+    // Preserve the host's layout while taking the iframe out of document flow.
+    root.style.setProperty('scrollbar-gutter', 'stable', 'important');
+    root.style.setProperty('overflow-anchor', 'none', 'important');
     frame.before(placeholder);
     frame.dataset.cfaDrawerOpen = '1';
     const styles = {
@@ -37,12 +51,20 @@
     };
     Object.entries(styles).forEach(([key, value]) => frame.style.setProperty(key, value, 'important'));
     document.body.style.setProperty('overflow', 'hidden', 'important');
+    restoreScroll(overlay);
     sendDrawerGeometry(bounds);
+  }
+
+  function restoreScroll({ scrollX, scrollY }) {
+    if (window.scrollX !== scrollX || window.scrollY !== scrollY) {
+      window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' });
+    }
   }
 
   function closeDrawer() {
     if (!overlay) return;
-    const { placeholder, style, overflow, overflowPriority } = overlay;
+    const saved = overlay;
+    const { placeholder, style, overflow, overflowPriority } = saved;
     overlay = null;
     if (style === null) frame.removeAttribute('style');
     else frame.setAttribute('style', style);
@@ -50,6 +72,11 @@
     placeholder.remove();
     if (overflow) document.body.style.setProperty('overflow', overflow, overflowPriority);
     else document.body.style.removeProperty('overflow');
+    const root = document.documentElement;
+    root.style.setProperty('scrollbar-gutter', saved.gutter, saved.gutterPriority);
+    root.style.setProperty('overflow-anchor', saved.anchor, saved.anchorPriority);
+    restoreScroll(saved);
+    frame.contentWindow?.postMessage({ type: 'rrhs-cfa-preorder-drawer-closed' }, origin);
   }
 
   window.addEventListener('message', event => {

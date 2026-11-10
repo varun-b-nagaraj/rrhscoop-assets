@@ -37,7 +37,7 @@
       if (key === 'cfa-preorder' && !frame.dataset.cfaDrawerBridge && !preorderBridgeRequested) {
         preorderBridgeRequested = true;
         const script = document.createElement('script');
-        script.src = assetOrigin + '/iframes/teachers/chick-fil-a/embed.js?live=3';
+        script.src = assetOrigin + '/iframes/teachers/chick-fil-a/embed.js?live=4';
         script.onerror = () => { preorderBridgeRequested = false; };
         document.head.appendChild(script);
       }

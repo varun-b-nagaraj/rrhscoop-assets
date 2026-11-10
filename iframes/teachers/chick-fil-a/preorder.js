@@ -6,7 +6,7 @@
   const $ = id => document.getElementById(id);
   const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let menu = [], sauces = {}, delivery = null, storeId = '', selection = new Map();
+  let menu = [], sauces = {}, sauceLimit = 10, delivery = null, storeId = '', selection = new Map();
   let sauceCounts = {};
   let token = '', verifiedEmail = '', details = {}, challenge = '', checkout = null;
   let expiryTimer = null;
@@ -70,16 +70,36 @@
     summary();
     if (drawer.open) $(`${view}-title`)?.focus({ preventScroll: true });
   }
+  let finishOpening;
+  let openingPromise;
   function openDrawer(view) {
-    if (!drawer.open) {
-      show(view);
-      document.documentElement.classList.add('preorder-open');
-      drawer.showModal();
-      if (window.parent !== window) {
-        window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
-      }
-    }
     show(view);
+    if (drawer.open) return Promise.resolve();
+    if (openingPromise) return openingPromise;
+    if (window.parent === window) {
+      presentDrawer();
+      return Promise.resolve();
+    }
+
+    openingPromise = new Promise(resolve => {
+      const timeout = setTimeout(() => finishOpening?.(), 400);
+      finishOpening = () => {
+        clearTimeout(timeout);
+        finishOpening = null;
+        openingPromise = null;
+        presentDrawer();
+        resolve();
+      };
+      // Move the iframe before opening the native dialog. Otherwise autofocus
+      // can scroll the host page to the dialog's old position.
+      window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
+    });
+    return openingPromise;
+  }
+  function presentDrawer() {
+    document.documentElement.classList.add('preorder-open');
+    drawer.showModal();
+    $(`${currentView}-title`)?.focus({ preventScroll: true });
   }
   function closeDrawer() {
     if (!drawer.open) return;
@@ -103,9 +123,13 @@
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: false }, parentOrigin);
     }
-    $('review-order').focus({ preventScroll: true });
-    sendHeight();
+    if (window.parent === window) restoreMenuFocus();
   });
+  function restoreMenuFocus() {
+    $('review-order').focus({ preventScroll: true });
+    lastHeight = 0;
+    sendHeight();
+  }
   const descriptions = { '601_sku': 'The original, with pickles on a toasted buttered bun.', '782_sku': 'Grilled chicken, crisp greens, eggs, and a little crunch.', '698_sku': 'Eight bite-sized favorites, ready for your favorite sauce.' };
   function stepper(key, label, count, max, kind, disabled = false) {
     return `<div class="stepper" data-counter="${kind}" data-key="${escape(key)}" data-max="${max}" data-available="${!disabled}">
@@ -135,7 +159,7 @@
   }
   function renderSauces() {
     $('sauce-options').innerHTML = Object.entries(sauces).map(([key, label]) => `
-      <div class="drawer-line"><span>${escape(label)}</span>${stepper(key, label + ' packet', sauceCounts[key] || 0, 3, 'sauce')}</div>`).join('');
+      <div class="drawer-line"><span>${escape(label)}</span>${stepper(key, label + ' packet', sauceCounts[key] || 0, sauceLimit, 'sauce')}</div>`).join('');
   }
   function updateCounter(counter, count, animate) {
     const output = counter.querySelector('output');
@@ -392,7 +416,7 @@
   },true);
   let lastHeight=0;
   function sendHeight() {
-    if (window.parent === window || drawer.open) return;
+    if (window.parent === window || drawer.open || openingPromise) return;
     const height = Math.ceil(document.querySelector('.page').getBoundingClientRect().height);
     if (height===lastHeight) return;
     lastHeight=height; window.parent.postMessage({type:'rrhs-cfa-preorder-height',height},parentOrigin);
@@ -401,7 +425,7 @@
   window.addEventListener('rrhs-embed-resize',sendHeight);
   window.addEventListener('message', event => {
     if (event.source !== parent || event.origin !== parentOrigin) return;
-    if (event.data?.type === 'rrhs-cfa-preorder-drawer-ready' && drawer.open) {
+    if (event.data?.type === 'rrhs-cfa-preorder-drawer-ready' && (drawer.open || finishOpening)) {
       const { top, left, width } = event.data.menu || {};
       if ([top, left, width].every(Number.isFinite) && width > 0) {
         const root = document.documentElement;
@@ -410,6 +434,10 @@
         root.style.setProperty('--preorder-menu-width', `${width}px`);
         root.classList.add('preorder-overlay');
       }
+      finishOpening?.();
+    }
+    if (event.data?.type === 'rrhs-cfa-preorder-drawer-closed' && !drawer.open) {
+      restoreMenuFocus();
     }
     if (event.data?.type === 'rrhs-cfa-preorder-request-height') {
       if (drawer.open) window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
@@ -421,6 +449,8 @@
   (async()=> {
     try {
       const data=await request(); menu=data.menu;sauces=data.sauces;delivery=data.delivery;storeId=data.storeId;
+      sauceLimit = data.sauceLimit || sauceLimit;
+      $('sauce-limit').textContent = `Optional · up to ${sauceLimit} packets of each sauce`;
       $('delivery-label').textContent=delivery.label;
       renderMenu();renderSauces();summary();
       if(token) { try {const session=await request({action:'session',token});verifiedEmail=session.email;$('teacher-email').value=verifiedEmail;$('send-code').innerHTML='Review delivery details <span aria-hidden="true">→</span>';}catch(_){forget();} }
@@ -438,7 +468,7 @@
           renderMenu();
           renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],[details.fulfillment === 'pickup' ? 'pickup-time' : 'delivery-time',details.time]])$(id).value=value;
-          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;openDrawer('payment');preparing=true;configurePickupFields();await loadWidget();preparing=false;
+          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;await openDrawer('payment');preparing=true;configurePickupFields();await loadWidget();preparing=false;
           checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();
         } catch (err) {
           preparing = false;

@@ -25,17 +25,18 @@ test('only the exact staff email domain is accepted',()=> {
 test('order quantities and sauces are validated independently of the browser',()=> {
   assert.equal(s.validateOrder(valid()).items[0].quantity,2);
   for(const quantity of [0,-1,21,1.5,'2']) {const body=valid();body.items[0].quantity=quantity;assert.throws(()=>s.validateOrder(body));}
-  for(const count of [4,-1,0.5,'3']) {const body=valid();body.sauces.ranch=count;assert.throws(()=>s.validateOrder(body));}
+  for(const count of [11,-1,0.5,'3']) {const body=valid();body.sauces.ranch=count;assert.throws(()=>s.validateOrder(body));}
   const unknown=valid();unknown.sauces.unknown=1;assert.throws(()=>s.validateOrder(unknown));
 });
 test('sauces are counted once across the order and legacy carts obey the same limit', () => {
   const order = valid();
   order.items.push({ sku: '698_sku', quantity: 1, price: 6.50 });
+  order.sauces.ranch = 10;
   const validated = s.validateOrder(order);
-  assert.equal(validated.sauces.ranch, 3);
+  assert.equal(validated.sauces.ranch, 10);
   assert.ok(validated.items.every(item => item.sauces === undefined));
   delete order.sauces;
-  order.items.forEach(item => { item.sauces = { ranch: 2 }; });
+  order.items.forEach(item => { item.sauces = { ranch: 6 }; });
   assert.throws(() => s.validateOrder(order), /per order/);
 });
 test('unknown and duplicate products, missing delivery fields are rejected',()=> {

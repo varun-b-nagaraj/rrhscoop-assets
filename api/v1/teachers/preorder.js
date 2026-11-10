@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const menu = await service.catalog();
-      return send(200, { menu, sauces: service.SAUCES, delivery: service.nextDelivery(), storeId: String(process.env.RRHS_ECWID_STORE_ID || '').trim(), verificationReady: Boolean(process.env.RRHS_CFA_VERIFICATION_URL && (process.env.RRHS_CFA_VERIFICATION_SECRET || '').trim().length >= 32) });
+      return send(200, { menu, sauces: service.SAUCES, sauceLimit: service.SAUCE_LIMIT, delivery: service.nextDelivery(), storeId: String(process.env.RRHS_ECWID_STORE_ID || '').trim(), verificationReady: Boolean(process.env.RRHS_CFA_VERIFICATION_URL && (process.env.RRHS_CFA_VERIFICATION_SECRET || '').trim().length >= 32) });
     }
     if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
     const origin = req.headers?.origin;

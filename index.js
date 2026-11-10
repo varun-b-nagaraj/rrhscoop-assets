@@ -116,7 +116,7 @@
   const inventoryGuardEnabled = false;
 
   const scripts = [
-    url('custom-visuals/rrhs-embed-bridge.js?v=4'),
+    url('custom-visuals/rrhs-embed-bridge.js?v=5'),
     url('rrhs-runtime.js'),
     url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
     url('custom-visuals/rrhs-project-deeplinks.js?v=7'),
