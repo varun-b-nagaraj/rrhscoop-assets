@@ -88,8 +88,9 @@ function validateOrder(body) {
   const room = fulfillment === 'delivery' ? String(body.room || '').trim() : '';
   if (!name || name.length > 100 || /[\r\n<>]/.test(name)) fail(400, 'Enter your name (up to 100 characters).');
   if (fulfillment === 'delivery' && (!room || room.length > 40 || /[\r\n<>]/.test(room))) fail(400, 'Enter your room number (up to 40 characters).');
-  const time = fulfillment === 'delivery' ? String(body.time || '').trim() : '';
-  if (time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) fail(400, 'Choose a valid delivery time or leave it blank.');
+  const time = String(body.time || '').trim();
+  if (fulfillment === 'pickup' && !time) fail(400, 'Choose a pickup time.');
+  if (time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) fail(400, 'Choose a valid time.');
   return { items, sauces, name, room, time, fulfillment };
 }
 async function ecwid(path) {
@@ -124,6 +125,12 @@ function orderSauces(order) {
     key, order.items.reduce((total, item) => total + (item.sauces?.[key] || 0), 0),
   ]));
 }
+function pickupScheduleLabel(order, delivery) {
+  if (order.fulfillment !== 'pickup' || !order.time) return '';
+  const [hour, minute] = order.time.split(':');
+  const clock = `${Number(hour) % 12 || 12}:${minute} ${Number(hour) < 12 ? 'a.m.' : 'p.m.'}`;
+  return `${delivery.label} (${delivery.date}) · ${clock} Central`;
+}
 function orderComments(order, email, delivery) {
   const counts = orderSauces(order);
   const packets = Object.entries(SAUCES)
@@ -134,11 +141,11 @@ function orderComments(order, email, delivery) {
     `Verified district email: ${email}`,
     `Name: ${order.name}`,
     ...(order.fulfillment === 'pickup'
-      ? ['Fulfillment preference: Store pickup. Pickup date and time are selected in checkout.']
+      ? ['Fulfillment preference: Store pickup', ...(order.time ? ['Pickup schedule: ' + pickupScheduleLabel(order, delivery)] : [])]
       : [`Room: ${order.room}`, `Delivery: ${delivery.label} (${delivery.date})`,
          `Requested time: ${order.time || 'Around 12:45 p.m.'} Central`]),
     ...order.items.map(item => `${item.quantity} × ${item.name}`),
     `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');
 }
-module.exports = { MENU, SAUCES, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments };
+module.exports = { MENU, SAUCES, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments, pickupScheduleLabel };

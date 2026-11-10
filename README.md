@@ -300,8 +300,8 @@ to the Apps Script editor's signed-in account.
 ### Faculty pickup and pay at pickup
 
 The preorder page offers classroom delivery with online payment or scheduled
-pickup at the RRHS CO-OP. Ecwid's checkout records the pickup date and time and
-lets pickup customers pay online or choose **Pay at pickup**. In Ecwid, keep
+pickup at the RRHS CO-OP. The fulfillment drawer records the pickup time for
+the next school day. Ecwid lets pickup customers pay online or choose **Pay at pickup**. In Ecwid, keep
 that offline payment method restricted to the CO-OP pickup shipping method.
 
 The combined script sends a pickup confirmation with the balance due, then a paid

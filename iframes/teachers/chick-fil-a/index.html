@@ -9,8 +9,8 @@
   <meta name="description" content="Plan your next school-day lunch. Choose Chick-fil-A, verify your district email, and pay securely with RRHS CO-OP.">
   <link rel="stylesheet" href="../../../custom-visuals/theme-tokens.css?live=1">
   <link rel="preload" href="fonts/spectral-regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="preorder.css?live=6">
-  <script src="preorder.js?live=6" defer></script>
+  <link rel="stylesheet" href="preorder.css?live=7">
+  <script src="preorder.js?live=7" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the lunch menu</a>
@@ -61,7 +61,16 @@
           <div class="field"><label for="teacher-name">Your name <span>(required)</span></label><input id="teacher-name" name="name" autocomplete="name" required maxlength="100"></div>
           <div id="classroom-details"><div class="field-row"><div class="field"><label for="teacher-room">Room number <span>(required)</span></label><input id="teacher-room" name="room" required maxlength="40" placeholder="e.g. 1314"></div><div class="field"><label for="delivery-time">Preferred time <span>(optional)</span></label><input id="delivery-time" name="time" type="time" aria-describedby="time-help"></div></div>
           <p id="time-help" class="helper"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg>Leave the time blank and we’ll deliver around 12:45 p.m. Requested times depend on our student delivery schedule.</p></div>
+          <div class="field" id="pickup-details" hidden>
+            <label for="pickup-time">Pickup time <span>(required)</span></label>
+            <input id="pickup-time" type="time" disabled aria-describedby="pickup-time-help">
+            <p class="helper" id="pickup-time-help"></p>
+          </div>
           <div class="field"><label for="teacher-email">District email <span>(required)</span></label><input id="teacher-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="85" placeholder="your.name@roundrockisd.org" aria-describedby="email-help"><p id="email-help" class="helper">Please use your @roundrockisd.org address. We’ll send a code to confirm it’s yours.</p></div>
+          <details class="verification-info">
+            <summary><span aria-hidden="true">i</span> Why do we ask for a code?</summary>
+            <p>The code confirms you can access your district staff inbox. This keeps faculty preorders for teachers and staff. Student email addresses can’t be used.</p>
+          </details>
           <label class="remember"><input type="checkbox" id="remember-email" checked> Remember my verified email on this device for 30 days.</label>
           <button class="button primary full" type="submit" id="send-code">Send verification code <span aria-hidden="true">→</span></button>
           <p id="details-error" class="inline-error" role="alert" hidden></p>

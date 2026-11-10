@@ -175,3 +175,9 @@ html.preorder-overlay .page {
   .drawer-header { padding:14px 18px; }
   .drawer-scroll { padding:20px 18px 32px; }
 }
+
+.verification-info { margin-top:12px; color:var(--muted); font-size:15px; }
+.verification-info summary { display:flex; gap:9px; align-items:center; min-height:44px; color:var(--maroon); cursor:pointer; list-style:none; }
+.verification-info summary::-webkit-details-marker { display:none; }
+.verification-info summary span { display:grid; place-items:center; width:20px; height:20px; flex:0 0 20px; border:1px solid currentColor; border-radius:50%; font:italic 600 14px/1 Georgia,serif; }
+.verification-info p { margin:0; padding-left:29px; }

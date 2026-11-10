@@ -253,14 +253,7 @@ function cfaDispatchOrder_(order, date) {
   var shipping = order.shippingOption || {};
   var pickup = shipping.isPickup || String(shipping.fulfillmentType || shipping.fulfilmentType || '').toUpperCase() === 'PICKUP' ||
     /^pickup at round rock high school co-op store$/i.test(shipping.shippingMethodName || '');
-  var pickupTime = '';
-  if (pickup && order.pickupTime) {
-    var stamp = String(order.pickupTime).replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T').replace(/ \+0000$/, 'Z');
-    var pickupDate = new Date(stamp);
-    if (Number.isFinite(pickupDate.getTime())) {
-      pickupTime = Utilities.formatDate(pickupDate, timeZone, "EEE, MMM d 'at' h:mm a") + ' Central';
-    }
-  }
+  var pickupTime = pickup ? pickupSchedule(order) : '';
   return {
     number: String(order.vendorOrderNumber || order.id || order.orderNumber),
     paymentStatus: order.paymentStatus,
@@ -464,6 +457,10 @@ function payAtPickup(order) {
 }
 
 function pickupSchedule(order) {
+  if (facultyPreorder(order)) {
+    const requested = preorderField(order, 'cfa_pickup_schedule') || preorderComment(order, 'Pickup schedule');
+    if (requested) return requested;
+  }
   if (!order.pickupTime) return '';
   // Ecwid sends UTC timestamps with a space between the date and time.
   const value = String(order.pickupTime).replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T').replace(/ \+0000$/, 'Z');

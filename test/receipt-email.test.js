@@ -125,3 +125,12 @@ test('direct Ecwid receipt lookup preserves pickup confirmation and subsequent p
   assert.equal(receipt.id, 'PICKUP1');
   assert.match(buildReceiptEmail(receipt).text, /Paid at pickup/);
 });
+
+test('pickup receipt uses the schedule saved by the preorder drawer', () => {
+  const pickup = {
+    ...order,
+    shippingOption: { fulfillmentType: 'PICKUP' },
+    orderComments: 'FACULTY CHICK-FIL-A PREORDER\nPickup schedule: Wednesday, November 11 · 12:45 p.m. Central',
+  };
+  assert.match(buildReceiptEmail(pickup).text, /Scheduled for: Wednesday, November 11 · 12:45 p\.m\. Central/);
+});

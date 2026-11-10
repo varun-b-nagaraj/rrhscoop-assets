@@ -94,3 +94,14 @@ test('only the designated Gmail addresses can verify outside the district domain
   assert.equal(s.emailAddress('IsabelleN90@gmail.com'), 'isabellen90@gmail.com');
   assert.throws(() => s.emailAddress('anyone@gmail.com'));
 });
+
+test('pickup requires a time and includes the selected school day in Ecwid comments', () => {
+  const input = { name: 'Teacher', fulfillment: 'pickup', items: [{ sku: '601_sku', quantity: 1 }] };
+  assert.throws(() => s.validateOrder(input), /Choose a pickup time/);
+  assert.throws(() => s.validateOrder({ ...input, time: '25:00' }), /Choose a valid time/);
+  const order = s.validateOrder({ ...input, time: '12:45' });
+  assert.equal(order.room, '');
+  const delivery = { date: '2026-11-11', label: 'Wednesday, November 11' };
+  assert.match(s.orderComments(order, 'teacher@roundrockisd.org', delivery),
+    /Pickup schedule: Wednesday, November 11 \(2026-11-11\) · 12:45 p\.m\. Central/);
+});
