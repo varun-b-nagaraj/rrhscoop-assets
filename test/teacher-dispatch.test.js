@@ -90,7 +90,6 @@ test('order cutoff follows Central daylight saving time', () => {
 
 test('combined setup replaces old triggers and preserves receipt history', () => {
   const properties = new Map([
-    ['CFA_VERIFICATION_SECRET', 'x'.repeat(32)], ['RECEIPTS_SECRET', 'receipt-key'],
     ['RRHS_ECWID_STORE_ID', '123'], ['RRHS_ECWID_API_TOKEN', 'ecwid-key'],
     ['START_AT', '1234'], ['SENT_IDS', '["ORDER1"]'],
   ]);

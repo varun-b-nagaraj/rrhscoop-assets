@@ -251,14 +251,13 @@ verified email, and sauces into Ecwid.
 
 ### Connect district email
 
-1. Copy [the verification script](apps-script/teacher-preorder-verification.gs)
-   to a separate Apps Script project owned by the district sending account.
-2. In Project Settings → Script properties, add `CFA_VERIFICATION_SECRET` with
-   the value of `RRHS_CFA_VERIFICATION_SECRET` from the server environment.
-3. Deploy it as a web app that runs as the district account with access set to
-   Anyone. The shared secret authorizes requests from the Vercel function.
-4. In Vercel Production, set `RRHS_CFA_VERIFICATION_SECRET` to that same value and
-   `RRHS_CFA_VERIFICATION_URL` to the deployed `/exec` URL, then redeploy.
+1. Copy [the combined script](apps-script/teacher-preorder-verification.gs)
+   into the Apps Script project owned by the district sending account.
+2. Deploy a new version of the web app that runs as the district account with
+   access set to Anyone. Apps Script generates its own key to store email codes.
+3. Keep `RRHS_CFA_VERIFICATION_URL` in Vercel pointing to the deployed `/exec` URL.
+   Vercel uses its existing `RRHS_CFA_VERIFICATION_SECRET` to sign browser
+   sessions. That value stays in Vercel.
 
 A six-digit code proves access to an `@roundrockisd.org` mailbox. It does not look
 up employment records. The browser can remember the signed verification for 30 days.
@@ -283,16 +282,14 @@ server-side product access rule.
 ### Set up dispatch and receipts in the same Apps Script project
 
 Use [the combined Apps Script](apps-script/teacher-preorder-verification.gs) in the
-existing district verification project. Keep its deployment URL and verification
-property. Add the existing `RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN` values
-to Script properties for dispatch. Add `RECEIPTS_SECRET` with the value of
-`RRHS_RECEIPTS_SECRET` in Vercel.
+existing district verification project. Keep the existing
+`RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN` in Script properties. Apps
+Script reads orders and downloads receipt PDFs directly from Ecwid.
 
-Update the existing web app deployment to a new version. Run `checkCoopSetup`
-to verify Ecwid and receipt API access without sending mail. If a separate receipt
-project is running, remove its `sendPendingReceipts` trigger before running
-`setup` in the combined project. Setup installs a single minute trigger and
-preserves any receipt history already in that project.
+Deploy the Apps Script update before the corresponding Vercel code update.
+Run `checkCoopSetup` to verify Ecwid access without sending mail. Existing
+combined triggers continue with the saved script. For a new install, remove
+any separate receipt trigger, then run `setup` in the combined project.
 
 The dispatch goes to the two student dispatchers on the first run at or after
 2:30 p.m. Central. It includes that day's faculty preorders placed before

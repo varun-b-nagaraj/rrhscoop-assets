@@ -2,7 +2,12 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { buildReceiptEmail } = require('../receipts/receipt-email.js');
+const { readFileSync } = require('node:fs');
+const { runInNewContext } = require('node:vm');
+const script = readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'), 'utf8');
+const context = {};
+runInNewContext(script, context);
+const { buildReceiptEmail } = context;
 
 const order = {
   id: 'ORDTEST1',
@@ -93,45 +98,30 @@ test('faculty delivery receipts show the scheduled classroom and online payment'
   assert.doesNotMatch(text, /20 minutes/);
 });
 
-test('receipt feed keeps pickup confirmation and paid receipt as separate notifications', async t => {
-  const handler = require('../api/v1/receipts/pending');
-  const env = {
-    RRHS_ECWID_STORE_ID: '123',
-    RRHS_ECWID_API_TOKEN: 'test-token',
-    RRHS_RECEIPTS_SECRET: 'test-receipt-secret',
-  };
-  const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
-  Object.assign(process.env, env);
-  t.after(() => {
-    for (const [key, value] of Object.entries(previous)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  });
+test('direct Ecwid receipt lookup preserves pickup confirmation and subsequent paid receipt', () => {
   const pickup = {
     ...order, id: 'PICKUP1', paymentStatus: 'AWAITING_PAYMENT', paymentMethod: 'Pay at pickup',
     shippingOption: { fulfillmentType: 'PICKUP' }, orderComments: 'FACULTY CHICK-FIL-A PREORDER',
   };
   let paid = false;
-  t.mock.method(globalThis, 'fetch', async input => {
-    const params = new URL(input).searchParams;
-    const items = params.get('paymentStatus') === 'AWAITING_PAYMENT'
-      ? [pickup, { ...pickup, id: 'REGULAR', orderComments: '' }]
-      : paid && params.has('updatedFrom') ? [{ ...pickup, paymentStatus: 'PAID' }] : [];
-    return { ok: true, json: async () => ({ total: items.length, items }) };
-  });
-  async function pending(query = '') {
-    const res = { setHeader() {}, end(body) { this.data = JSON.parse(body); } };
-    await handler({ method: 'GET', url: '/pending' + query, headers: { 'x-receipts-secret': env.RRHS_RECEIPTS_SECRET } }, res);
-    assert.equal(res.statusCode, 200);
-    return res.data.receipts;
-  }
-  assert.deepEqual(await pending(), []);
-  const [confirmation] = await pending('?includePickupConfirmations=1');
-  assert.equal(confirmation.notificationId, 'PICKUP1:pickup-confirmation');
-  assert.equal(confirmation.orderId, 'PICKUP1');
+  context.UrlFetchApp = {
+    fetch(input, options) {
+      assert.match(input, /^https:\/\/app\.ecwid\.com\/api\/v3\/123\/orders\?/);
+      assert.equal(options.headers.Authorization, 'Bearer test-ecwid-token');
+      const params = new URL(input).searchParams;
+      const items = params.get('paymentStatus') === 'AWAITING_PAYMENT'
+        ? [pickup, { ...pickup, id: 'REGULAR', orderComments: '' }]
+        : paid && params.has('updatedFrom') ? [{ ...pickup, paymentStatus: 'PAID' }] : [];
+      return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ total: items.length, items }) };
+    },
+  };
+  const config = { storeId: '123', token: 'test-ecwid-token' };
+  assert.equal(context.coopReceiptOrders_(config, 100, false).length, 0);
+  const [confirmation] = context.coopReceiptOrders_(config, 100);
+  assert.equal(confirmation.id, 'PICKUP1');
+  assert.match(buildReceiptEmail(confirmation).text, /due/);
   paid = true;
-  const [receipt] = await pending('?includePickupConfirmations=1');
-  assert.equal(receipt.notificationId, 'PICKUP1');
-  assert.match(receipt.text, /Paid at pickup/);
+  const [receipt] = context.coopReceiptOrders_(config, 100);
+  assert.equal(receipt.id, 'PICKUP1');
+  assert.match(buildReceiptEmail(receipt).text, /Paid at pickup/);
 });

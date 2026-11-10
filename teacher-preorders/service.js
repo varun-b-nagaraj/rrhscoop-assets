@@ -109,10 +109,9 @@ async function catalog() {
   }));
 }
 async function mailAction(action, payload) {
-  const secret = signingSecret();
   const endpoint = String(process.env.RRHS_CFA_VERIFICATION_URL || '').trim();
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(endpoint)) fail(503, 'Email verification is not connected yet. Please try again once the CO-OP enables it.');
-  const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, secret, ...payload }), signal: AbortSignal.timeout(20000), redirect: 'follow' });
+  const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...payload }), signal: AbortSignal.timeout(20000), redirect: 'follow' });
   if (!r.ok) fail(502, 'District email is temporarily unavailable. Please try again.');
   const result = await r.json();
   if (!result.ok) fail([400,401,429,503].includes(result.status) ? result.status : 502, result.error || 'We could not verify that code. Please try again.');

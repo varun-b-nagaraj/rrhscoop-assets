@@ -71,14 +71,14 @@ test('invalid email and unsupported methods are rejected',async()=> {
 });
 
 test('Apps Script enforces rate limits, attempts, expiry, and single-use codes',()=> {
-  let now=1000000;const data=new Map([['CFA_VERIFICATION_SECRET','a'.repeat(64)]]);let mailed=0,code='';
+  let now=1000000;const data=new Map();let mailed=0,code='';
   const crypto=require('node:crypto');
   const props={getProperty:k=>data.get(k)||null,setProperty:(k,v)=>data.set(k,v),getProperties:()=>Object.fromEntries(data),deleteProperty:k=>data.delete(k)};
   const context=vm.createContext({console,Date:{now:()=>now},LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},PropertiesService:{getScriptProperties:()=>props},Utilities:{getUuid:()=>crypto.randomUUID(),computeHmacSha256Signature:(text,key)=>Array.from(crypto.createHmac('sha256',key).update(text).digest()),base64EncodeWebSafe:bytes=>Buffer.from(bytes).toString('base64url')},MailApp:{getRemainingDailyQuota:()=>100,sendEmail:email=>{mailed++;code=email.body.match(/code is (\d{6})/)[1];}},ContentService:{MimeType:{JSON:'json'},createTextOutput:text=>({setMimeType:()=>JSON.parse(text)})}});
   vm.runInContext(fs.readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'),'utf8'),context);
-  const post=(value)=>context.doPost({postData:{contents:JSON.stringify({email:'teacher@roundrockisd.org',secret:'a'.repeat(64),...value})}});
-  assert.equal(post({action:'send-code',secret:'wrong'}).ok,false);assert.equal(mailed,0);
-  const first=post({action:'send-code'});assert.equal(first.ok,true);assert.equal(mailed,1);
+  const post=(value)=>context.doPost({postData:{contents:JSON.stringify({email:'teacher@roundrockisd.org',...value})}});
+  assert.equal(post({action:'send-code',email:'student@gmail.com'}).ok,false);assert.equal(mailed,0);
+  const first=post({action:'send-code'});assert.equal(first.ok,true);assert.equal(mailed,1);assert.ok(data.get('cfa_internal_otp_key'));
   assert.equal(post({action:'send-code'}).status,429);
   assert.equal(post({action:'verify-code',challenge:first.challenge,code}).ok,true);
   assert.equal(post({action:'verify-code',challenge:first.challenge,code}).ok,false);
