@@ -195,39 +195,12 @@ Run unit tests (Node 18+):
 node --test
 ```
 
-## November 10 launch celebration
-
-`custom-visuals/rrhs-launch-celebration.js` and its companion CSS are loaded by `index.js`.
-The script adds a top announcement and a **Happy Diwali!** header button across the
-storefront. On the homepage, three seconds after the window loads (or script setup,
-if loaded later), it dims the screen, animates paint splashes, and reveals a dialog.
-The automatic reveal runs once per tab session, including across reloads and trips
-back to the homepage. Opening it manually also marks it as seen. The header button
-and announcement still replay it on demand. Other routes, including
-checkout, do not open it automatically.
-
-The dialog presents the November 10 e-commerce launch and the PDF's Diwali offer:
-order online, then show the receipt at the Co-op during 7th period on November 10
-for a free henna design. Additional festival and classroom-delivery information is
-available in overlay panels that keep the announcement layout in place. The dialog
-uses native keyboard handling,
-restores focus on dismissal, and skips the animation for reduced-motion preferences.
-
-To retire the promotion, remove the `loadScript(launchCelebration)` step and its URL
-constant from `index.js`. Update the launch script and CSS URL versions when changing
-these assets so returning visitors receive the new files.
-
-### Hosted storefront CSS and Ecwid menu trigger
+## Hosted storefront CSS
 
 `custom-visuals/rrhs-site.css` contains the CSS formerly pasted into Ecwid's custom
 CSS editor. The existing `index.js` embed loads it automatically. Once these assets
 are deployed, remove that duplicated CSS from Ecwid. No additional stylesheet
 embed is needed. Bump the stylesheet's query version in `index.js` when editing it.
-
-For an Ecwid-authored celebration menu item, use `#celebrate` as its link destination.
-The launch script intercepts that link and replays the celebration without navigating.
-Existing menu items titled **Celebrate**, **Celebrate Nov 9**, or **Diwali** also work. If no matching item exists in the header, the script adds a
-**Happy Diwali!** button beside the header icons, including on mobile.
 
 ## Teacher Information embed
 

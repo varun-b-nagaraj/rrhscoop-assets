@@ -123,7 +123,6 @@
     url('custom-visuals/rrhscoop-visuals.js?v=55'),
     url('custom-visuals/rrhs-footer.js?v=5'),
     url('custom-visuals/rrhs-header-dropdowns.js?v=12'),
-    url('custom-visuals/rrhs-launch-celebration.js?v=7'),
     url('custom-visuals/rrhs-by-the-numbers.js?v=1'),
     url('custom-visuals/rrhs-featured-product.js?v=3'),
     url('custom-visuals/rrhs-select.js?v=4'),
