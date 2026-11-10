@@ -13,7 +13,7 @@ const SESSION_SECONDS = 30 * 24 * 60 * 60;
 function fail(status, message) { const err = new Error(message); err.status = status; throw err; }
 function emailAddress(value) {
   const email = String(value || '').trim().toLowerCase();
-  if (email !== 'varunnagaraj2009@gmail.com' && !/^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/.test(email)) fail(400, 'Use your district email ending in @roundrockisd.org.');
+  if (!['varunnagaraj2009@gmail.com', 'isabellen90@gmail.com'].includes(email) && !/^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/.test(email)) fail(400, 'Use your district email ending in @roundrockisd.org.');
   return email;
 }
 function signingSecret() {

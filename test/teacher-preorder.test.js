@@ -89,7 +89,8 @@ test('Apps Script enforces rate limits, attempts, expiry, and single-use codes',
   assert.equal(post({action:'verify-code',challenge:expired.challenge,code}).ok,false);
 });
 
-test('only the designated Gmail test address can verify outside the district domain', () => {
+test('only the designated Gmail addresses can verify outside the district domain', () => {
   assert.equal(s.emailAddress('VarunNagaraj2009@gmail.com'), 'varunnagaraj2009@gmail.com');
+  assert.equal(s.emailAddress('IsabelleN90@gmail.com'), 'isabellen90@gmail.com');
   assert.throws(() => s.emailAddress('anyone@gmail.com'));
 });

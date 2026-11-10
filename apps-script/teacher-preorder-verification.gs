@@ -12,7 +12,7 @@ function doPost(e) {
     var secret = props.getProperty('CFA_VERIFICATION_SECRET');
     if (!secret || secret.length < 32 || !cfaEqual_(String(input.secret || ''), secret)) return cfaJson_({ ok: false, status: 401, error: 'Verification service is not connected.' });
     var email = String(input.email || '').trim().toLowerCase();
-    if (email !== 'varunnagaraj2009@gmail.com' && !/^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/.test(email)) return cfaJson_({ ok: false, status: 400, error: 'Use your @roundrockisd.org email.' });
+    if (!['varunnagaraj2009@gmail.com', 'isabellen90@gmail.com'].includes(email) && !/^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/.test(email)) return cfaJson_({ ok: false, status: 400, error: 'Use your @roundrockisd.org email.' });
     var key = 'cfa_email_' + cfaDigest_(email, secret);
     var record = JSON.parse(props.getProperty(key) || '{}');
     var now = Date.now();
