@@ -83,12 +83,14 @@ function validateOrder(body) {
     }
   }
   const name = String(body.name || '').trim();
-  const room = String(body.room || '').trim();
+  const fulfillment = body.fulfillment || 'delivery';
+  if (fulfillment !== 'delivery' && fulfillment !== 'pickup') fail(400, 'Choose classroom delivery or store pickup.');
+  const room = fulfillment === 'delivery' ? String(body.room || '').trim() : '';
   if (!name || name.length > 100 || /[\r\n<>]/.test(name)) fail(400, 'Enter your name (up to 100 characters).');
-  if (!room || room.length > 40 || /[\r\n<>]/.test(room)) fail(400, 'Enter your room number (up to 40 characters).');
-  const time = String(body.time || '').trim();
+  if (fulfillment === 'delivery' && (!room || room.length > 40 || /[\r\n<>]/.test(room))) fail(400, 'Enter your room number (up to 40 characters).');
+  const time = fulfillment === 'delivery' ? String(body.time || '').trim() : '';
   if (time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) fail(400, 'Choose a valid delivery time or leave it blank.');
-  return { items, sauces, name, room, time };
+  return { items, sauces, name, room, time, fulfillment };
 }
 async function ecwid(path) {
   const token = String(process.env.RRHS_ECWID_API_TOKEN || '').trim();
@@ -131,8 +133,11 @@ function orderComments(order, email, delivery) {
   return [
     'FACULTY CHICK-FIL-A PREORDER',
     `Verified district email: ${email}`,
-    `Name: ${order.name}`, `Room: ${order.room}`, `Delivery: ${delivery.label} (${delivery.date})`,
-    `Requested time: ${order.time || 'Around 12:45 p.m.'} Central`,
+    `Name: ${order.name}`,
+    ...(order.fulfillment === 'pickup'
+      ? ['Fulfillment preference: Store pickup. Pickup date and time are selected in checkout.']
+      : [`Room: ${order.room}`, `Delivery: ${delivery.label} (${delivery.date})`,
+         `Requested time: ${order.time || 'Around 12:45 p.m.'} Central`]),
     ...order.items.map(item => `${item.quantity} × ${item.name}`),
     `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');

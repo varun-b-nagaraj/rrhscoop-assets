@@ -6,6 +6,11 @@
 
 'use strict';
 
+const {
+  pickupOrder: isPickup, facultyPreorder, preorderField, preorderComment,
+  payAtPickup, pickupSchedule, facultyDeliverySchedule,
+} = require('../teacher-preorders/fulfillment');
+
 const LOGO_URL = 'https://rrhscoop-assets.vercel.app/custom-visuals/regular-logo.png';
 const STORE_NAME = 'RRHS CO-OP';
 const STORE_EMAIL = 'rrhs_coop_store@roundrockisd.org';
@@ -70,15 +75,15 @@ function statusLabel(status) {
   return STATUS_LABELS[status] || String(status || 'Order received').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 }
 
-function isPickup(order) {
-  const opt = order.shippingOption || {};
-  return Boolean(opt.isPickup) || opt.fulfillmentType === 'PICKUP';
-}
-
-function etaMessage(order, schedule) {
+function etaMessage(order, schedule, faculty) {
+  if (isPickup(order)) {
+    if (schedule) return `Pick up your order at the RRHS CO-OP on ${schedule}.`;
+    return faculty ? 'Pick up your preorder at the RRHS CO-OP at your selected time.' :
+      `We'll have it ready for pickup in about ${ETA_MINUTES} minutes.`;
+  }
   if (schedule) return `We'll bring it to you at your scheduled time: ${schedule}.`;
-  if (isPickup(order)) return `We'll have it ready for pickup in about ${ETA_MINUTES} minutes.`;
-  return `We'll have it to you in about ${ETA_MINUTES} minutes.`;
+  return faculty ? 'Check your preorder details for your classroom delivery time.' :
+    `We'll have it to you in about ${ETA_MINUTES} minutes.`;
 }
 
 function lineItems(order) {
@@ -131,17 +136,31 @@ function orderNumber(order) {
 function buildReceiptEmail(order) {
   const number = orderNumber(order);
   const name = firstName(order);
-  const rawRoom = extraField(order, /delivery\s*location|room/i);
+  const faculty = facultyPreorder(order);
+  const pickup = isPickup(order);
+  const dueAtPickup = payAtPickup(order) && order.paymentStatus === 'AWAITING_PAYMENT';
+  const rawRoom = pickup ? '' : preorderField(order, 'cfa_delivery_room') ||
+    extraField(order, /delivery\s*location|room/i) || (faculty ? preorderComment(order, 'Room') : '');
   const room = /^\d+[a-z]?$/i.test(rawRoom) ? `Room ${rawRoom}` : rawRoom;
-  const schedule = extraField(order, /^schedule$/i);
+  const schedule = pickup ? pickupSchedule(order) || extraField(order, /^schedule$/i) :
+    (faculty ? facultyDeliverySchedule(order) : '') || extraField(order, /^schedule$/i);
   const gift = extraField(order, /gift\s*message/i);
+  const sauces = faculty ? preorderComment(order, 'Sauces') : '';
   const status = statusLabel(order.fulfillmentStatus);
   const items = lineItems(order);
   const rows = summaryRows(order);
   const total = Number(order.total) || 0;
-  const eta = etaMessage(order, schedule);
+  const eta = etaMessage(order, schedule, faculty);
   const greeting = name ? `Thank you, ${name}!` : 'Thank you!';
-  const method = (order.shippingOption && order.shippingOption.shippingMethodName) || '';
+  const method = pickup && faculty ? 'RRHS CO-OP store' : (order.shippingOption?.shippingMethodName || '');
+  const payment = dueAtPickup ? `Pay at pickup · ${money(total)} due` :
+    order.paymentStatus === 'PAID' ? (payAtPickup(order) ? 'Paid at pickup' :
+      `Paid${order.paymentMethod ? ' · ' + order.paymentMethod : ''}`) : order.paymentMethod;
+  const intro = dueAtPickup ? 'Your pickup order is confirmed. Please pay when you collect it.' :
+    "We've got your order and we're on it.";
+  const attachmentNote = !dueAtPickup && order.invoices?.length
+    ? 'Your order confirmation and tax invoice are attached as PDFs.'
+    : 'Your order confirmation is attached as a PDF.';
   const placed = order.createTimestamp
     ? new Date(order.createTimestamp * 1000).toLocaleString('en-US', {
         timeZone: 'America/Chicago',
@@ -150,7 +169,7 @@ function buildReceiptEmail(order) {
       })
     : '';
 
-  const subject = `Thank you for your order! Receipt for #${number}`;
+  const subject = dueAtPickup ? `Pickup confirmed · Pay at pickup · #${number}` : `Thank you for your order! Receipt for #${number}`;
 
   const e = escapeHtml;
   const c = COLORS;
@@ -221,7 +240,7 @@ function buildReceiptEmail(order) {
           </tr>
           <tr>
             <td align="center" style="padding:8px 40px 24px;font-size:16px;line-height:1.55;color:${c.ink};">
-              We've got your order and we're on it. ${e(eta)}
+              ${e(intro)} ${e(eta)}
             </td>
           </tr>
           <tr>
@@ -247,7 +266,8 @@ function buildReceiptEmail(order) {
                 ${detail(isPickup(order) ? 'Pickup' : 'Deliver to', room || method)}
                 ${detail('Scheduled for', schedule)}
                 ${detail('Placed', placed)}
-                ${detail('Payment', order.paymentMethod)}
+                ${detail('Payment', payment)}
+                ${detail('Sauces', sauces)}
                 ${detail('Gift message', gift)}
               </table>
             </td>
@@ -271,7 +291,7 @@ function buildReceiptEmail(order) {
           </tr>
           <tr>
             <td style="padding:28px 32px 8px;font-size:14px;line-height:1.55;color:${c.muted};">
-              Your order confirmation and tax invoice are attached as PDFs for your records.
+              ${e(attachmentNote)}
             </td>
           </tr>
           <tr>
@@ -297,7 +317,7 @@ function buildReceiptEmail(order) {
   const text = [
     greeting,
     '',
-    `We've got your order and we're on it. ${eta}`,
+    `${intro} ${eta}`,
     '',
     `Order number: #${number}`,
     `Status: ${status}`,
@@ -305,7 +325,8 @@ function buildReceiptEmail(order) {
     room || method ? `${isPickup(order) ? 'Pickup' : 'Deliver to'}: ${room || method}` : null,
     schedule ? `Scheduled for: ${schedule}` : null,
     placed ? `Placed: ${placed}` : null,
-    order.paymentMethod ? `Payment: ${order.paymentMethod}` : null,
+    payment ? `Payment: ${payment}` : null,
+    sauces ? `Sauces: ${sauces}` : null,
     gift ? `Gift message: ${gift}` : null,
     '',
     'Your items:',
@@ -316,7 +337,7 @@ function buildReceiptEmail(order) {
     ...rows.map((r) => `${r.label}: ${r.free ? 'Free' : money(r.value)}`),
     `Total: ${money(total)}`,
     '',
-    'Your order confirmation and tax invoice are attached as PDFs.',
+    attachmentNote,
     `Questions? Reply to this email or write to ${STORE_EMAIL}.`,
     '',
     `${STORE_NAME} - ${STORE_URL}`,

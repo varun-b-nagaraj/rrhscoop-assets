@@ -41,7 +41,9 @@
       ? `<div class="receipt-line"><strong>Sauces</strong><small>${packets.join(' · ')}</small></div>`
       : '';
     document.querySelectorAll('[data-summary]').forEach(el => {
-      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.</p><p class="receipt-date">Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}</p>`;
+      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.</p><p class="receipt-date">${details.fulfillment === 'pickup'
+        ? 'Store pickup<strong>Choose a time in checkout</strong>'
+        : `Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}`}</p>`;
     });
     $('subtotal').textContent = money(subtotal());
     $('review-order').disabled = selectedItems().length === 0;
@@ -113,14 +115,51 @@
     challenge = data.challenge; resendUntil = Date.now() + 60000;
     $('sent-email').textContent = details.email; $('verification-code').value = ''; show('verify'); $('verification-code').focus({ preventScroll:true });
   }
+  function fulfillmentChoice() {
+    return $('delivery-form').querySelector('[name="fulfillment"]:checked').value;
+  }
+  function updateFulfillmentFields() {
+    const pickup = fulfillmentChoice() === 'pickup';
+    $('classroom-details').hidden = pickup;
+    $('teacher-room').required = !pickup;
+    $('teacher-room').disabled = pickup;
+    $('delivery-time').disabled = pickup;
+  }
+  $('delivery-form').addEventListener('change', event => {
+    if (event.target.name === 'fulfillment') {
+      updateFulfillmentFields();
+      details.fulfillment = fulfillmentChoice();
+      summary();
+    }
+  });
   function review() {
-    const data = [['For',details.name],['Room',details.room],['Delivery',delivery.label],['Time',details.time || 'Around 12:45 p.m.'],['Email',details.email]];
-    $('delivery-review').innerHTML = data.map(([label,value])=>`<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join(''); show('review');
+    const pickup = details.fulfillment === 'pickup';
+    const data = [['For', details.name], ['Email', details.email]];
+    if (pickup) {
+      data.push(['Fulfillment', 'Pick up at the RRHS CO-OP'], ['Pickup time', `Choose a time for ${delivery.label} in checkout`],
+        ['Payment', 'Pay online or at pickup']);
+    } else {
+      data.push(['Room', details.room], ['Delivery', delivery.label], ['Time', details.time || 'Around 12:45 p.m.'],
+        ['Payment', 'Pay online']);
+    }
+    $('review-fulfillment-note').textContent = pickup
+      ? `In Ecwid checkout, choose Pickup at Round Rock High School CO-OP Store. Select a time on ${delivery.label}, then choose card or Pay at pickup.`
+      : 'In Ecwid checkout, choose Deliver to Room and complete payment online.';
+    $('delivery-review').innerHTML = data.map(([label, value]) =>
+      `<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('');
+    show('review');
   }
   $('delivery-form').addEventListener('submit', event => {
     event.preventDefault();
     const email = $('teacher-email');
-    details = { name:$('teacher-name').value.trim(), room:$('teacher-room').value.trim(), time:$('delivery-time').value, email:email.value.trim().toLowerCase() };
+    const fulfillment = fulfillmentChoice();
+    details = {
+      name: $('teacher-name').value.trim(),
+      room: fulfillment === 'delivery' ? $('teacher-room').value.trim() : '',
+      time: fulfillment === 'delivery' ? $('delivery-time').value : '',
+      email: email.value.trim().toLowerCase(),
+      fulfillment,
+    };
     busy($('send-code'), 'Checking your email…', async()=> {
       if (token && verifiedEmail === details.email) { try { await request({ action:'session', token }); rememberVerification(); review(); return; } catch (err) { if (err.status !== 401) throw err; forget(); } }
       if (token) forget();
@@ -173,7 +212,13 @@
             clearTimeout(expiryTimer);
             try { sessionStorage.removeItem('rrhs-cfa-pending'); } catch (_) {}
             const orderId = order.orderNumber || order.vendorNumber;
-            $('order-result').textContent = `Order ${orderId || ''} was submitted. ${order.paymentStatus === 'PAID' ? 'Ecwid reports payment received.' : 'Payment is not yet confirmed. Check your Ecwid confirmation before placing another order.'} Delivery: ${checkout.delivery.label}.`;
+            const pickup = /pickup/i.test(order.shippingMethod || '') || (!order.shippingMethod && checkout.fulfillment === 'pickup');
+            const payLater = pickup && /^pay at pickup$/i.test(order.paymentMethod || '') && order.paymentStatus !== 'PAID';
+            const status = order.paymentStatus === 'PAID' ? 'Payment received.' :
+              payLater ? 'Please pay when you pick up your lunch at the RRHS CO-OP.' :
+                'Payment is pending. Check your confirmation before ordering again.';
+            const handoff = pickup ? 'See your confirmation for your pickup time.' : `Delivery: ${checkout.delivery.label}.`;
+            $('order-result').textContent = `Order ${orderId || ''} was submitted. ${status} ${handoff}`;
             show('complete');
           });
           window.Ecwid.OnCartChanged.add(cart=> {
@@ -202,13 +247,26 @@
     checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
     try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
     checkoutExpiry();
+    $('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;
     show('payment'); preparing = true; checkoutValid = false; $('ecwid-checkout').inert = true; $('checkout-status').hidden = false;
     try {
       await loadWidget();
       await clearCart();
       window.ec.order = window.ec.order || {}; window.ec.order.extraFields = window.ec.order.extraFields || {};
-      const fields = { cfa_preorder: ['Order type','Faculty Chick-fil-A preorder'], cfa_delivery_date:['Preorder delivery date',checkout.delivery.date], cfa_delivery_room:['Delivery room',checkout.room], cfa_delivery_time:['Requested delivery time',checkout.time || 'Around 12:45 p.m.'], cfa_verified_email:['Verified district email',checkout.email] };
-      for (const [key,[title,value]] of Object.entries(fields)) window.ec.order.extraFields[key] = { title, value, type:'text', orderDetailsDisplaySection:'order_comments', showInNotifications:true, showInInvoice:true };
+      const fields = {
+        cfa_preorder: ['Order type', 'Faculty Chick-fil-A preorder'],
+        cfa_verified_email: ['Verified district email', checkout.email],
+      };
+      const deliveryFields = {
+        cfa_delivery_date: ['Preorder delivery date', checkout.delivery.date],
+        cfa_delivery_room: ['Delivery room', checkout.room],
+        cfa_delivery_time: ['Requested delivery time', checkout.time || 'Around 12:45 p.m.'],
+      };
+      for (const key of Object.keys(deliveryFields)) delete window.ec.order.extraFields[key];
+      if (checkout.fulfillment !== 'pickup') Object.assign(fields, deliveryFields);
+      for (const [key, [title, value]] of Object.entries(fields)) {
+        window.ec.order.extraFields[key] = { title, value, type: 'text', orderDetailsDisplaySection: 'order_comments', showInNotifications: true, showInInvoice: true };
+      }
       window.Ecwid.refreshConfig();
       for (const item of checkout.items) {
         await new Promise((resolve,reject)=> {
@@ -217,7 +275,9 @@
         });
       }
       await ecwidCall('setCustomerEmail',checkout.email);
-      await ecwidCall('setAddress',{ name:checkout.name, street:`Round Rock High School, Room ${checkout.room}`, city:'Round Rock', stateOrProvinceCode:'TX', postalCode:'78681', countryName:'United States', countryCode:'US' });
+      if (checkout.fulfillment !== 'pickup') {
+        await ecwidCall('setAddress', { name: checkout.name, street: `Round Rock High School, Room ${checkout.room}`, city: 'Round Rock', stateOrProvinceCode: 'TX', postalCode: '78681', countryName: 'United States', countryCode: 'US' });
+      }
       await ecwidCall('setOrderComments',checkout.comments);
       const cart = await getCart();
       if (!matchingCart(cart)) throw new Error('Your checkout items changed. Please return to preorder review and try again.');
@@ -229,7 +289,7 @@
       $('ecwid-checkout').inert=true;
     } finally { preparing=false; sendHeight(); }
   }
-  $('pay-now').addEventListener('click',()=>busy($('pay-now'),'Preparing payment…',prepareCheckout,'payment-error'));
+  $('pay-now').addEventListener('click',()=>busy($('pay-now'),'Preparing checkout…',prepareCheckout,'payment-error'));
   $('back-from-payment').addEventListener('click',()=>{ checkoutValid=false; clearTimeout(expiryTimer); show('review'); });
   // Guard native checkout controls as well as the custom preorder buttons.
   window.addEventListener('click',event=> {
@@ -260,14 +320,16 @@
         try {
           const resumed=await request({action:'resume',token:pending.token,grant:pending.grant});
           token=pending.token;verifiedEmail=resumed.email;checkout=resumed;
-          details={name:checkout.name,room:checkout.room,time:checkout.time,email:checkout.email};
+          details={name:checkout.name,room:checkout.room,time:checkout.time,email:checkout.email,fulfillment:checkout.fulfillment || 'delivery'};
+          $('delivery-form').querySelector(`[name="fulfillment"][value="${details.fulfillment}"]`).checked = true;
+          updateFulfillmentFields();
           delivery=checkout.delivery;$('delivery-label').textContent=delivery.label;
           for (const item of checkout.items) selection.set(item.sku, { quantity: item.quantity });
           sauceCounts = checkout.sauces || {};
           renderMenu();
           renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],['delivery-time',details.time]])$(id).value=value;
-          review();show('payment');preparing=true;await loadWidget();preparing=false;
+          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;show('payment');preparing=true;await loadWidget();preparing=false;
           checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();
         } catch (err) {
           preparing = false;

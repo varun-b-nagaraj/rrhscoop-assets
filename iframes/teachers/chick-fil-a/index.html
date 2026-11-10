@@ -9,8 +9,8 @@
   <meta name="description" content="Plan your next school-day lunch. Choose Chick-fil-A, verify your district email, and pay securely with RRHS CO-OP.">
   <link rel="stylesheet" href="../../../custom-visuals/theme-tokens.css?live=1">
   <link rel="preload" href="fonts/spectral-regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="preorder.css?live=3">
-  <script src="preorder.js?live=3" defer></script>
+  <link rel="stylesheet" href="preorder.css?live=4">
+  <script src="preorder.js?live=4" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the lunch menu</a>
@@ -36,11 +36,16 @@
     </section>
     <section id="details-view" class="view" aria-labelledby="details-title" hidden>
       <button class="back" type="button" data-back="menu">← Back to your lunch</button>
-      <div class="checkout-layout"><div><p class="eyebrow">02 / From our store to your door</p><h2 id="details-title" tabindex="-1">Where’s lunch headed?</h2><p class="section-intro">A few details for our delivery team.</p>
+      <div class="checkout-layout"><div><p class="eyebrow">02 / From our store to your door</p><h2 id="details-title" tabindex="-1">Where’s lunch headed?</h2><p class="section-intro">Choose classroom delivery or collect lunch at the CO-OP.</p>
         <form id="delivery-form">
+          <fieldset class="fulfillment-options">
+            <legend>How would you like to get your lunch?</legend>
+            <label class="fulfillment-option"><input type="radio" name="fulfillment" value="delivery" checked><span><strong>Classroom delivery</strong><small>Pay online and we’ll bring lunch to your room.</small></span></label>
+            <label class="fulfillment-option"><input type="radio" name="fulfillment" value="pickup"><span><strong>Pick up at the CO-OP</strong><small>Choose a pickup time, then pay online or at pickup.</small></span></label>
+          </fieldset>
           <div class="field"><label for="teacher-name">Your name <span>(required)</span></label><input id="teacher-name" name="name" autocomplete="name" required maxlength="100"></div>
-          <div class="field-row"><div class="field"><label for="teacher-room">Room number <span>(required)</span></label><input id="teacher-room" name="room" required maxlength="40" placeholder="e.g. 1314"></div><div class="field"><label for="delivery-time">Preferred time <span>(optional)</span></label><input id="delivery-time" name="time" type="time" aria-describedby="time-help"></div></div>
-          <p id="time-help" class="helper"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg>Leave the time blank and we’ll deliver around 12:45 p.m. Requested times depend on our student delivery schedule.</p>
+          <div id="classroom-details"><div class="field-row"><div class="field"><label for="teacher-room">Room number <span>(required)</span></label><input id="teacher-room" name="room" required maxlength="40" placeholder="e.g. 1314"></div><div class="field"><label for="delivery-time">Preferred time <span>(optional)</span></label><input id="delivery-time" name="time" type="time" aria-describedby="time-help"></div></div>
+          <p id="time-help" class="helper"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg>Leave the time blank and we’ll deliver around 12:45 p.m. Requested times depend on our student delivery schedule.</p></div>
           <div class="field"><label for="teacher-email">District email <span>(required)</span></label><input id="teacher-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="85" placeholder="your.name@roundrockisd.org" aria-describedby="email-help"><p id="email-help" class="helper">Please use your @roundrockisd.org address. We’ll send a code to confirm it’s yours.</p></div>
           <label class="remember"><input type="checkbox" id="remember-email" checked> Remember my verified email on this device for 30 days.</label>
           <button class="button primary full" type="submit" id="send-code">Send verification code <span aria-hidden="true">→</span></button>
@@ -49,20 +54,20 @@
       </div><aside class="receipt" data-summary></aside></div>
     </section>
     <section id="verify-view" class="view" aria-labelledby="verify-title" hidden>
-      <button class="back" type="button" data-back="details">← Back to delivery details</button>
+      <button class="back" type="button" data-back="details">← Back to preorder details</button>
       <div class="checkout-layout"><div><p class="eyebrow">03 / Just for faculty &amp; staff</p><h2 id="verify-title" tabindex="-1">Check your district inbox.</h2><p class="section-intro">We sent a six-digit code to <strong id="sent-email"></strong>. It’s valid for 10 minutes.</p>
         <form id="verification-form"><div class="field"><label for="verification-code">Your verification code</label><input id="verification-code" class="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required placeholder="000000"></div><button class="button primary full" type="submit">Verify &amp; review <span aria-hidden="true">→</span></button><p id="verify-error" class="inline-error" role="alert" hidden></p></form>
         <div class="resend-row"><span class="muted">No code yet? Check your spam folder.</span><button class="text-button" id="resend-code" type="button">Send a new code</button></div>
       </div><aside class="receipt" data-summary></aside></div>
     </section>
     <section id="review-view" class="view" aria-labelledby="review-title" hidden>
-      <button class="back" type="button" data-back="details">← Edit delivery details</button>
-      <div class="checkout-layout"><div><p class="eyebrow">04 / One last look</p><h2 id="review-title" tabindex="-1">Your next lunch,<br>all lined up.</h2><p class="verified"><span aria-hidden="true">✓</span> District email verified</p><dl id="delivery-review" class="delivery-review"></dl><p class="helper">Your preorder is placed only when you complete Ecwid checkout. Available payment methods, taxes, and delivery charges appear there.</p><button class="button primary full" id="pay-now" type="button">Continue to secure payment <span aria-hidden="true">→</span></button><p class="payment-note">Secure checkout through the CO-OP’s existing Ecwid payment methods. Apple Pay appears on supported devices when enabled by our payment provider.</p><p id="payment-error" class="inline-error" role="alert" hidden></p><button class="text-button" id="forget-email" type="button">Forget my verified email on this device</button></div><aside class="receipt" data-summary></aside></div>
+      <button class="back" type="button" data-back="details">← Edit preorder details</button>
+      <div class="checkout-layout"><div><p class="eyebrow">04 / One last look</p><h2 id="review-title" tabindex="-1">Your next lunch,<br>all lined up.</h2><p class="verified"><span aria-hidden="true">✓</span> District email verified</p><dl id="delivery-review" class="delivery-review"></dl><p class="helper" id="review-fulfillment-note"></p><button class="button primary full" id="pay-now" type="button">Continue to checkout <span aria-hidden="true">→</span></button><p class="payment-note">Secure checkout through the CO-OP’s existing Ecwid payment methods. Apple Pay appears on supported devices when enabled by our payment provider.</p><p id="payment-error" class="inline-error" role="alert" hidden></p><button class="text-button" id="forget-email" type="button">Forget my verified email on this device</button></div><aside class="receipt" data-summary></aside></div>
     </section>
     <section id="payment-view" class="view" aria-labelledby="payment-title" hidden>
-      <button class="back" type="button" id="back-from-payment">← Back to preorder review</button><p class="eyebrow">04 / Secure payment</p><h2 id="payment-title" tabindex="-1">Make it a lunch date.</h2><p class="section-intro">Complete your preorder below. Your delivery date and sauce choices are attached to the order.</p><p id="checkout-status" role="status" class="notice">Preparing your secure checkout…</p><p id="checkout-error" role="alert" class="notice error" hidden></p><div id="ecwid-checkout" class="ecwid-host"></div>
+      <button class="back" type="button" id="back-from-payment">← Back to preorder review</button><p class="eyebrow">04 / Secure payment</p><h2 id="payment-title" tabindex="-1">Make it a lunch date.</h2><p class="section-intro">Complete your preorder below. Your sauce choices are attached to the order.</p><p id="checkout-fulfillment-note" class="helper"></p><p id="checkout-status" role="status" class="notice">Preparing your secure checkout…</p><p id="checkout-error" role="alert" class="notice error" hidden></p><div id="ecwid-checkout" class="ecwid-host"></div>
     </section>
-    <section id="complete-view" class="view" aria-labelledby="complete-title" hidden><p class="eyebrow">RRHS CO-OP / Faculty lunch</p><h2 id="complete-title" tabindex="-1">Thanks for your preorder.</h2><p id="order-result" class="section-intro"></p><p>Ecwid will email your order details and payment status. Our student team will use the delivery details saved with your order.</p><a class="button primary" href="https://rrhscoop.roundrockisd.org/teachers" target="_top">Back to the teacher hub <span aria-hidden="true">→</span></a></section>
+    <section id="complete-view" class="view" aria-labelledby="complete-title" hidden><p class="eyebrow">RRHS CO-OP / Faculty lunch</p><h2 id="complete-title" tabindex="-1">Thanks for your preorder.</h2><p id="order-result" class="section-intro"></p><p>Ecwid will email your order details and payment status. Your confirmation includes how and when to get your lunch.</p><a class="button primary" href="https://rrhscoop.roundrockisd.org/teachers" target="_top">Back to the teacher hub <span aria-hidden="true">→</span></a></section>
   </main>
   <footer><span>A little convenience. A lot of Dragon spirit.</span><a href="mailto:rrhs_coop_store@roundrockisd.org">Questions? Email the CO-OP <span aria-hidden="true">↗</span></a></footer>
 </div>

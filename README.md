@@ -292,3 +292,16 @@ Apps Script reads the orders directly from Ecwid. It sends the report to the
 two student dispatchers on the first run at or after 2:30 p.m. Central. It
 includes that day's faculty preorders placed before 2 p.m., with payment status
 labeled. Run `sendCfaDispatchPreview` to send a sample to the Gmail test inbox.
+
+### Faculty pickup and pay at pickup
+
+The preorder page offers classroom delivery with online payment or scheduled
+pickup at the RRHS CO-OP. Ecwid's checkout records the pickup date and time and
+lets pickup customers pay online or choose **Pay at pickup**. In Ecwid, keep
+that offline payment method restricted to the CO-OP pickup shipping method.
+
+Copy the updated [receipt sender](apps-script/receipts.gs) into its existing
+Apps Script project and save. The existing trigger sends a pickup confirmation
+with the balance due, then a paid receipt after staff mark the order paid.
+Update the [faculty script](apps-script/teacher-preorder-verification.gs) in
+its own project to show pickup times and payment status in the daily dispatch.

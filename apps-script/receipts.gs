@@ -56,12 +56,13 @@ function sendPendingReceipts() {
     const since = Math.max(startAt, Math.floor(Date.now() / 1000) - 24 * 60 * 60);
     const sent = JSON.parse(props.getProperty('SENT_IDS') || '[]');
 
-    const data = apiJson_('/pending?since=' + since);
+    const data = apiJson_('/pending?includePickupConfirmations=1&since=' + since);
     (data.receipts || []).forEach((receipt) => {
-      if (sent.indexOf(receipt.orderId) !== -1) return;
+      const notificationId = receipt.notificationId || receipt.orderId;
+      if (sent.indexOf(notificationId) !== -1) return;
       try {
         sendReceipt_(receipt, receipt.to);
-        sent.push(receipt.orderId);
+        sent.push(notificationId);
         props.setProperty('SENT_IDS', JSON.stringify(sent.slice(-MAX_SENT_IDS)));
       } catch (err) {
         // Leave it unmarked so the next run retries it.

@@ -105,9 +105,9 @@ function cfaDispatchMessage_(data) {
   }
   data.orders.forEach(function (order) {
     var customer = order.name + (order.room ? ' · Room ' + order.room : '');
-    var delivery = [order.delivery, order.time].filter(Boolean).join(' · ');
+    var delivery = [order.pickup ? 'Pickup at the RRHS CO-OP' : 'Classroom delivery', order.delivery, order.time].filter(Boolean).join(' · ');
     var items = order.items.map(function (item) { return item.quantity + ' × ' + item.name; });
-    var payment = order.paymentStatus === 'PAID' ? 'Paid' : 'Awaiting payment';
+    var payment = order.paymentStatus === 'PAID' ? 'Paid' : (order.payAtPickup ? 'Pay at pickup' : 'Awaiting payment');
     var orderLabel = 'Order ' + order.number + ' · ' + payment;
     text.push('', orderLabel, customer, delivery, items.join('\n'), 'Sauces: ' + order.sauces);
     html += '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:12px;background:#f1eee8;"><tr><td style="padding:16px;border-left:3px solid #6e1f2a;">' +
@@ -248,13 +248,27 @@ function cfaDispatchOrder_(order, date) {
     var line = comments.find(function (entry) { return entry.indexOf(prefix) === 0; });
     return line ? line.slice(prefix.length).trim() : '';
   }
+  var shipping = order.shippingOption || {};
+  var pickup = shipping.isPickup || String(shipping.fulfillmentType || shipping.fulfilmentType || '').toUpperCase() === 'PICKUP' ||
+    /^pickup at round rock high school co-op store$/i.test(shipping.shippingMethodName || '');
+  var pickupTime = '';
+  if (pickup && order.pickupTime) {
+    var stamp = String(order.pickupTime).replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T').replace(/ \+0000$/, 'Z');
+    var pickupDate = new Date(stamp);
+    if (Number.isFinite(pickupDate.getTime())) {
+      pickupTime = Utilities.formatDate(pickupDate, timeZone, "EEE, MMM d 'at' h:mm a") + ' Central';
+    }
+  }
   return {
     number: String(order.vendorOrderNumber || order.id || order.orderNumber),
     paymentStatus: order.paymentStatus,
     name: comment('Name') || (order.shippingPerson && order.shippingPerson.name) || '',
-    room: extra('cfa_delivery_room') || comment('Room'),
-    delivery: extra('cfa_delivery_date') || comment('Delivery'),
-    time: extra('cfa_delivery_time') || comment('Requested time') || 'Around 12:45 p.m.',
+    pickup: Boolean(pickup),
+    payAtPickup: Boolean(pickup) && /^pay at pickup$/i.test(order.paymentMethod || ''),
+    room: pickup ? '' : extra('cfa_delivery_room') || comment('Room'),
+    delivery: pickup ? '' : extra('cfa_delivery_date') || comment('Delivery'),
+    time: pickup ? pickupTime || 'See pickup time in Ecwid' :
+      extra('cfa_delivery_time') || comment('Requested time') || 'Around 12:45 p.m.',
     sauces: comment('Sauces') || 'None',
     items: items
   };
