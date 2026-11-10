@@ -246,8 +246,7 @@ that page. The iframe allows forms, scripts, payment permissions, and user-initi
 navigation for payment providers.
 
 The three menu prices come from Ecwid. The order date is the next instructional
-A/B day in `check-out-page/aday-bday.json`. Each product line accepts up to three
-packets of each sauce. The order comments carry the delivery date, room, time,
+A/B day in `check-out-page/aday-bday.json`. An order can include up to three packets of each sauce. The order comments carry the delivery date, room, time,
 verified email, and sauces into Ecwid.
 
 ### Connect district email

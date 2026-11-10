@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
     if (body.action === 'resume') {
       const checkout = service.verify(body.grant, 'checkout');
       if (checkout.email !== session.email) service.fail(401, 'Verify the email used for this preorder.');
-      return send(200, { ...checkout, comments: service.orderComments(checkout, checkout.email, checkout.delivery), grant: body.grant, expiresAt: checkout.exp * 1000 });
+      return send(200, { ...checkout, sauces: service.orderSauces(checkout), comments: service.orderComments(checkout, checkout.email, checkout.delivery), grant: body.grant, expiresAt: checkout.exp * 1000 });
     }
     if (body.action !== 'checkout') service.fail(400, 'Unknown preorder action.');
     const order = service.validateOrder(body);
@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
       item.price = current.price;
     }
     const subtotal = Math.round(order.items.reduce((sum,p) => sum + p.price * p.quantity, 0) * 100) / 100;
-    const checkout = { email: session.email, name: order.name, room: order.room, time: order.time, delivery, items: order.items, subtotal };
+    const checkout = { email: session.email, name: order.name, room: order.room, time: order.time, delivery, items: order.items, sauces: order.sauces, subtotal };
     return send(200, { ...checkout, comments: service.orderComments(order, session.email, delivery), grant: service.sign(checkout, 'checkout', 30 * 60), expiresAt: Date.now() + 30 * 60 * 1000 });
   } catch (err) {
     if (!err.status) console.warn('[cfa-preorder]', err.name);

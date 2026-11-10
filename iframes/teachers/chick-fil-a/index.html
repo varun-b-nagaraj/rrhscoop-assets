@@ -8,8 +8,8 @@
   <title>Faculty Chick-fil-A preorders | RRHS CO-OP</title>
   <meta name="description" content="Plan your next school-day lunch. Choose Chick-fil-A, verify your district email, and pay securely with RRHS CO-OP.">
   <link rel="stylesheet" href="../../../custom-visuals/theme-tokens.css?live=1">
-  <link rel="stylesheet" href="preorder.css?live=1">
-  <script src="preorder.js?live=1" defer></script>
+  <link rel="stylesheet" href="preorder.css?live=2">
+  <script src="preorder.js?live=2" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the lunch menu</a>
@@ -25,6 +25,13 @@
     <section id="menu-view" class="view" aria-labelledby="menu-title">
       <div class="section-heading"><div><p class="eyebrow">01 / Made for your lunch break</p><h2 id="menu-title" tabindex="-1">What sounds good?</h2></div><p>Pick your lunch. Make it yours.<br>All items are preorder only.</p></div>
       <div id="menu" class="menu-grid" aria-busy="true"><p class="loading">Loading today’s menu…</p></div>
+      <section class="sauce-section" id="sauce-section" aria-labelledby="sauce-title" hidden>
+        <div class="sauce-heading">
+          <h3 id="sauce-title">Sauces</h3>
+          <p id="sauce-limit">Optional · up to 3 packets of each per order</p>
+        </div>
+        <div class="sauce-grid" id="sauce-options"></div>
+      </section>
       <div class="menu-bottom"><p class="fine-print"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Your lunch is scheduled for the <strong>next school day</strong>. Friday and weekend orders roll to Monday, unless the school calendar marks a holiday. Faculty discounts exclude Chick-fil-A.</span></p><div class="menu-total"><div><span class="eyebrow">Your lunch subtotal</span><strong id="subtotal">$0.00</strong><span class="muted">Final taxes &amp; delivery shown at checkout.</span></div><button class="button primary" id="review-order" type="button" disabled>Review preorder <span aria-hidden="true">→</span></button></div></div>
     </section>
     <section id="details-view" class="view" aria-labelledby="details-title" hidden>

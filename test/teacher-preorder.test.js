@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const s = require('../teacher-preorders/service');
 const handler = require('../api/v1/teachers/preorder');
 const products = require('../check-out-page/cfa-products');
-const valid = () => ({ name:'Faculty Member', room:'1314', time:'', items:[{sku:'601_sku',quantity:2,price:6.25,sauces:{ranch:3,cfa:1,ketchup:0,buffalo:2}}] });
+const valid = () => ({ name:'Faculty Member', room:'1314', time:'', items:[{sku:'601_sku',quantity:2,price:6.25}], sauces:{ranch:3,cfa:1,ketchup:0,buffalo:2} });
 function res() {return {statusCode:0,headers:{},setHeader(k,v){this.headers[k]=v;},end(v){this.data=JSON.parse(v);}};}
 
 test('calendar rolls Friday afternoon and Sunday to Monday',()=> {
@@ -25,8 +25,18 @@ test('only the exact staff email domain is accepted',()=> {
 test('order quantities and sauces are validated independently of the browser',()=> {
   assert.equal(s.validateOrder(valid()).items[0].quantity,2);
   for(const quantity of [0,-1,21,1.5,'2']) {const body=valid();body.items[0].quantity=quantity;assert.throws(()=>s.validateOrder(body));}
-  for(const count of [4,-1,0.5,'3']) {const body=valid();body.items[0].sauces.ranch=count;assert.throws(()=>s.validateOrder(body));}
-  const unknown=valid();unknown.items[0].sauces.unknown=1;assert.throws(()=>s.validateOrder(unknown));
+  for(const count of [4,-1,0.5,'3']) {const body=valid();body.sauces.ranch=count;assert.throws(()=>s.validateOrder(body));}
+  const unknown=valid();unknown.sauces.unknown=1;assert.throws(()=>s.validateOrder(unknown));
+});
+test('sauces are counted once across the order and legacy carts obey the same limit', () => {
+  const order = valid();
+  order.items.push({ sku: '698_sku', quantity: 1, price: 6.50 });
+  const validated = s.validateOrder(order);
+  assert.equal(validated.sauces.ranch, 3);
+  assert.ok(validated.items.every(item => item.sauces === undefined));
+  delete order.sauces;
+  order.items.forEach(item => { item.sauces = { ranch: 2 }; });
+  assert.throws(() => s.validateOrder(order), /per order/);
 });
 test('unknown and duplicate products, missing delivery fields are rejected',()=> {
   const bad=valid();bad.items[0].sku='other';assert.throws(()=>s.validateOrder(bad));
@@ -44,7 +54,7 @@ test('signed verification rejects tampering, expiry, wrong purpose, and missing 
     process.env.RRHS_CFA_VERIFICATION_SECRET='';assert.throws(()=>s.sign({email:'x@roundrockisd.org'},'faculty',100));
   }finally{if(previous===undefined)delete process.env.RRHS_CFA_VERIFICATION_SECRET;else process.env.RRHS_CFA_VERIFICATION_SECRET=previous;}
 });
-test('order comments carry the exact date, room, email, and per-line sauce counts',()=> {
+test('order comments carry the exact date, room, email, and order-level sauce counts',()=> {
   const text=s.orderComments(s.validateOrder(valid()),'teacher@roundrockisd.org',s.nextDelivery(new Date('2026-11-08T20:00:00Z')));
   for(const value of ['2026-11-09','1314','teacher@roundrockisd.org','Garden Herb Ranch: 3','Zesty Buffalo: 2','12:45']) assert.ok(text.includes(value));
 });

@@ -7,6 +7,7 @@
   const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let menu = [], sauces = {}, delivery = null, storeId = '', selection = new Map();
+  let sauceCounts = {};
   let token = '', verifiedEmail = '', details = {}, challenge = '', checkout = null;
   let expiryTimer = null;
   let widgetReady = null, preparing = false, checkoutValid = false, currentView = 'menu', resendUntil = 0;
@@ -32,9 +33,15 @@
   }
   function subtotal() { return selectedItems().reduce((total,p) => total + p.price * p.quantity, 0); }
   function summary() {
-    const lines = selectedItems().map(item => `<div class="receipt-line"><div><strong>${item.quantity} × ${escape(item.name)}</strong><span class="price">${money(item.price * item.quantity)}</span></div><small>${Object.entries(sauces).filter(([key]) => item.sauces[key] > 0).map(([key,label]) => `${item.sauces[key]} ${escape(label)}`).join(' · ') || 'No sauce packets'}</small></div>`).join('');
+    const lines = selectedItems().map(item => `<div class="receipt-line"><div><strong>${item.quantity} × ${escape(item.name)}</strong><span class="price">${money(item.price * item.quantity)}</span></div></div>`).join('');
+    const packets = Object.entries(sauces)
+      .filter(([key]) => sauceCounts[key] > 0)
+      .map(([key, label]) => `${sauceCounts[key]} × ${escape(label)}`);
+    const sauceSummary = packets.length
+      ? `<div class="receipt-line"><strong>Sauces</strong><small>${packets.join(' · ')}</small></div>`
+      : '';
     document.querySelectorAll('[data-summary]').forEach(el => {
-      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.<br>Chick-fil-A is excluded from faculty discounts.</p><p class="receipt-date">Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}</p>`;
+      el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.<br>Chick-fil-A is excluded from faculty discounts.</p><p class="receipt-date">Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}</p>`;
     });
     $('subtotal').textContent = money(subtotal());
     $('review-order').disabled = selectedItems().length === 0;
@@ -51,10 +58,31 @@
   }
   const descriptions = { '601_sku': 'The original, with pickles on a toasted buttered bun.', '782_sku': 'Grilled chicken, crisp greens, eggs, and a little crunch.', '698_sku': 'Eight bite-sized favorites, ready for your favorite sauce.' };
   function renderMenu() {
-    $('menu').innerHTML = menu.map((p,i) => `<article class="food-card" data-sku="${p.sku}"><div class="food-image"><span class="menu-index" aria-hidden="true">0${i+1}</span><img src="../assets/${p.image}" width="700" height="700" alt="${escape(p.name)}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}></div><div class="food-title"><h3>${escape(p.name)}</h3><span class="price">${money(p.price)}</span></div><p class="food-description">${escape(descriptions[p.sku])}</p><div class="quantity-row"><label for="qty-${p.sku}">Quantity</label><div class="stepper"><button type="button" data-delta="-1" aria-label="Remove one ${escape(p.name)}">−</button><input id="qty-${p.sku}" data-quantity type="number" inputmode="numeric" min="0" max="20" step="1" value="0" ${!p.available ? 'disabled' : ''}><button type="button" data-delta="1" aria-label="Add one ${escape(p.name)}" ${!p.available ? 'disabled' : ''}>+</button></div></div>${!p.available ? '<p class="inline-error">Temporarily unavailable.</p>' : ''}<details><summary>Sauces <span class="muted">up to 3 each</span></summary><p class="sauce-note">Packet counts for this menu item, regardless of quantity.</p>${Object.entries(sauces).map(([key,label]) => `<div class="sauce-row"><label for="${p.sku}-${key}">${escape(label)}</label><select id="${p.sku}-${key}" data-sauce="${key}" aria-label="${escape(label)} packets for ${escape(p.name)}">${[0,1,2,3].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>`).join('')}</details></article>`).join('');
+    $('menu').innerHTML = menu.map((p,i) => `<article class="food-card" data-sku="${p.sku}"><div class="food-image"><span class="menu-index" aria-hidden="true">0${i+1}</span><img src="../assets/${p.image}" width="700" height="700" alt="${escape(p.name)}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}></div><div class="food-title"><h3>${escape(p.name)}</h3><span class="price">${money(p.price)}</span></div><p class="food-description">${escape(descriptions[p.sku])}</p><div class="quantity-row"><label for="qty-${p.sku}">Quantity</label><div class="stepper"><button type="button" data-delta="-1" aria-label="Remove one ${escape(p.name)}">−</button><input id="qty-${p.sku}" data-quantity type="number" inputmode="numeric" min="0" max="20" step="1" value="${selection.get(p.sku)?.quantity || 0}" ${!p.available ? 'disabled' : ''}><button type="button" data-delta="1" aria-label="Add one ${escape(p.name)}" ${!p.available ? 'disabled' : ''}>+</button></div></div>${!p.available ? '<p class="inline-error">Temporarily unavailable.</p>' : ''}</article>`).join('');
     $('menu').setAttribute('aria-busy', 'false');
     updateQuantities();
   }
+  function renderSauces() {
+    $('sauce-options').innerHTML = Object.entries(sauces).map(([key, label]) => {
+      const choices = [0, 1, 2, 3].map(count => `
+        <label class="sauce-choice">
+          <input type="radio" name="sauce-${key}" data-sauce="${key}" value="${count}"
+            aria-label="${count} ${count === 1 ? 'packet' : 'packets'}"
+            ${count === (sauceCounts[key] || 0) ? 'checked' : ''}>
+          <span aria-hidden="true">${count}</span>
+        </label>`).join('');
+      return `<fieldset class="sauce-option" aria-describedby="sauce-limit">
+        <legend>${escape(label)}</legend>
+        <div class="sauce-choices">${choices}</div>
+      </fieldset>`;
+    }).join('');
+    $('sauce-section').hidden = false;
+  }
+  $('sauce-options').addEventListener('change', event => {
+    if (!event.target.matches('[data-sauce]')) return;
+    sauceCounts[event.target.dataset.sauce] = Number(event.target.value);
+    summary();
+  });
   function updateQuantities() {
     document.querySelectorAll('.food-card').forEach(card => {
       const input = card.querySelector('[data-quantity]');
@@ -65,7 +93,7 @@
   function updateSelection(card) {
     const quantity = card.querySelector('[data-quantity]');
     quantity.value = String(Math.max(0, Math.min(20, Math.floor(Number(quantity.value) || 0))));
-    selection.set(card.dataset.sku, { quantity: Number(quantity.value), sauces: Object.fromEntries(Array.from(card.querySelectorAll('[data-sauce]')).map(el=>[el.dataset.sauce, Number(el.value)])) });
+    selection.set(card.dataset.sku, { quantity: Number(quantity.value) });
     updateQuantities(); summary();
   }
   $('menu').addEventListener('click', event => {
@@ -173,7 +201,7 @@
     }, Math.max(0, checkout.expiresAt-Date.now()));
   }
   async function prepareCheckout() {
-    checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,sauces,price})=>({sku,quantity,sauces,price})), deliveryDate:delivery.date });
+    checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
     try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
     checkoutExpiry();
     show('payment'); preparing = true; checkoutValid = false; $('ecwid-checkout').inert = true; $('checkout-status').hidden = false;
@@ -227,7 +255,7 @@
     try {
       const data=await request(); menu=data.menu;sauces=data.sauces;delivery=data.delivery;storeId=data.storeId;
       $('delivery-label').textContent=delivery.label;
-      renderMenu();summary();
+      renderMenu();renderSauces();summary();
       if(token) { try {const session=await request({action:'session',token});verifiedEmail=session.email;$('teacher-email').value=verifiedEmail;$('send-code').innerHTML='Review delivery details <span aria-hidden="true">→</span>';}catch(_){forget();} }
       let pending=null; try { pending=JSON.parse(sessionStorage.getItem('rrhs-cfa-pending') || 'null'); } catch (_) {}
       if(pending && location.hash) {
@@ -236,7 +264,10 @@
           token=pending.token;verifiedEmail=resumed.email;checkout=resumed;
           details={name:checkout.name,room:checkout.room,time:checkout.time,email:checkout.email};
           delivery=checkout.delivery;$('delivery-label').textContent=delivery.label;
-          for(const item of checkout.items)selection.set(item.sku,{quantity:item.quantity,sauces:item.sauces});
+          for (const item of checkout.items) selection.set(item.sku, { quantity: item.quantity });
+          sauceCounts = checkout.sauces || {};
+          renderMenu();
+          renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],['delivery-time',details.time]])$(id).value=value;
           review();show('payment');preparing=true;await loadWidget();preparing=false;
           checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();

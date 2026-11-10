@@ -66,21 +66,29 @@ function validateOrder(body) {
     if (!product || seen.has(line.sku)) fail(400, 'Choose items from the faculty lunch menu.');
     seen.add(line.sku);
     if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 20) fail(400, 'Choose between 1 and 20 of each item.');
-    const sauces = {};
-    if (line.sauces != null && (typeof line.sauces !== 'object' || Array.isArray(line.sauces))) fail(400, 'Check your sauce quantities.');
-    for (const [key, value] of Object.entries(line.sauces || {})) {
-      if (!Object.hasOwn(SAUCES, key) || !Number.isInteger(value) || value < 0 || value > 3) fail(400, 'Choose up to 3 packets of each sauce per menu item.');
-      sauces[key] = value;
-    }
-    return { ...product, quantity: line.quantity, sauces };
+    return { ...product, quantity: line.quantity };
   });
+  const sauces = {};
+  // Accept tabs opened before the sauce controls moved out of the product cards.
+  const sauceInputs = body.sauces == null ? body.items.map(line => line.sauces) : [body.sauces];
+  for (const input of sauceInputs) {
+    if (input == null) continue;
+    if (typeof input !== 'object' || Array.isArray(input)) fail(400, 'Check your sauce quantities.');
+    for (const [key, count] of Object.entries(input)) {
+      if (!Object.hasOwn(SAUCES, key) || !Number.isInteger(count) || count < 0 || count > 3) {
+        fail(400, 'Choose up to 3 packets of each sauce per order.');
+      }
+      sauces[key] = (sauces[key] || 0) + count;
+      if (sauces[key] > 3) fail(400, 'Choose up to 3 packets of each sauce per order.');
+    }
+  }
   const name = String(body.name || '').trim();
   const room = String(body.room || '').trim();
   if (!name || name.length > 100 || /[\r\n<>]/.test(name)) fail(400, 'Enter your name (up to 100 characters).');
   if (!room || room.length > 40 || /[\r\n<>]/.test(room)) fail(400, 'Enter your room number (up to 40 characters).');
   const time = String(body.time || '').trim();
   if (time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) fail(400, 'Choose a valid delivery time or leave it blank.');
-  return { items, name, room, time };
+  return { items, sauces, name, room, time };
 }
 async function ecwid(path) {
   const token = String(process.env.RRHS_ECWID_API_TOKEN || '').trim();
@@ -108,13 +116,25 @@ async function mailAction(action, payload) {
   if (!result.ok) fail([400,401,429,503].includes(result.status) ? result.status : 502, result.error || 'We could not verify that code. Please try again.');
   return result;
 }
+function orderSauces(order) {
+  if (order.sauces) return order.sauces;
+  // Already-issued checkout grants retain the packet counts they were issued with.
+  return Object.fromEntries(Object.keys(SAUCES).map(key => [
+    key, order.items.reduce((total, item) => total + (item.sauces?.[key] || 0), 0),
+  ]));
+}
 function orderComments(order, email, delivery) {
+  const counts = orderSauces(order);
+  const packets = Object.entries(SAUCES)
+    .filter(([key]) => counts[key] > 0)
+    .map(([key, label]) => `${label}: ${counts[key]}`);
   return [
     'FACULTY CHICK-FIL-A PREORDER',
     `Verified district email: ${email}`,
     `Name: ${order.name}`, `Room: ${order.room}`, `Delivery: ${delivery.label} (${delivery.date})`,
     `Requested time: ${order.time || 'Around 12:45 p.m.'} Central`,
-    ...order.items.map(item => `${item.quantity} × ${item.name}; sauce packets for this line: ${Object.entries(SAUCES).map(([key,label]) => `${label}: ${item.sauces[key] || 0}`).join(', ')}`),
+    ...order.items.map(item => `${item.quantity} × ${item.name}`),
+    `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');
 }
-module.exports = { MENU, SAUCES, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderComments };
+module.exports = { MENU, SAUCES, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments };
