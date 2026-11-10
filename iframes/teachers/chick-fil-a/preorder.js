@@ -427,12 +427,13 @@
   window.addEventListener('message', event => {
     if (event.source !== parent || event.origin !== parentOrigin) return;
     if (event.data?.type === 'rrhs-cfa-preorder-drawer-ready' && (drawer.open || finishOpening)) {
-      const { top, left, width } = event.data.menu || {};
+      const { top, left, width, clipTop } = event.data.menu || {};
       if ([top, left, width].every(Number.isFinite) && width > 0) {
         const root = document.documentElement;
         root.style.setProperty('--preorder-menu-top', `${top}px`);
         root.style.setProperty('--preorder-menu-left', `${left}px`);
         root.style.setProperty('--preorder-menu-width', `${width}px`);
+        root.style.setProperty('--preorder-menu-clip-top', `${Number.isFinite(clipTop) ? clipTop : 0}px`);
         root.classList.add('preorder-overlay');
       }
       finishOpening?.();

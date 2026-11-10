@@ -131,6 +131,8 @@ html.preorder-overlay .page {
   left:calc(var(--preorder-menu-left) + max(0px, (var(--preorder-menu-width) - 1360px) / 2));
   width:min(1360px, var(--preorder-menu-width));
   margin:0;
+  /* The backdrop and drawer still cover the viewport. Only the menu stops below the host header. */
+  clip-path:inset(var(--preorder-menu-clip-top, 0px) 0 0);
 }
 
 .stepper { align-items:center; flex-shrink:0; border-radius:3px; }

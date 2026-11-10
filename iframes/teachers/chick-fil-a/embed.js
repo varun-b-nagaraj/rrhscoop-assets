@@ -10,9 +10,16 @@
 
   function sendDrawerGeometry(bounds) {
     const viewport = frame.getBoundingClientRect();
+    const header = document.querySelector('.rrhs-sticky-header-shell, .ins-header');
+    const headerBottom = header?.getBoundingClientRect().bottom ?? viewport.top;
     frame.contentWindow.postMessage({
       type: 'rrhs-cfa-preorder-drawer-ready',
-      menu: { top: bounds.top - viewport.top, left: bounds.left - viewport.left, width: bounds.width },
+      menu: {
+        top: bounds.top - viewport.top,
+        left: bounds.left - viewport.left,
+        width: bounds.width,
+        clipTop: Math.max(0, headerBottom - bounds.top, viewport.top - bounds.top),
+      },
     }, origin);
   }
 
@@ -97,6 +104,11 @@
   window.addEventListener('pagehide', closeDrawer);
   window.addEventListener('resize', () => {
     if (overlay) sendDrawerGeometry(overlay.placeholder.getBoundingClientRect());
+  });
+  document.addEventListener('transitionend', event => {
+    if (overlay && event.propertyName === 'transform' && event.target.matches('.rrhs-sticky-header-shell')) {
+      sendDrawerGeometry(overlay.placeholder.getBoundingClientRect());
+    }
   });
   new MutationObserver(() => {
     if (!frame.isConnected) closeDrawer();
