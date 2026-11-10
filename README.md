@@ -279,3 +279,16 @@ page. Confirm that the order appears in Ecwid with its room, delivery date, and
 sauces, and that a regular cart containing any of the three SKUs cannot continue.
 The regular cart restriction runs in the storefront. It is not an Ecwid
 server-side product access rule.
+
+### Schedule the faculty order email
+
+Use the updated [Apps Script](apps-script/teacher-preorder-verification.gs) in the
+existing district project. Add `RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN`
+to its Script properties using the existing Ecwid values. The Ecwid token needs
+`read_orders` access. Update the existing web app deployment to a new version
+and run `installCfaDispatchTrigger` once from the editor.
+
+Apps Script reads the orders directly from Ecwid. It sends the report to the
+two student dispatchers on the first run at or after 2:30 p.m. Central. It
+includes that day's faculty preorders placed before 2 p.m., with payment status
+labeled. Run `sendCfaDispatchPreview` to send a sample to the Gmail test inbox.

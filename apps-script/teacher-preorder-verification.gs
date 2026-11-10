@@ -92,3 +92,170 @@ function cfaEmail_(label, title, content) {
     '<h1 style="margin:0 0 18px;color:#6e1f2a;font:400 30px/1.2 \'Playfair Display\',Georgia,serif;">' + cfaEscape_(title) + '</h1>' +
     content + '</td></tr></table></td></tr></table></body></html>';
 }
+
+function cfaDispatchMessage_(data) {
+  var total = data.orders.length;
+  var title = total + (total === 1 ? ' faculty preorder' : ' faculty preorders');
+  var intro = 'Orders placed before 2 p.m. Central on ' + data.date + '.';
+  var text = [intro];
+  var html = '<p style="margin:0 0 20px;color:#655a53;">' + cfaEscape_(intro) + '</p>';
+  if (!total) {
+    text.push('No faculty preorders for this dispatch.');
+    html += '<p>No faculty preorders for this dispatch.</p>';
+  }
+  data.orders.forEach(function (order) {
+    var customer = order.name + (order.room ? ' · Room ' + order.room : '');
+    var delivery = [order.delivery, order.time].filter(Boolean).join(' · ');
+    var items = order.items.map(function (item) { return item.quantity + ' × ' + item.name; });
+    var payment = order.paymentStatus === 'PAID' ? 'Paid' : 'Awaiting payment';
+    var orderLabel = 'Order ' + order.number + ' · ' + payment;
+    text.push('', orderLabel, customer, delivery, items.join('\n'), 'Sauces: ' + order.sauces);
+    html += '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:12px;background:#f1eee8;"><tr><td style="padding:16px;border-left:3px solid #6e1f2a;">' +
+      '<p style="margin:0 0 4px;color:#6e1f2a;font:600 14px/1.4 Georgia,serif;">' + cfaEscape_(orderLabel) + '</p>' +
+      '<p style="margin:0;font-weight:600;">' + cfaEscape_(customer) + '</p>' +
+      '<p style="margin:0;color:#655a53;">' + cfaEscape_(delivery) + '</p>' +
+      '<ul style="margin:10px 0;padding-left:22px;">' +
+      items.map(function (item) { return '<li>' + cfaEscape_(item) + '</li>'; }).join('') + '</ul>' +
+      '<p style="margin:0;"><strong>Sauces</strong> ' + cfaEscape_(order.sauces) + '</p></td></tr></table>';
+  });
+  return {
+    subject: 'Faculty Chick-fil-A dispatch · ' + data.date,
+    body: text.join('\n'),
+    htmlBody: cfaEmail_('Chick-fil-A dispatch', title, html),
+    name: 'RRHS CO-OP'
+  };
+}
+
+// Run once from the Apps Script editor to install the daily dispatch.
+function installCfaDispatchTrigger() {
+  cfaEcwidConfig_(PropertiesService.getScriptProperties());
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (trigger.getHandlerFunction() === 'sendCfaDispatch') ScriptApp.deleteTrigger(trigger);
+  });
+  ScriptApp.newTrigger('sendCfaDispatch').timeBased().everyMinutes(1).create();
+}
+
+function sendCfaDispatch() {
+  var now = new Date();
+  var timeZone = 'America/Chicago';
+  if (Number(Utilities.formatDate(now, timeZone, 'HHmm')) < 1430) return;
+  var date = Utilities.formatDate(now, timeZone, 'yyyy-MM-dd');
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('cfa_last_dispatch_date') === date) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+  try {
+    if (props.getProperty('cfa_last_dispatch_date') === date) return;
+    var orders = cfaReadOrders_(date, cfaEcwidConfig_(props));
+    var message = cfaDispatchMessage_({ date: date, orders: orders });
+    message.to = 's137323@student.roundrockisd.org,s138524@student.roundrockisd.org';
+    MailApp.sendEmail(message);
+    props.setProperty('cfa_last_dispatch_date', date);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Run from the editor to send a sample with fictional order details.
+function sendCfaDispatchPreview() {
+  var message = cfaDispatchMessage_({
+    date: Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd'),
+    orders: [{
+      number: 'SAMPLE', paymentStatus: 'PAID', name: 'Example Teacher', room: '1314', delivery: 'Next school day',
+      time: 'Around 12:45 p.m.', sauces: 'Chick-fil-A Sauce: 2, Ketchup: 1',
+      items: [{ quantity: 2, name: 'Original Chicken Sandwich' }]
+    }]
+  });
+  message.subject = '[Preview] ' + message.subject;
+  message.to = 'varunnagaraj2009@gmail.com';
+  MailApp.sendEmail(message);
+}
+
+function cfaEcwidConfig_(properties) {
+  var storeId = String(properties.getProperty('RRHS_ECWID_STORE_ID') || '').trim();
+  var token = String(properties.getProperty('RRHS_ECWID_API_TOKEN') || '').trim();
+  if (!/^\d+$/.test(storeId) || !token) {
+    throw new Error('Set RRHS_ECWID_STORE_ID and RRHS_ECWID_API_TOKEN in Script properties.');
+  }
+  return { storeId: storeId, token: token };
+}
+
+var CFA_DISPATCH_PRODUCTS = [
+  { id: 779182392, sku: '601_sku', name: 'Original Chicken Sandwich' },
+  { id: 864700011, sku: '782_sku', name: 'Grilled Chicken Cobb Salad' },
+  { id: 813619469, sku: '698_sku', name: '8-count Chicken Nuggets' }
+];
+
+function cfaReadOrders_(date, config) {
+  // This UTC window covers the requested Central-time window in both seasons.
+  // Filter again by the local date and cutoff before sending.
+  var start = Date.parse(date + 'T00:00:00Z') / 1000;
+  var orderUrl = 'https://app.ecwid.com/api/v3/' + config.storeId + '/orders' +
+    '?paymentStatus=PAID%2CAWAITING_PAYMENT&productId=' +
+    encodeURIComponent(CFA_DISPATCH_PRODUCTS.map(function (product) { return product.id; }).join(',')) +
+    '&createdFrom=' + start + '&createdTo=' + (start + 86400) + '&limit=100';
+
+  var orders = [];
+  for (var offset = 0; ; offset += 100) {
+    var response = UrlFetchApp.fetch(orderUrl + '&offset=' + offset, {
+      headers: { Authorization: 'Bearer ' + config.token, Accept: 'application/json' },
+      muteHttpExceptions: true,
+      followRedirects: false
+    });
+    if (response.getResponseCode() !== 200) {
+      throw new Error('Ecwid order lookup returned ' + response.getResponseCode());
+    }
+    var page = JSON.parse(response.getContentText());
+    if (!Array.isArray(page.items)) throw new Error('Ecwid did not return an order list.');
+    page.items.forEach(function (order) {
+      var row = cfaDispatchOrder_(order, date);
+      if (row) orders.push(row);
+    });
+    if (page.items.length < 100 || offset + page.items.length >= page.total) break;
+  }
+  return orders;
+}
+
+function cfaDispatchOrder_(order, date) {
+  var timestamp = Number(order.createTimestamp);
+  if (!Number.isFinite(timestamp) || timestamp <= 0 || order.hidden) return null;
+  if (['PAID', 'AWAITING_PAYMENT'].indexOf(order.paymentStatus) === -1) return null;
+  var placed = new Date(timestamp > 1e12 ? timestamp : timestamp * 1000);
+  var timeZone = 'America/Chicago';
+  if (Utilities.formatDate(placed, timeZone, 'yyyy-MM-dd') !== date ||
+      Number(Utilities.formatDate(placed, timeZone, 'HHmm')) >= 1400) return null;
+
+  var comments = String(order.orderComments || '').split(/\r?\n/);
+  function extra(key) {
+    if (order.extraFields && order.extraFields[key]) return order.extraFields[key];
+    var field = (order.orderExtraFields || []).find(function (entry) { return entry.id === key; });
+    return field ? field.value : '';
+  }
+  if (comments[0].trim() !== 'FACULTY CHICK-FIL-A PREORDER' &&
+      extra('cfa_preorder') !== 'Faculty Chick-fil-A preorder') return null;
+
+  var items = [];
+  (order.items || []).forEach(function (item) {
+    var product = CFA_DISPATCH_PRODUCTS.find(function (entry) {
+      return entry.id === Number(item.productId) || entry.sku === item.sku;
+    });
+    if (product) items.push({ name: product.name, quantity: item.quantity });
+  });
+  if (!items.length) return null;
+
+  function comment(label) {
+    var prefix = label + ': ';
+    var line = comments.find(function (entry) { return entry.indexOf(prefix) === 0; });
+    return line ? line.slice(prefix.length).trim() : '';
+  }
+  return {
+    number: String(order.vendorOrderNumber || order.id || order.orderNumber),
+    paymentStatus: order.paymentStatus,
+    name: comment('Name') || (order.shippingPerson && order.shippingPerson.name) || '',
+    room: extra('cfa_delivery_room') || comment('Room'),
+    delivery: extra('cfa_delivery_date') || comment('Delivery'),
+    time: extra('cfa_delivery_time') || comment('Requested time') || 'Around 12:45 p.m.',
+    sauces: comment('Sauces') || 'None',
+    items: items
+  };
+}
