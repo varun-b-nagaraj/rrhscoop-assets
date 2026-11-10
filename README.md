@@ -280,18 +280,25 @@ sauces, and that a regular cart containing any of the three SKUs cannot continue
 The regular cart restriction runs in the storefront. It is not an Ecwid
 server-side product access rule.
 
-### Schedule the faculty order email
+### Set up dispatch and receipts in the same Apps Script project
 
-Use the updated [Apps Script](apps-script/teacher-preorder-verification.gs) in the
-existing district project. Add `RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN`
-to its Script properties using the existing Ecwid values. The Ecwid token needs
-`read_orders` access. Update the existing web app deployment to a new version
-and run `installCfaDispatchTrigger` once from the editor.
+Use [the combined Apps Script](apps-script/teacher-preorder-verification.gs) in the
+existing district verification project. Keep its deployment URL and verification
+property. Add the existing `RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN` values
+to Script properties for dispatch. Add `RECEIPTS_SECRET` with the value of
+`RRHS_RECEIPTS_SECRET` in Vercel.
 
-Apps Script reads the orders directly from Ecwid. It sends the report to the
-two student dispatchers on the first run at or after 2:30 p.m. Central. It
-includes that day's faculty preorders placed before 2 p.m., with payment status
-labeled. Run `sendCfaDispatchPreview` to send a sample to the Gmail test inbox.
+Update the existing web app deployment to a new version. Run `checkCoopSetup`
+to verify Ecwid and receipt API access without sending mail. If a separate receipt
+project is running, remove its `sendPendingReceipts` trigger before running
+`setup` in the combined project. Setup installs a single minute trigger and
+preserves any receipt history already in that project.
+
+The dispatch goes to the two student dispatchers on the first run at or after
+2:30 p.m. Central. It includes that day's faculty preorders placed before
+2 p.m., with payment status labeled. `sendCfaDispatchPreview` emails a fictional
+sample to the Gmail test inbox. `sendTestReceipt` sends the latest paid receipt
+to the Apps Script editor's signed-in account.
 
 ### Faculty pickup and pay at pickup
 
@@ -300,8 +307,6 @@ pickup at the RRHS CO-OP. Ecwid's checkout records the pickup date and time and
 lets pickup customers pay online or choose **Pay at pickup**. In Ecwid, keep
 that offline payment method restricted to the CO-OP pickup shipping method.
 
-Copy the updated [receipt sender](apps-script/receipts.gs) into its existing
-Apps Script project and save. The existing trigger sends a pickup confirmation
-with the balance due, then a paid receipt after staff mark the order paid.
-Update the [faculty script](apps-script/teacher-preorder-verification.gs) in
-its own project to show pickup times and payment status in the daily dispatch.
+The combined script sends a pickup confirmation with the balance due, then a paid
+receipt after staff mark the order paid. The daily dispatch includes pickup times
+and payment status.

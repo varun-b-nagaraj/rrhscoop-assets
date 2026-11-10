@@ -1,9 +1,15 @@
-/* District-account email verification for faculty Chick-fil-A preorders.
- * Deploy as a web app: execute as the district account, access Anyone.
- * Set CFA_VERIFICATION_SECRET in Script Properties to the same random secret as
- * RRHS_CFA_VERIFICATION_SECRET in Vercel. Only the Vercel server calls this app.
+/**
+ * RRHS CO-OP district automation: email verification, faculty dispatch, and receipts.
+ *
+ * Paste this file into the existing district web app project. Keep the same deployment
+ * URL and Script properties. Add RECEIPTS_SECRET from RRHS_RECEIPTS_SECRET in Vercel.
+ * Faculty dispatch uses RRHS_ECWID_STORE_ID and RRHS_ECWID_API_TOKEN in Script properties.
+ * The verification web app uses CFA_VERIFICATION_SECRET.
+ *
+ * Run checkCoopSetup() to check connections, then setup() to install the minute trigger.
  */
 function doPost(e) {
+  if (!e || !e.postData) return cfaJson_({ ok: false, status: 400, error: 'Use the preorder page to request or verify a code.' });
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return cfaJson_({ ok: false, status: 429, error: 'Please wait a moment and try again.' });
   try {
@@ -124,15 +130,6 @@ function cfaDispatchMessage_(data) {
     htmlBody: cfaEmail_('Chick-fil-A dispatch', title, html),
     name: 'RRHS CO-OP'
   };
-}
-
-// Run once from the Apps Script editor to install the daily dispatch.
-function installCfaDispatchTrigger() {
-  cfaEcwidConfig_(PropertiesService.getScriptProperties());
-  ScriptApp.getProjectTriggers().forEach(function (trigger) {
-    if (trigger.getHandlerFunction() === 'sendCfaDispatch') ScriptApp.deleteTrigger(trigger);
-  });
-  ScriptApp.newTrigger('sendCfaDispatch').timeBased().everyMinutes(1).create();
 }
 
 function sendCfaDispatch() {
@@ -272,4 +269,147 @@ function cfaDispatchOrder_(order, date) {
     sauces: comment('Sauces') || 'None',
     items: items
   };
+}
+
+const RECEIPTS_API = 'https://rrhscoop-assets.vercel.app/api/v1/receipts';
+const SENDER_NAME = 'RRHS CO-OP';
+const REPLY_TO = 'rrhs_coop_store@roundrockisd.org';
+// To send *from* the store address instead of your own, add it in Gmail under
+// Settings → Accounts → "Send mail as", then set FROM_ALIAS to it.
+const FROM_ALIAS = '';
+const MAX_SENT_IDS = 400;
+
+function coopSettings_() {
+  const props = PropertiesService.getScriptProperties();
+  if ((props.getProperty('CFA_VERIFICATION_SECRET') || '').length < 32) {
+    throw new Error('Set CFA_VERIFICATION_SECRET in Script properties.');
+  }
+  if (!props.getProperty('RECEIPTS_SECRET')) {
+    throw new Error('Set RECEIPTS_SECRET in Script properties.');
+  }
+  return { props, ecwid: cfaEcwidConfig_(props) };
+}
+
+/** Checks the receipt and Ecwid connections without sending mail. */
+function checkCoopSetup() {
+  const { ecwid } = coopSettings_();
+  const url = 'https://app.ecwid.com/api/v3/' + ecwid.storeId + '/orders?limit=1&responseFields=total';
+  const response = UrlFetchApp.fetch(url, {
+    headers: { Authorization: 'Bearer ' + ecwid.token },
+    muteHttpExceptions: true,
+    followRedirects: false,
+  });
+  if (response.getResponseCode() !== 200) {
+    throw new Error('Ecwid order access returned ' + response.getResponseCode());
+  }
+  receiptApiJson_('/pending?since=' + Math.floor(Date.now() / 1000));
+  Logger.log('Ecwid order access and the receipt API are connected. Test email verification from the preorder page.');
+}
+
+/** Installs a single trigger and preserves this project's receipt history. */
+function setup() {
+  const { props } = coopSettings_();
+  if (!props.getProperty('START_AT')) {
+    props.setProperty('START_AT', String(Math.floor(Date.now() / 1000)));
+  }
+  const handlers = ['sendPendingReceipts', 'sendCfaDispatch', 'runCoopJobs'];
+  const oldTriggers = ScriptApp.getProjectTriggers().filter(trigger => handlers.includes(trigger.getHandlerFunction()));
+  ScriptApp.newTrigger('runCoopJobs').timeBased().everyMinutes(1).create();
+  oldTriggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  Logger.log('Receipt and faculty dispatch automation is on.');
+}
+
+/** Run both jobs even if one service is temporarily unavailable. */
+function runCoopJobs() {
+  const failures = [];
+  for (const job of [sendCfaDispatch, sendPendingReceipts]) {
+    try {
+      job();
+    } catch (error) {
+      failures.push(job.name + ': ' + error.message);
+    }
+  }
+  if (failures.length) throw new Error(failures.join(' | '));
+}
+
+function sendPendingReceipts() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return; // a previous run is still going
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const startAt = Number(props.getProperty('START_AT')) || Math.floor(Date.now() / 1000);
+    const since = Math.max(startAt, Math.floor(Date.now() / 1000) - 24 * 60 * 60);
+    const sent = JSON.parse(props.getProperty('SENT_IDS') || '[]');
+
+    const data = receiptApiJson_('/pending?includePickupConfirmations=1&since=' + since);
+    (data.receipts || []).forEach((receipt) => {
+      const notificationId = receipt.notificationId || receipt.orderId;
+      if (sent.indexOf(notificationId) !== -1) return;
+      try {
+        sendReceipt_(receipt, receipt.to);
+        sent.push(notificationId);
+        props.setProperty('SENT_IDS', JSON.stringify(sent.slice(-MAX_SENT_IDS)));
+      } catch (err) {
+        // Leave it unmarked so the next run retries it.
+        console.error('Receipt for ' + receipt.orderId + ' failed: ' + err);
+      }
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Sends receipts for paid orders from the last hour that haven't been emailed
+ * yet (e.g. orders placed just before setup() was run). Safe to run again.
+ */
+function catchUpLastHour() {
+  const props = PropertiesService.getScriptProperties();
+  const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+  const startAt = Number(props.getProperty('START_AT')) || hourAgo;
+  props.setProperty('START_AT', String(Math.min(startAt, hourAgo)));
+  sendPendingReceipts();
+  Logger.log('Sent any missing receipts from the last hour. Check Executions for errors.');
+}
+
+/** Emails the most recent paid order's receipt to you, without marking it sent. */
+function sendTestReceipt() {
+  const weekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+  const receipts = receiptApiJson_('/pending?since=' + weekAgo).receipts || [];
+  if (!receipts.length) throw new Error('No paid orders in the last 7 days to use as a sample.');
+  const sample = receipts[receipts.length - 1];
+  sendReceipt_(sample, Session.getActiveUser().getEmail());
+  Logger.log('Sent a sample receipt for order ' + sample.orderId + ' to you.');
+}
+
+function sendReceipt_(receipt, to) {
+  const attachments = (receipt.attachments || []).map((a) =>
+    receiptApiFetch_(a.url).getBlob().setName(a.filename)
+  );
+  const options = {
+    htmlBody: receipt.html,
+    attachments: attachments,
+    name: SENDER_NAME,
+    replyTo: REPLY_TO,
+  };
+  if (FROM_ALIAS) options.from = FROM_ALIAS;
+  GmailApp.sendEmail(to, receipt.subject, receipt.text, options);
+}
+
+function receiptApiJson_(path) {
+  return JSON.parse(receiptApiFetch_(RECEIPTS_API + path).getContentText());
+}
+
+function receiptApiFetch_(url) {
+  if (!url.startsWith(RECEIPTS_API + '/')) throw new Error('Unexpected receipt URL.');
+  const secret = PropertiesService.getScriptProperties().getProperty('RECEIPTS_SECRET');
+  const resp = UrlFetchApp.fetch(url, {
+    headers: { 'X-Receipts-Secret': secret },
+    muteHttpExceptions: true,
+    followRedirects: false,
+  });
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('Receipt API returned ' + resp.getResponseCode());
+  }
+  return resp;
 }
