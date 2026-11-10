@@ -8,11 +8,20 @@
   const origin = source.origin;
   let overlay;
 
+  function sendDrawerGeometry(bounds) {
+    const viewport = frame.getBoundingClientRect();
+    frame.contentWindow.postMessage({
+      type: 'rrhs-cfa-preorder-drawer-ready',
+      menu: { top: bounds.top - viewport.top, left: bounds.left - viewport.left, width: bounds.width },
+    }, origin);
+  }
+
   function openDrawer() {
     if (overlay || !frame.isConnected) return;
+    const bounds = frame.getBoundingClientRect();
     const placeholder = document.createElement('div');
     placeholder.setAttribute('aria-hidden', 'true');
-    placeholder.style.height = frame.getBoundingClientRect().height + 'px';
+    placeholder.style.height = bounds.height + 'px';
     overlay = {
       placeholder,
       style: frame.getAttribute('style'),
@@ -28,7 +37,7 @@
     };
     Object.entries(styles).forEach(([key, value]) => frame.style.setProperty(key, value, 'important'));
     document.body.style.setProperty('overflow', 'hidden', 'important');
-    frame.contentWindow.postMessage({ type: 'rrhs-cfa-preorder-drawer-ready' }, origin);
+    sendDrawerGeometry(bounds);
   }
 
   function closeDrawer() {
@@ -59,6 +68,9 @@
   frame.addEventListener('load', requestHeight);
   window.addEventListener('pageshow', requestHeight);
   window.addEventListener('pagehide', closeDrawer);
+  window.addEventListener('resize', () => {
+    if (overlay) sendDrawerGeometry(overlay.placeholder.getBoundingClientRect());
+  });
   new MutationObserver(() => {
     if (!frame.isConnected) closeDrawer();
   }).observe(document.body, { childList: true, subtree: true });

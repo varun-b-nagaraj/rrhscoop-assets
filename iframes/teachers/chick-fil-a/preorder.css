@@ -124,7 +124,14 @@ footer a { min-height:44px; display:inline-flex; align-items:center; gap:8px; co
 /* The parent owns scrolling until checkout opens. */
 html.preorder-embedded:not(.preorder-open),html.preorder-open { overflow:hidden; }
 html.preorder-overlay,html.preorder-overlay body { background:transparent; }
-html.preorder-overlay .page { visibility:hidden; }
+/* Draw the menu at its pre-drawer position inside the expanded iframe. */
+html.preorder-overlay .page {
+  position:fixed;
+  top:var(--preorder-menu-top);
+  left:calc(var(--preorder-menu-left) + max(0px, (var(--preorder-menu-width) - 1360px) / 2));
+  width:min(1360px, var(--preorder-menu-width));
+  margin:0;
+}
 
 .stepper { align-items:center; flex-shrink:0; border-radius:3px; }
 .stepper output { display:grid; place-items:center; min-width:40px; min-height:44px; color:var(--maroon); font-variant-numeric:tabular-nums; }

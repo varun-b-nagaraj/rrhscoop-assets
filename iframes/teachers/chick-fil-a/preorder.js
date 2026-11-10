@@ -375,7 +375,14 @@
   window.addEventListener('message', event => {
     if (event.source !== parent || event.origin !== parentOrigin) return;
     if (event.data?.type === 'rrhs-cfa-preorder-drawer-ready' && drawer.open) {
-      document.documentElement.classList.add('preorder-overlay');
+      const { top, left, width } = event.data.menu || {};
+      if ([top, left, width].every(Number.isFinite) && width > 0) {
+        const root = document.documentElement;
+        root.style.setProperty('--preorder-menu-top', `${top}px`);
+        root.style.setProperty('--preorder-menu-left', `${left}px`);
+        root.style.setProperty('--preorder-menu-width', `${width}px`);
+        root.classList.add('preorder-overlay');
+      }
     }
     if (event.data?.type === 'rrhs-cfa-preorder-request-height') {
       if (drawer.open) window.parent.postMessage({ type: 'rrhs-cfa-preorder-drawer', open: true }, parentOrigin);
