@@ -237,3 +237,46 @@ The teacher pass section has two links with hover and keyboard-focus info toolti
 form and dashboard navigate through the parent bridge because the storefront's
 iframe sandbox blocks opening new tabs. The bridge checks the sending frame's
 origin and source and allows only those two destinations.
+
+## Faculty Chick-fil-A preorders
+
+Paste [the preorder embed](iframes/teachers/chick-fil-a/embed.html) into the custom
+HTML block on the Ecwid page at `/teachers/chick-fil-a`. The Teacher Hub links to
+that page. The iframe allows forms, scripts, payment permissions, and user-initiated
+navigation for payment providers.
+
+The three menu prices come from Ecwid. The order date is the next instructional
+A/B day in `check-out-page/aday-bday.json`. Each product line accepts up to three
+packets of each sauce. The order comments carry the delivery date, room, time,
+verified email, and sauces into Ecwid.
+
+### Connect district email
+
+1. Copy [the verification script](apps-script/teacher-preorder-verification.gs)
+   to a separate Apps Script project owned by the district sending account.
+2. In Project Settings → Script properties, add `CFA_VERIFICATION_SECRET` with
+   the value of `RRHS_CFA_VERIFICATION_SECRET` from the server environment.
+3. Deploy it as a web app that runs as the district account with access set to
+   Anyone. The shared secret authorizes requests from the Vercel function.
+4. In Vercel Production, set `RRHS_CFA_VERIFICATION_SECRET` to that same value and
+   `RRHS_CFA_VERIFICATION_URL` to the deployed `/exec` URL, then redeploy.
+
+A six-digit code proves access to an `@roundrockisd.org` mailbox. It does not look
+up employment records. The browser can remember the signed verification for 30 days.
+
+### Enable Ecwid checkout
+
+Ecwid's existing checkout calculates tax and delivery charges and accepts payment.
+Apple Pay availability depends on the enabled gateway, device, and iframe policy.
+
+After deploying the storefront cart guard, run
+`node tools/configure-cfa-preorders.cjs --apply` with the store credentials in
+`.env`. It enables Ecwid's out-of-stock preorder feature, allows preorders for
+the three faculty items, and excludes them from discounts. Without `--apply`,
+the script only inspects the settings.
+
+Test with a district address and a supported payment device before announcing the
+page. Confirm that the order appears in Ecwid with its room, delivery date, and
+sauces, and that a regular cart containing any of the three SKUs cannot continue.
+The regular cart restriction runs in the storefront. It is not an Ecwid
+server-side product access rule.

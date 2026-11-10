@@ -1,5 +1,8 @@
 /* rrhscoop-checkout.js - extracted checkout & cart logic */
 (function () {
+  // This document has its own verified preorder flow and native Ecwid checkout.
+  if (location.pathname === '/iframes/teachers/chick-fil-a/index.html') return;
+
   const RRHS_DEBUG =
     (typeof window !== "undefined" &&
       (window.RRHS_DEBUG === true ||
@@ -5660,6 +5663,7 @@
   /* Checkout time restriction and cart state */
   const rrhsCartState = {
     ready: false,
+    hasCfaPreorder: false,
     hasAllDayDelivery: false,
     hasRegularItems: false,
     allDayLabels: [],
@@ -5731,6 +5735,7 @@
   function computeCartFlags(cart) {
     const items = (cart && Array.isArray(cart.items)) ? cart.items : [];
     const rules = rrhsGetAllDayDeliveryProductRules();
+    rrhsCartState.hasCfaPreorder = !!(window.RRHS_CFA_PRODUCTS && window.RRHS_CFA_PRODUCTS.cartHasPreorder(cart));
 
     let hasAllDayDelivery = false;
     let hasRegularItems = false;
@@ -5782,6 +5787,7 @@
     try {
       if (!window.Ecwid || !Ecwid.Cart || typeof Ecwid.Cart.get !== "function") {
         rrhsCartState.ready = false;
+        rrhsCartState.hasCfaPreorder = false;
         rrhsCartState.hasAllDayDelivery = false;
         rrhsCartState.hasRegularItems = false;
         rrhsCartState.allDayLabels = [];
@@ -5797,6 +5803,7 @@
       });
     } catch (e) {
       rrhsCartState.ready = false;
+      rrhsCartState.hasCfaPreorder = false;
       rrhsCartState.hasAllDayDelivery = false;
       rrhsCartState.hasRegularItems = false;
       rrhsCartState.allDayLabels = [];
@@ -5860,6 +5867,7 @@
   }
 
   function getRestrictionMessage() {
+    if (rrhsCartState.hasCfaPreorder) return 'Chick-fil-A is preorder only. Remove those items to continue with your regular order, then <a href="https://rrhscoop.roundrockisd.org/teachers/chick-fil-a" style="color:inherit;text-decoration:underline;">preorder your lunch through the teacher hub</a>.';
     const now = rrhsGetNowDate();
     const dow = now.getDay();
     const alwaysAllowEnabled = rrhsIsAlwaysAllowEnabled();
@@ -5932,6 +5940,7 @@
   }
 
   function checkOrderingWindow() {
+    if (rrhsCartState.hasCfaPreorder) return false;
     const now = rrhsGetNowDate();
     const day = now.getDay();
     const alwaysAllowEnabled = rrhsIsAlwaysAllowEnabled();

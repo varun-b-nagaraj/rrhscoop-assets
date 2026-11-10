@@ -7,7 +7,7 @@
   window.addEventListener('message', function (event) {
     if (event.source !== frame.contentWindow || event.origin !== origin || !event.data) return;
     if (event.data.type === 'rrhs-teachers-navigate' && !window.__rrhsEmbedBridge) {
-      if (event.data.href === 'https://rrhscoop.roundrockisd.org/pass/teacher' || event.data.href === 'https://forms.gle/iiwbDnSHzayg5gaK8') window.location.assign(event.data.href);
+      if (event.data.href === 'https://rrhscoop.roundrockisd.org/teachers/chick-fil-a' || event.data.href === 'https://rrhscoop.roundrockisd.org/pass/teacher' || event.data.href === 'https://forms.gle/iiwbDnSHzayg5gaK8') window.location.assign(event.data.href);
     }
     if (event.data.type === 'rrhs-teachers-ready') sendViewport(true);
     if (event.data.type === 'rrhs-teachers-height' && Number.isFinite(event.data.height) && event.data.height > 0 && event.data.height < 50000) {
@@ -40,7 +40,7 @@
       sendViewport();
     });
   }
-  // The launch banner can arrive after this bridge and move the entire iframe.
+  // Storefront content can arrive later and move the entire iframe.
   new ResizeObserver(scheduleViewport).observe(document.body);
   new MutationObserver(scheduleViewport).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', scheduleViewport);

@@ -6,6 +6,7 @@
   const pages = {
     projects: 'projects/index.html', leadership: 'leadership/index.html',
     faq: 'faq/index.html', teachers: 'teachers/index.html',
+    'cfa-preorder': 'teachers/chick-fil-a/index.html',
     cfa: 'cfa/index.html', 'why-coop': 'why-coop/index.html',
     'home-categories': 'home-intro/categories.html'
   };
@@ -53,8 +54,8 @@
       frame.style.setProperty('height', Math.ceil(data.height) + 'px', 'important');
     }
     if (key === 'teachers' && data.type === 'rrhs-teachers-navigate') {
-      // Only the two pass destinations may request parent-page navigation.
-      if (data.href === 'https://rrhscoop.roundrockisd.org/pass/teacher' || data.href === 'https://forms.gle/iiwbDnSHzayg5gaK8') location.assign(data.href);
+      // Allow only the faculty preorder page and the two pass destinations.
+      if (data.href === 'https://rrhscoop.roundrockisd.org/teachers/chick-fil-a' || data.href === 'https://rrhscoop.roundrockisd.org/pass/teacher' || data.href === 'https://forms.gle/iiwbDnSHzayg5gaK8') location.assign(data.href);
     }
   });
   let pending = false;

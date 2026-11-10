@@ -28,7 +28,7 @@
   }
   let parentOrigin = '*';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
-  document.querySelectorAll('[data-pass-link]').forEach((link) => {
+  document.querySelectorAll('[data-pass-link], [data-preorder-link]').forEach((link) => {
     link.addEventListener('click', (event) => {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();

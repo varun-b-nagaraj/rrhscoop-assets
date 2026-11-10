@@ -9,14 +9,13 @@ reinvestment section uses the owner’s revised copy and focuses on CO-OP operat
 ## Links
 
 - Blue pass interest form, from the email: https://forms.gle/iiwbDnSHzayg5gaK8
-- Teacher Chick-fil-A preorder form, from the email: https://forms.gle/wGUy8bU14dXabkEv7
-- Both forms were checked on November 4, 2026. The Chick-fil-A form lists a 2 p.m.
-  deadline for next-day orders, sandwich $6.25, grilled chicken Cobb salad $12.00,
-  and eight-piece nuggets $6.50. It directs staff to pay at the Co-op until
-  e-commerce returns. The page preserves that distinction from classroom delivery.
-- The site owner clarified that delivery orders are placed through the public
-  website: find products, add to cart, enter a room number, and pay online.
-  Chick-fil-A is not available for website ordering yet and uses its separate form.
+- Faculty Chick-fil-A preorders now link to `/teachers/chick-fil-a` instead of the old Google Form.
+- The owner supplied these Ecwid SKUs: `601_sku` (sandwich), `782_sku` (Cobb salad),
+  and `698_sku` (eight-piece nuggets). Live prices were checked on November 10, 2026:
+  $6.25, $12.00, and $6.50 respectively. The preorder page loads current prices from Ecwid.
+- Delivery uses the next instructional A/B date in `check-out-page/aday-bday.json`,
+  including for orders placed on Fridays, weekends, and school holidays.
+- The faculty page no longer advertises Vitamin Water.
 
 ## Images
 

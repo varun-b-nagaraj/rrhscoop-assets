@@ -116,7 +116,7 @@
   const inventoryGuardEnabled = false;
 
   const scripts = [
-    url('custom-visuals/rrhs-embed-bridge.js?v=1'),
+    url('custom-visuals/rrhs-embed-bridge.js?v=2'),
     url('rrhs-runtime.js'),
     url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
     url('custom-visuals/rrhs-project-deeplinks.js?v=7'),
@@ -127,7 +127,9 @@
     url('custom-visuals/rrhs-featured-product.js?v=3'),
     url('custom-visuals/rrhs-select.js?v=4'),
     url('custom-visuals/rrhs-category-images.js?v=2'),
-    url('check-out-page/rrhscoop-checkout.js?v=15'),
+    url('check-out-page/cfa-products.js?v=1'),
+    url('check-out-page/rrhscoop-checkout.js?v=16'),
+    url('check-out-page/rrhs-cfa-preorder-gate.js?v=1'),
     inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
     stoleDrawerEnabled && url('check-out-page/rrhs-stole-drawer.js'),
     url('order-validate/rrhs-iced-tea-gate.js'),
