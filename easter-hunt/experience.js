@@ -177,7 +177,7 @@
       // The dragon poofs away, then the glass grows from where it rests until it fills the screen.
       const began = performance.now(), [x, y] = destination;
       const farthest = Math.max(Math.hypot(x, y), Math.hypot(innerWidth - x, y), Math.hypot(x, innerHeight - y), Math.hypot(innerWidth - x, innerHeight - y));
-      const coverScale = (farthest + 24) / (radius - 3), poof = 380, grow = 750;
+      const coverScale = (farthest + 24) / (radius - 3), poof = 1050, grow = 750;
       tour.classList.add('hunt-tour-transitioning', 'hunt-tour-poof'); tour.dataset.phase = 'poof';
       clue.insertAdjacentHTML('beforeend', '<span class="hunt-poof" aria-hidden="true">' +
         Array.from({ length: 8 }, (_, i) => `<i style="--a:${i * 45}deg"></i>`).join('') + '</span>');
