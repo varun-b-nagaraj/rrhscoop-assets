@@ -21,12 +21,18 @@
     return result;
   }
   function escape(value) { const span = document.createElement('span'); span.textContent = value; return span.innerHTML; }
+  // A sticker shows only on its own page, beside the heading it names.
+  function targetFor(spot) {
+    if (spot.page && !new RegExp(spot.page, 'i').test(decodeURIComponent(window.location.pathname))) return null;
+    const matches = document.querySelectorAll(spot.selector);
+    return spot.text ? [...matches].find(element => element.textContent.includes(spot.text)) || null : matches[0] || null;
+  }
   function available(id) { return availability?.eggs?.some(egg => egg.id === id && egg.available); }
   function mount() {
     if (!window.RRHS_HUNT_ACTIVE) return;
     for (const location of config.locations) {
       if (preview && !config.DEV_ALL_EGGS_ENABLED && location.id !== 'inventory-intelligence') continue;
-      const target = document.querySelector(location.selector);
+      const target = targetFor(location);
       const previous = mounted.get(location.id);
       if (previous && previous.target === target && previous.button.isConnected) {
         previous.button.style.visibility = available(location.id) ? 'visible' : 'hidden'; continue;
@@ -102,7 +108,7 @@
     const content = dialog.querySelector('.hunt-content');
     content.innerHTML = `<div class="hunt-package hunt-discovered">${stickerImage}</div><p class="hunt-eyebrow">A little CO-OP luck</p>
       <h2 id="hunt-title">You found a<br>hidden package!</h2>
-      <p>You spotted our CO-OP dragon sticker! One of twelve little discoveries, with a mystery reward just for you.</p>
+      <p>You spotted our CO-OP dragon sticker! One of twenty little discoveries, with a mystery reward just for you.</p>
       ${preview ? '<p class="hunt-preview">Local development preview · no real reward or coupon is created.</p>' : ''}
       <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">

@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('node:crypto');
 const config = require('./config');
-const DISTRIBUTION = Object.freeze([10, 10, 10, 10, 15, 15, 15, 20, 20, 25, 25, 35]);
+const DISTRIBUTION = Object.freeze([10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 20, 20, 20, 20, 25, 25, 35]);
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
 function normalizeStudent(value) {
   if (typeof value !== 'string' || !/^s\d{4,10}$/i.test(value.trim())) fail(400, 'Enter your S-number including the s, for example s123456.');

@@ -35,6 +35,12 @@ td.num,code{font-variant-numeric:tabular-nums}
 code{font:600 13px/1.4 ui-monospace,Menlo,monospace;color:var(--rrhs-maroon,#6e1f2a);background:#fff;border:1px dashed #cbb991;border-radius:4px;padding:2px 6px;white-space:nowrap}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font:600 12px/1.6 Arial,sans-serif;background:#e7efe5;color:#2f5a2a}
 .pill.bad{background:#f6e3e3;color:#8a2323}.pill.wait{background:#f3ead9;color:#7a5a17}
-.stickers{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
-.stickers li{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #e4ddd2;border-radius:8px;font-size:14px;background:#fff}
+.stickers{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.stickers .spot{width:100%;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #e4ddd2;border-radius:8px;font-size:14px;background:#fff;color:var(--rrhs-ink,#141414);text-align:left}
+.stickers .spot:hover{border-color:var(--rrhs-maroon,#6e1f2a);background:#fff}
+.spot-name strong{color:var(--rrhs-maroon,#6e1f2a);font-variant-numeric:tabular-nums;margin-right:4px}
+.spot-dialog{width:min(1100px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:20px;border:0;border-radius:12px;background:var(--rrhs-paper,#faf8f4)}
+.spot-dialog::backdrop{background:#180e14b8}
+.spot-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.spot-head h2{margin:0;font-size:22px}
+.spot-dialog img{display:block;width:100%;height:auto;border:1px solid #d9c9b7;border-radius:8px}
 @media(max-width:700px){main{padding:28px 16px 48px}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:18px}}

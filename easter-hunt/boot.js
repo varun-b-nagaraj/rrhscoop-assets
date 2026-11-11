@@ -34,7 +34,7 @@
     const css = document.createElement('link'); css.rel = 'stylesheet';
     css.href = new URL('hunt.css?v=14', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=9')).then(() => topLevel ? load('experience.js?v=14') : undefined)
+    loading = styled.then(() => load('hunt.js?v=10')).then(() => topLevel ? load('experience.js?v=15') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }
@@ -49,6 +49,6 @@
   });
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-parent-query' }, '*');
   const status = fetch(new URL('/api/v1/easter-hunt', base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
-  Promise.all([load('config.js?v=4'), status]).then(([, enabled]) => { config = window.RRHS_HUNT_CONFIG; start(enabled); })
+  Promise.all([load('config.js?v=5'), status]).then(([, enabled]) => { config = window.RRHS_HUNT_CONFIG; start(enabled); })
     .catch(() => { /* Discovery never blocks shopping. */ });
 })();

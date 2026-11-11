@@ -2,6 +2,7 @@
   'use strict';
   if (window.RRHS_HUNT_INTRO || window.parent !== window) return;
   const config = window.RRHS_HUNT_CONFIG;
+  const TOTAL = config.locations.length;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stickerImage = window.RRHS_EASTER_HUNT.stickerImage;
@@ -12,10 +13,10 @@
   function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-seen') === 'true'; } catch (_) { return false; } }
   function remember() { try { sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); } catch (_) {} }
   function counterState() {
-    // Until the live count loads (or if it can't), show the full twelve rather than a guess.
+    // Until the live count loads (or if it can't), show the full twenty rather than a guess.
     const sample = !data || !Number.isFinite(data.remaining);
-    const remaining = sample ? 12 : Math.max(0, Math.min(12, data.remaining));
-    const found = 12 - remaining;
+    const remaining = sample ? TOTAL : Math.max(0, Math.min(TOTAL, data.remaining));
+    const found = TOTAL - remaining;
     const preview = data?.mode === 'preview';
     return { found, remaining, preview, sample };
   }
@@ -23,13 +24,13 @@
     if (!counter || !enabled()) return;
     const { found, remaining, preview, sample } = counterState();
     const count = counter.querySelector('.hunt-counter-count');
-    const value = `${found}/12`;
+    const value = `${found}/${TOTAL}`;
     if (count.textContent !== value) count.textContent = value;
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
-    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
+    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of ${TOTAL} dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
-      ? 'Look for the red dragon sticker holding a CO-OP package. Twelve are hidden around the website. Select this button to read the hunt details.'
-      : `${preview ? 'Local development preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per student. Select to read the hunt details again.`;
+      ? 'Look for the red dragon sticker holding a CO-OP package. Twenty are hidden around the website. The deeper you dig, the bigger the reward. Select this button to read the hunt details.'
+      : `${preview ? 'Local development preview. ' : ''}${found} of ${TOTAL} hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per student. Select to read the hunt details again.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -44,7 +45,7 @@
     if (counter?.isConnected && (!search || counter.nextElementSibling === search)) return;
     if (!counter) {
       counter = document.createElement('div'); counter.className = 'hunt-counter';
-      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog" aria-describedby="hunt-counter-tip" title="Read the hunt details">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/12</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
+      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog" aria-describedby="hunt-counter-tip" title="Read the hunt details">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/${TOTAL}</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
       tooltip = document.createElement('div'); tooltip.id = 'hunt-counter-tip'; tooltip.className = 'hunt-counter-tooltip';
       tooltip.setAttribute('role', 'tooltip'); tooltip.hidden = true; document.body.append(tooltip);
       const show = () => { tooltip.hidden = false; placeTooltip(); };
@@ -84,10 +85,10 @@
     intro.innerHTML = `<button type="button" class="hunt-close" aria-label="Close introduction">×</button>
       <div class="hunt-intro-seal">${stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"')}</div><p class="hunt-eyebrow">This is what you’re looking for</p>
       <h2 id="hunt-intro-title">Good things hide<br>in plain sight.</h2>
-      <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twelve are tucked around the website. Spot one and discover a mystery reward.</p>
-      <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
+      <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twenty are tucked around the website, and the deeper you dig, the bigger the reward. Spot one and discover a mystery reward.</p>
+      <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
       <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
-      ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
+      ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${found}/${TOTAL} found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';

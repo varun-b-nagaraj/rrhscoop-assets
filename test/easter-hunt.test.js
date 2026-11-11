@@ -11,7 +11,7 @@ const { createServer } = require('../tools/easter-hunt-preview.cjs');
 const renderEmail = require('../easter-hunt/email-preview');
 const START = Date.parse('2026-11-10T12:00:00-06:00');
 const make = options => createPreview({ now: () => START, ...options });
-const claim = (i = 0, changes = {}) => ({ studentId: `s${100000 + i}`, eggId: config.locations[i % 12].id, idempotencyKey: crypto.randomUUID(), ...changes });
+const claim = (i = 0, changes = {}) => ({ studentId: `s${100000 + i}`, eggId: config.locations[i % 20].id, idempotencyKey: crypto.randomUUID(), ...changes });
 
 test('discount applies only to the first $25 of eligible merchandise', () => {
   for (const [percent, cents, expected] of [[35,1000,350],[35,2500,875],[35,4000,875],[10,5000,250],[10,0,0],[15,101,15]]) {
@@ -24,9 +24,9 @@ test('requires the s, normalizes once, and does not accept an email recipient', 
   assert.equal(normalizeStudent(' S151579 '), 's151579');
   for (const value of ['151579', 's123', 's12345678901', 's12345@example.com', null, {}, ['s12345']]) assert.throws(() => normalizeStudent(value), { status: 400 });
 });
-test('12 distinct location identifiers and no client prize mapping', () => {
-  assert.equal(config.locations.length, 12);
-  assert.equal(new Set(config.locations.map(e => e.id)).size, 12);
+test('20 distinct location identifiers and no client prize mapping', () => {
+  assert.equal(config.locations.length, 20);
+  assert.equal(new Set(config.locations.map(e => e.id)).size, 20);
   assert.equal('HUNT_ENABLED' in config, false, 'the switch lives in Vercel (RRHS_HUNT_ENABLED), not the public config');
   assert.equal(config.DEV_ALL_EGGS_ENABLED, false);
   assert.equal(JSON.stringify(config).includes('percentage'), false);
@@ -36,19 +36,19 @@ test('server draws from remaining prize pool, never from an egg mapping', () => 
   assert.equal(a.claim(claim()).percentage, 35);
   assert.equal(b.claim(claim()).percentage, 10);
   const percentages = [];
-  for (let i = 1; i < 12; i++) percentages.push(a.claim(claim(i)).percentage);
+  for (let i = 1; i < 20; i++) percentages.push(a.claim(claim(i), 'client-' + i).percentage);
   assert.deepEqual([35, ...percentages].sort((x,y) => x-y), [...DISTRIBUTION].sort((x,y) => x-y));
   assert.equal(a.availability().status, 'sold_out');
   assert.ok(a.availability().eggs.every(e => !e.available));
-  assert.equal(a.stats().maximumSimulatedLiabilityCents, 5250);
+  assert.equal(a.stats().maximumSimulatedLiabilityCents, 8125);
 });
-test('single-package preview disables the other eleven on the server, including after reset', () => {
+test('single-package preview disables the other nineteen on the server, including after reset', () => {
   const service = make({ singleEggOnly: true });
   assert.deepEqual(service.availability().eggs.filter(egg => egg.available).map(egg => egg.id), ['inventory-intelligence']);
   assert.throws(() => service.claim(claim(1)), { status: 409 });
   service.admin({ action: 'reset' });
   assert.equal(service.availability().eggs.filter(egg => egg.available).length, 1);
-  assert.ok(service.claim(claim()));
+  assert.ok(service.claim(claim(0, { eggId: 'inventory-intelligence' })));
 });
 test('one normalized student and one egg per claim, with idempotent retries', () => {
   const service = make(), input = claim();
@@ -68,10 +68,10 @@ test('concurrent local requests cannot allocate an egg or prize twice', async ()
   const service = make();
   const results = await Promise.allSettled(Array.from({length:50}, (_,i) => Promise.resolve().then(() => service.claim(claim(i, { eggId: config.locations[0].id }), 'client-' + i))));
   assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
-  assert.equal(service.stats().remaining, 11);
+  assert.equal(service.stats().remaining, 19);
   const other = make();
-  const all = await Promise.allSettled(Array.from({length:24}, (_,i) => Promise.resolve().then(() => other.claim(claim(i), 'client-' + i))));
-  assert.equal(all.filter(r => r.status === 'fulfilled').length, 12);
+  const all = await Promise.allSettled(Array.from({length:40}, (_,i) => Promise.resolve().then(() => other.claim(claim(i), 'client-' + i))));
+  assert.equal(all.filter(r => r.status === 'fulfilled').length, 20);
   assert.equal(other.stats().remaining, 0);
 });
 test('scheduled, paused, disabled and expired claims consume no inventory', () => {
@@ -91,7 +91,7 @@ test('scheduled, paused, disabled and expired claims consume no inventory', () =
   now++;
   assert.equal(service.availability().status, 'expired');
   assert.throws(() => service.claim(claim()), { status: 409 });
-  assert.equal(service.stats().remaining, 12);
+  assert.equal(service.stats().remaining, 20);
 });
 test('global preview availability changes after claim and email retries never redraw', () => {
   const service = make(); const input = claim(), result = service.claim(input);
@@ -168,9 +168,9 @@ test('preview management is loopback-only, same-origin, and never exposes server
   }
   assert.equal((await fetch(base + '/api/v1/easter-hunt',{method:'POST',body:'{'})).status,400);
   assert.equal((await fetch(base + '/api/v1/easter-hunt',{method:'POST',body:'x'.repeat(3000)})).status,413);
-  const response = await fetch(base + '/api/v1/easter-hunt',{method:'POST',body:JSON.stringify({action:'claim',...claim()})});
+  const response = await fetch(base + '/api/v1/easter-hunt',{method:'POST',body:JSON.stringify({action:'claim',...claim(0, { eggId: 'inventory-intelligence' })})});
   assert.equal(response.status,200);
   assert.equal((await response.json()).couponStatus,'not_created');
   const state = await (await fetch(base + '/api/v1/easter-hunt')).json();
-  assert.equal(state.remaining,11);
+  assert.equal(state.remaining,19);
 });

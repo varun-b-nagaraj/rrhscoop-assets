@@ -2,9 +2,8 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const KEY = 'rrhs-hunt-dashboard-session';
-  const STICKERS = { 'inventory-intelligence': 'Inventory Intelligence', 'projects-library': 'Projects · Library', 'projects-method': 'Projects · Method',
-    'projects-impact': 'Projects · Impact', 'why-gear': 'Why CO-OP · Gear', 'why-students': 'Why CO-OP · Students', 'why-return': 'Why CO-OP · Returns',
-    'faq-answers': 'FAQ · Answers', 'faq-contact': 'FAQ · Contact', 'category-merch': 'Categories · Merch', 'category-supplies': 'Categories · Supplies', 'store-footer': 'Store footer' };
+  const SPOTS = window.RRHS_HUNT_CONFIG.locations, TOTAL = SPOTS.length;
+  const STICKERS = Object.fromEntries(SPOTS.map(spot => [spot.id, spot.label]));
   const STATUS = { active: 'Live', paused: 'Paused', sold_out: 'Sold out', expired: 'Ended', scheduled: 'Not started' };
   let session = null, email = '', data = null;
   try { session = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (_) {}
@@ -54,7 +53,7 @@
     $('sign-in').hidden = true; $('board').hidden = false;
     $('signed-in').textContent = `Signed in as ${result.email}`;
     $('status').textContent = STATUS[result.status] || result.status;
-    $('claimed').textContent = `${result.claims.length}/12`;
+    $('claimed').textContent = `${result.claims.length}/${TOTAL}`;
     $('left').textContent = result.remaining;
     $('pool').textContent = result.pool.length ? 'Left: ' + [...result.pool].sort((a, b) => a - b).map(p => p + '%').join(', ') : 'All rewards claimed';
     $('pause').textContent = result.paused ? 'Resume hunt' : 'Pause hunt';
@@ -64,7 +63,13 @@
       <td class="num">${c.percentage}%</td><td><code>${escape(c.code)}</code></td><td>${emailPill(c.emailStatus)}</td></tr>`).join('');
     $('claims-empty').hidden = result.claims.length > 0;
     const owners = Object.fromEntries(result.claims.map(c => [c.eggId, c.studentId]));
-    $('stickers').innerHTML = result.eggs.map(egg => `<li><span>${sticker(egg.id)}</span>${owners[egg.id] ? `<span class="pill wait">${escape(owners[egg.id])}</span>` : egg.available ? '<span class="pill">Hidden</span>' : '<span class="pill bad">Off</span>'}</li>`).join('');
+    const reward = Object.fromEntries((result.eggs || []).map(egg => [egg.id, egg]));
+    $('stickers').innerHTML = [...SPOTS].sort((a, b) => (reward[b.id]?.percentage || 0) - (reward[a.id]?.percentage || 0)).map(spot => {
+      const egg = reward[spot.id] || {}, owner = owners[spot.id];
+      const state = owner ? `<span class="pill wait">${escape(owner)}</span>` : egg.available ? '<span class="pill">Hidden</span>' : '<span class="pill bad">Off</span>';
+      return `<li><button type="button" class="spot" data-spot="${escape(spot.id)}" aria-label="Show where the ${escape(spot.label)} sticker is">
+        <span class="spot-name"><strong>${egg.percentage ? egg.percentage + '%' : ''}</strong> ${escape(spot.label)}</span>${state}</button></li>`;
+    }).join('');
     $('events').innerHTML = result.events.map(e => `<tr><td>${when(e.at)}</td><td>${escape(e.event)}</td><td>${escape(e.studentId)}</td><td>${sticker(e.eggId)}</td>
       <td>${[e.reward, e.code && `<code>${escape(e.code)}</code>`, escape(e.detail)].filter(Boolean).join(' · ')}</td></tr>`).join('');
     $('events-empty').hidden = result.events.length > 0;
@@ -81,6 +86,19 @@
     if (pausing && !confirm('Pause the hunt? No one can claim a reward until you resume it.')) return;
     busy($('pause'), true); await load(pausing ? 'admin-pause' : 'admin-resume'); busy($('pause'), false);
   });
+  // Click a sticker to see a screenshot of exactly where it hides.
+  $('stickers').addEventListener('click', async event => {
+    const button = event.target.closest('[data-spot]'); if (!button || !session) return;
+    const spot = SPOTS.find(entry => entry.id === button.dataset.spot);
+    $('spot-title').textContent = spot.label; $('spot-image').hidden = true; $('spot-status').textContent = 'Loading screenshot…';
+    $('spot-dialog').showModal();
+    try {
+      const result = await call('admin-location', { token: session.token, id: spot.id });
+      $('spot-image').src = result.image; $('spot-image').alt = 'Screenshot of the ' + spot.label + ' sticker, circled'; $('spot-image').hidden = false; $('spot-status').textContent = '';
+    } catch (error) { if (error.status === 401) { $('spot-dialog').close(); showSignIn(error.message); } else $('spot-status').textContent = error.message; }
+  });
+  $('spot-close').addEventListener('click', () => $('spot-dialog').close());
+  $('spot-dialog').addEventListener('click', event => { if (event.target === $('spot-dialog')) $('spot-dialog').close(); });
   $('sign-out').addEventListener('click', () => showSignIn('Signed out.'));
   setInterval(() => { if (session && !document.hidden) load(); }, 30000);
   if (session && session.expiresAt > Date.now()) load(); else showSignIn();

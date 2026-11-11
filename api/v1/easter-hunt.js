@@ -36,6 +36,17 @@ module.exports = async function handler(req, res) {
     // Dashboard: sign in with an emailed code, then read the log or pause the hunt.
     const admin = { 'admin-code': ['hunt-admin-code', ['email']], 'admin-verify': ['hunt-admin-verify', ['email', 'code']],
       'admin-log': ['hunt-admin-log', ['token']], 'admin-pause': ['hunt-admin-pause', ['token']], 'admin-resume': ['hunt-admin-resume', ['token']] }[body?.action];
+    // Screenshots reveal where stickers hide, so they are served only to a signed-in admin.
+    if (body?.action === 'admin-location') {
+      const spot = require('../../easter-hunt/config').locations.find(location => location.id === body.id);
+      if (!spot) { res.statusCode = 404; return res.end(JSON.stringify({ error: 'Unknown sticker.' })); }
+      try { await require('../../teacher-preorders/service').mailAction('hunt-admin-check', { token: typeof body.token === 'string' ? body.token.slice(0, 200) : '' }); }
+      catch (error) { res.statusCode = error.status === 401 ? 401 : 503; return res.end(JSON.stringify({ error: error.status === 401 ? error.message : 'The CO-OP Apps Script is unavailable.' })); }
+      try {
+        const image = require('node:fs').readFileSync(require('node:path').join(__dirname, '_hunt-locations', spot.id + '.jpg'));
+        res.statusCode = 200; return res.end(JSON.stringify({ image: 'data:image/jpeg;base64,' + image.toString('base64') }));
+      } catch (_) { res.statusCode = 404; return res.end(JSON.stringify({ error: 'No screenshot for this sticker yet.' })); }
+    }
     if (admin) {
       if (origin && origin !== 'https://rrhscoop-assets.vercel.app' && !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) { res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the hunt dashboard to continue.' })); }
       const payload = Object.fromEntries(admin[1].map(key => [key, typeof body[key] === 'string' ? body[key].slice(0, 200) : '']));

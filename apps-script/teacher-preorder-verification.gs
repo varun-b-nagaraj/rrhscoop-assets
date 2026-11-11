@@ -129,7 +129,7 @@ function buildEasterEggRewardEmail(reward) {
   var html = cfaEmail_('E-Commerce Opening Week', 'A little luck. A lovely reward.',
     (preview ? '<p style="padding:12px;border:1px dashed #6e1f2a;background:#f1eee8;">Development preview. No coupon was created. Preview references cannot be redeemed.</p>' : '') +
     '<p style="margin:16px 0;text-align:center;"><img src="https://rrhscoop-assets.vercel.app/easter-hunt/dragon-package-sticker.png?v=1" width="128" height="128" alt="Red CO-OP dragon holding a package" style="display:block;width:128px;height:128px;margin:0 auto;object-fit:contain;"></p>' +
-    '<p>Hi ' + cfaEscape_(name) + ',</p><p>You found one of our twelve hidden CO-OP dragon stickers. Consider this a little thank-you for exploring the student-run CO-OP.</p>' +
+    '<p>Hi ' + cfaEscape_(name) + ',</p><p>You found one of our twenty hidden CO-OP dragon stickers. Consider this a little thank-you for exploring the student-run CO-OP.</p>' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px;background:#f1eee8;border-top:3px solid #6e1f2a;border-bottom:1px solid #cbb991;">' +
     '<p style="margin:0;color:#6e1f2a;font:400 56px/1.1 Georgia,serif;">' + reward.percentage + '% OFF</p>' +
     '<p style="margin:12px 0 0;">Your next eligible CO-OP online order.</p></td></tr></table>' +
@@ -152,15 +152,23 @@ function buildEasterEggRewardEmail(reward) {
 var HUNT_STARTS_AT = '2026-11-09T00:00:00-06:00';
 var HUNT_EXPIRES_AT = '2026-11-14T00:00:00-06:00';
 var HUNT_ECWID_EXPIRES = '2026-11-14 00:00:00 -0600';
-var HUNT_DISTRIBUTION = [10, 10, 10, 10, 15, 15, 15, 20, 20, 25, 25, 35];
-var HUNT_EGGS = ['inventory-intelligence', 'projects-library', 'projects-method', 'projects-impact', 'why-gear',
-  'why-students', 'why-return', 'faq-answers', 'faq-contact', 'category-merch', 'category-supplies', 'store-footer'];
+// Each sticker has a fixed reward: the deeper the page, the bigger the discount.
+// Keep the ids in step with easter-hunt/config.js (a test checks this).
+var HUNT_REWARDS = {
+  'shop-snacks': 10, 'shop-drinks': 10, 'shop-long-sleeves': 10, 'shop-t-shirts': 10,
+  'shop-accessories': 10, 'shop-school-supplies': 10, 'shop-merchandise': 10,
+  'home-why-coop': 15, 'teachers-top': 15, 'leadership': 15, 'faq': 15, 'shop-chick-fil-a': 15, 'about-us': 15,
+  'inventory-intelligence': 20, 'team-25-26': 20, 'teachers-bottom': 20, 'payment-methods': 20,
+  'shipping-returns': 25, 'terms': 25,
+  'privacy-policy': 35
+};
+var HUNT_EGGS = Object.keys(HUNT_REWARDS);
 var HUNT_STATE_KEY = 'hunt_live_state';
 var HUNT_TAKEN = 'This package could not be claimed. You may already have a reward, or another Dragon got here first.';
 
 function huntState_(props) {
   var state = JSON.parse(props.getProperty(HUNT_STATE_KEY) || 'null');
-  return state || { pool: HUNT_DISTRIBUTION.slice(), claims: [], paused: false };
+  return state || { claims: [], paused: false };
 }
 
 function huntStatus_(state) {
@@ -168,13 +176,13 @@ function huntStatus_(state) {
   if (now >= Date.parse(HUNT_EXPIRES_AT)) return 'expired';
   if (now < Date.parse(HUNT_STARTS_AT)) return 'scheduled';
   if (state.paused) return 'paused';
-  return state.pool.length ? 'active' : 'sold_out';
+  return state.claims.length < HUNT_EGGS.length ? 'active' : 'sold_out';
 }
 
 function huntAvailability_(props) {
   var state = huntState_(props), status = huntStatus_(state);
   var taken = state.claims.map(function (claim) { return claim.eggId; });
-  return { ok: true, mode: 'live', status: status, expiresAt: HUNT_EXPIRES_AT, remaining: state.pool.length,
+  return { ok: true, mode: 'live', status: status, expiresAt: HUNT_EXPIRES_AT, remaining: HUNT_EGGS.length - state.claims.length,
     eggs: HUNT_EGGS.map(function (id) { return { id: id, available: status === 'active' && taken.indexOf(id) === -1 }; }) };
 }
 
@@ -223,17 +231,16 @@ function huntClaim_(input, props) {
   if (rate.minute === minute && rate.count >= 30) return { ok: false, status: 429, error: 'Lots of Dragons are hunting. Please try again in a minute.' };
   props.setProperty('hunt_rate', JSON.stringify({ minute: minute, count: (rate.minute === minute ? rate.count : 0) + 1 }));
   var status = huntStatus_(state);
-  if (status !== 'active') { huntLog_(props, 'Refused: hunt ' + status, { studentId: studentId, eggId: input.eggId }); return { ok: false, status: 409, error: status === 'expired' ? 'The hunt has ended. Thanks for exploring!' : status === 'sold_out' ? 'All twelve rewards have been found. Thanks for exploring!' : 'The packages are resting right now. Please try again later.' }; }
+  if (status !== 'active') { huntLog_(props, 'Refused: hunt ' + status, { studentId: studentId, eggId: input.eggId }); return { ok: false, status: 409, error: status === 'expired' ? 'The hunt has ended. Thanks for exploring!' : status === 'sold_out' ? 'All twenty rewards have been found. Thanks for exploring!' : 'The packages are resting right now. Please try again later.' }; }
   // One public message for both cases, so the API does not reveal who has claimed.
   var mine = state.claims.some(function (claim) { return claim.studentId === studentId; });
   if (mine || state.claims.some(function (claim) { return claim.eggId === input.eggId; })) {
     huntLog_(props, mine ? 'Refused: student already has a reward' : 'Refused: sticker already claimed', { studentId: studentId, eggId: input.eggId });
     return { ok: false, status: 409, error: HUNT_TAKEN };
   }
-  var index = Math.floor(Math.random() * state.pool.length), percentage = state.pool[index], code = huntCode_();
+  var percentage = HUNT_REWARDS[input.eggId], code = huntCode_();
   try { var couponId = huntCreateCoupon_(props, studentId, input.eggId, percentage, code); }
   catch (error) { console.error(error.message); huntLog_(props, 'Coupon failed', { studentId: studentId, eggId: input.eggId, percentage: percentage }, error.message); return { ok: false, status: 503, error: 'We couldn’t wrap your reward just now. Please try again in a minute.' }; }
-  state.pool.splice(index, 1);
   var claim = { key: input.idempotencyKey, studentId: studentId, eggId: input.eggId, percentage: percentage, code: code,
     couponId: couponId, at: new Date().toISOString(), emailStatus: 'sending', attempts: 1 };
   state.claims.push(claim);
@@ -265,11 +272,35 @@ function retryHuntEmails() {
 /** Editor action: log every claim (student, egg, percent, code, email status). */
 function showHuntClaims() {
   var state = huntState_(PropertiesService.getScriptProperties());
-  Logger.log(state.claims.length + ' claimed, ' + state.pool.length + ' remaining (' + state.pool.join(', ') + ')' + (state.paused ? ' · PAUSED' : ''));
+  Logger.log(state.claims.length + ' of ' + HUNT_EGGS.length + ' claimed' + (state.paused ? ' · PAUSED' : ''));
   state.claims.forEach(function (claim) {
     Logger.log([claim.at, claim.studentId, claim.eggId, claim.percentage + '%', claim.code, 'email ' + claim.emailStatus].join(' · '));
   });
 }
+/**
+ * Editor action: start a brand-new promo. Deletes the Ecwid coupons this hunt created,
+ * clears every claim, and empties the log sheet (keeping its header). Cannot be undone.
+ */
+function resetHuntForNewPromo() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Try again shortly.');
+  try {
+    var props = PropertiesService.getScriptProperties(), state = huntState_(props), config = cfaEcwidConfig_(props), deleted = 0;
+    state.claims.forEach(function (claim) {
+      if (!claim.couponId) return;
+      var response = UrlFetchApp.fetch('https://app.ecwid.com/api/v3/' + config.storeId + '/discount_coupons/' + claim.couponId,
+        { method: 'delete', headers: { Authorization: 'Bearer ' + config.token }, muteHttpExceptions: true });
+      if (response.getResponseCode() === 200) deleted++;
+    });
+    props.deleteProperty(HUNT_STATE_KEY);
+    props.deleteProperty('hunt_rate');
+    var sheet = huntLogSheet_(props, true);
+    if (sheet.getLastRow() > 1) sheet.deleteRows(2, sheet.getLastRow() - 1);
+    huntLog_(props, 'New promo started', {}, state.claims.length + ' old claims cleared, ' + deleted + ' coupons deleted');
+    Logger.log('Reset done: ' + state.claims.length + ' claims cleared, ' + deleted + ' Ecwid coupons deleted, log emptied.');
+  } finally { lock.releaseLock(); }
+}
+
 /** Editor actions: stop or restart new claims without losing any records. */
 function pauseHunt() { huntSetPaused_(true); }
 function resumeHunt() { huntSetPaused_(false); }
@@ -364,6 +395,7 @@ function huntAdmin_(input, props) {
   var session = huntSession_(props, input.token);
   if (!session) return { ok: false, status: 401, error: 'Sign in again to view the dashboard.' };
   if (input.action === 'hunt-admin-pause' || input.action === 'hunt-admin-resume') huntPause_(props, input.action === 'hunt-admin-pause', session.email);
+  else if (input.action === 'hunt-admin-check') return { ok: true, email: session.email };
   else if (input.action !== 'hunt-admin-log') return { ok: false, status: 400, error: 'Unknown action.' };
   var state = huntState_(props), events = [], sheetUrl = '';
   try {
@@ -377,8 +409,10 @@ function huntAdmin_(input, props) {
     }
   } catch (error) { console.error('Hunt log read failed: ' + error.message); }
   var availability = huntAvailability_(props);
-  return { ok: true, email: session.email, status: availability.status, remaining: availability.remaining, pool: state.pool,
-    paused: state.paused === true, expiresAt: HUNT_EXPIRES_AT, eggs: availability.eggs, sheetUrl: sheetUrl, events: events,
+  return { ok: true, email: session.email, status: availability.status, remaining: availability.remaining,
+    pool: HUNT_EGGS.filter(function (id) { return !state.claims.some(function (claim) { return claim.eggId === id; }); }).map(function (id) { return HUNT_REWARDS[id]; }),
+    paused: state.paused === true, expiresAt: HUNT_EXPIRES_AT,
+    eggs: availability.eggs.map(function (egg) { return { id: egg.id, available: egg.available, percentage: HUNT_REWARDS[egg.id] }; }), sheetUrl: sheetUrl, events: events,
     claims: state.claims.map(function (claim) { return { at: claim.at, studentId: claim.studentId, eggId: claim.eggId, percentage: claim.percentage, code: claim.code, emailStatus: claim.emailStatus, attempts: claim.attempts }; }) };
 }
 
@@ -641,7 +675,7 @@ function coopSetupChecks_(props) {
     report.checks.push('Receipt PDF download and PDF content type');
   } else report.warnings.push('No order is available for a receipt PDF download check. Email rendering was checked with fictional orders.');
   if (!ScriptApp.getService().getUrl()) report.warnings.push('No verification web-app deployment was found. Deploy this project as a web app before using website email verification.');
-  report.checks.push('Package hunt: ' + huntState_(props).pool.length + ' of 12 rewards remaining' + (props.getProperty('HUNT_LOG_SHEET_ID') ? '' : ' (run setupHuntLog to create the log sheet)'));
+  report.checks.push('Package hunt: ' + (HUNT_EGGS.length - huntState_(props).claims.length) + ' of ' + HUNT_EGGS.length + ' rewards remaining' + (props.getProperty('HUNT_LOG_SHEET_ID') ? '' : ' (run setupHuntLog to create the log sheet)'));
   return report;
 }
 

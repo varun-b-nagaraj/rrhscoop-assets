@@ -1,5 +1,10 @@
 {
-  "functions": { "api/v1/easter-hunt.js": { "maxDuration": 30 } },
+  "functions": {
+    "api/v1/easter-hunt.js": {
+      "maxDuration": 30,
+      "includeFiles": "api/v1/_hunt-locations/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/easter-hunt/dashboard",
@@ -152,11 +157,21 @@
     },
     {
       "source": "/easter-hunt/dashboard",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
     },
     {
       "source": "/tools/easter-hunt/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, max-age=0, must-revalidate"
+        }
+      ]
     }
   ]
 }

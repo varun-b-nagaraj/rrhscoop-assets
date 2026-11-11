@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Hunt dashboard · RRHS CO-OP</title>
-<link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/dashboard.css?v=2"></head>
+<link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/dashboard.css?v=3"></head>
 <body><main>
 <header class="top"><div><p class="eyebrow">RRHS CO-OP · Package hunt</p><h1>Hunt dashboard</h1></div>
   <img class="mascot" src="/easter-hunt/dragon-package-sticker.png?v=1" width="64" height="64" alt="CO-OP dragon holding a package"></header>
@@ -35,11 +35,15 @@
     <div class="table-wrap"><table><thead><tr><th scope="col">Time</th><th scope="col">S-number</th><th scope="col">Sticker</th><th scope="col">Reward</th><th scope="col">Coupon code</th><th scope="col">Email</th></tr></thead>
     <tbody id="claims"></tbody></table></div><p id="claims-empty" class="muted" hidden>No rewards claimed yet.</p></section>
 
-  <section class="card" aria-labelledby="stickers-title"><h2 id="stickers-title">Stickers</h2><ul id="stickers" class="stickers"></ul></section>
+  <section class="card" aria-labelledby="stickers-title"><h2 id="stickers-title">Stickers</h2>
+    <p class="muted">Highest reward first. Select a sticker to see exactly where it hides.</p><ul id="stickers" class="stickers"></ul></section>
 
   <section class="card" aria-labelledby="log-title"><h2 id="log-title">Event log</h2>
     <p class="muted">Every claim, refusal, email, sign-in and pause, newest first. The full history is kept in the Google Sheet.</p>
     <div class="table-wrap"><table><thead><tr><th scope="col">Time</th><th scope="col">Event</th><th scope="col">S-number</th><th scope="col">Sticker</th><th scope="col">Details</th></tr></thead>
     <tbody id="events"></tbody></table></div><p id="events-empty" class="muted" hidden>No events yet. Run setupHuntLog in Apps Script if this stays empty after a claim.</p></section>
 </section>
-</main><script src="/tools/easter-hunt/dashboard.js?v=1"></script></body></html>
+</main>
+<dialog id="spot-dialog" class="spot-dialog" aria-labelledby="spot-title"><div class="spot-head"><h2 id="spot-title"></h2><button id="spot-close" type="button">Close</button></div>
+  <p id="spot-status" class="status" role="status"></p><img id="spot-image" alt="" hidden></dialog>
+<script src="/easter-hunt/config.js?v=5"></script><script src="/tools/easter-hunt/dashboard.js?v=2"></script></body></html>
