@@ -54,6 +54,16 @@ Apps Script editor actions:
 
 After pasting a new version of the script, deploy a **new version of the existing web-app deployment** (Deploy → Manage deployments → edit → New version). Otherwise Vercel keeps talking to the old code.
 
+## Dev mode (fake codes)
+
+Test the whole hunt on the real website, in your browser only, without touching the real promo:
+
+- Turn on: add `?hunt-dev=on` to any page address, or run `rrhsHunt.dev()` in the DevTools console.
+- Turn off: `?hunt-dev=off`, `rrhsHunt.dev(false)`, or **Turn off** on the yellow badge in the bottom-left corner.
+- Clear fake claims: **Reset claims** on the badge, or `rrhsHunt.reset()`.
+
+Dev mode shows all 20 stickers even when `RRHS_HUNT_ENABLED` is off. Claims stay in that browser and show a `FAKE-…` code on screen. No coupon is created, no email is sent, and nothing is claimed on the server. The rules still apply: one claim per person, and a found sticker goes under the magnifying glass.
+
 ## Local development
 
 `node tools/easter-hunt-preview.cjs` serves the storefront pages at <http://127.0.0.1:4173> with a simulated backend (`easter-hunt/service.js`). No coupons or emails are created.

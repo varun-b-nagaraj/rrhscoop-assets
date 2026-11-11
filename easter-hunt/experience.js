@@ -6,6 +6,7 @@
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stickerImage = window.RRHS_EASTER_HUNT.stickerImage;
+  const headerGuide = new URL('hunt-header-guide.jpg?v=1', document.currentScript.src).href;
   const arrowIcon = window.RRHS_EASTER_HUNT.arrowIcon;
   let counter, tooltip, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
@@ -108,10 +109,11 @@
        <p class="hunt-eyebrow">First come, first served</p>
        <h2>Once it’s found,<br>it’s gone.</h2>
        <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
-      `<div class="hunt-step-art hunt-art-counter" aria-hidden="true"><span class="hunt-art-up">${upIcon}</span><span class="hunt-art-pill">${stickerImage}<b>${found}/${TOTAL}</b> found</span></div>
-       <p class="hunt-eyebrow">Lost? Look up</p>
+      `<figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="800" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
+         <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure>
+       <p class="hunt-eyebrow">Look up, top right</p>
        <h2>Come back<br>anytime.</h2>
-       <p>Tap the dragon counter next to search to reopen this guide and see how many are left.</p>
+       <p>Tap the dragon counter beside search and cart to reopen this guide and see how many are left.</p>
        ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
     ];
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';

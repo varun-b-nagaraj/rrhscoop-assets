@@ -8,7 +8,7 @@
 .hunt-egg:focus-visible,.hunt-dialog :focus-visible { outline:3px solid var(--hunt-maroon); outline-offset:3px; }
 .hunt-sticker { display:block; max-width:none; object-fit:contain; flex:none; }
 .hunt-egg .hunt-sticker { width:34px; height:34px; }
-.hunt-found-lens { display:none; position:absolute; inset:2px; width:40px; height:40px; pointer-events:none; filter:drop-shadow(0 1px 2px #24101766); }
+.hunt-found-lens { display:none; position:absolute; left:0; top:0; width:56px; height:56px; pointer-events:none; transform-origin:39.3% 39.3%; filter:drop-shadow(0 1px 2px #24101766); }
 .hunt-egg.hunt-found { cursor:default; }
 .hunt-egg.hunt-found:hover,.hunt-egg.hunt-found:active { transform:none; }
 .hunt-egg.hunt-found .hunt-sticker { filter:grayscale(1); opacity:.5; }
@@ -125,15 +125,29 @@
 .hunt-step.is-active .hunt-how li { animation:hunt-step-rise .5s cubic-bezier(.22,1,.36,1) both; }
 .hunt-step.is-active .hunt-how li:nth-child(2) { animation-delay:.14s; } .hunt-step.is-active .hunt-how li:nth-child(3) { animation-delay:.28s; }
 .hunt-step.is-active .hunt-how li:nth-child(2) .hunt-how-icon svg { animation:hunt-tap 1.6s .8s ease-in-out infinite; }
-.hunt-art-found .hunt-found-lens { display:block; position:absolute; inset:0; width:100%; height:100%; filter:drop-shadow(0 3px 6px #24101740); }
+.hunt-step-art.hunt-art-found { width:150px; height:150px; margin:0 auto 46px; transform:translateX(-12px); }
+.hunt-art-found .hunt-sticker { position:absolute; left:23px; top:23px; width:104px!important; height:104px!important; }
+.hunt-art-found .hunt-found-lens { display:block; position:absolute; left:8px; top:8px; width:171px; height:171px; transform-origin:39.3% 39.3%; filter:drop-shadow(0 4px 8px #24101740); }
 .hunt-step.is-active.hunt-step .hunt-art-found .hunt-sticker { animation:hunt-found-grey 2.8s .3s ease-in-out infinite; }
 .hunt-step.is-active .hunt-art-found .hunt-found-lens { animation:hunt-found-lens 2.8s .3s cubic-bezier(.22,1,.36,1) infinite; }
-.hunt-art-counter { width:auto; height:auto; gap:6px; color:var(--hunt-maroon); }
-.hunt-art-up svg { width:26px; height:26px; }
-.hunt-step.is-active .hunt-art-up svg { animation:hunt-nudge-up 1.4s .4s ease-in-out infinite; }
-.hunt-art-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid #6e1f2a70; border-radius:6px; background:var(--hunt-cream); box-shadow:0 2px 0 #6e1f2a22; font:400 15px/1.2 Georgia,serif; }
-.hunt-art-pill .hunt-sticker { width:24px; height:24px; } .hunt-art-pill b { font-variant-numeric:tabular-nums; }
-.hunt-step.is-active .hunt-art-pill { animation:hunt-pill-glow 1.8s .6s ease-in-out infinite; }
+/* Screen 4: the real top-right of the site, with the counter circled */
+.hunt-where { position:relative; margin:0 -12px 22px; padding:0 0 30px; }
+.hunt-where img { display:block; width:100%; height:auto; border:1px solid #d9c9b7; border-radius:10px; box-shadow:0 10px 30px #24101724; }
+.hunt-where-shot { position:relative; display:block; container-type:inline-size; }
+/* The live count, laid over the number in the screenshot */
+.hunt-where-count { position:absolute; left:26.9%; top:38%; width:7.1%; height:24%; display:flex; align-items:center; background:#f1eee8; color:#6e1f2a; font:700 2.75cqw/1 Georgia,serif; font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; }
+.hunt-where-ring { position:absolute; left:calc(17.2% - 6px); top:calc(18.3% - 6px); width:calc(28.3% + 12px); height:calc(62% + 12px); border:3px solid #c6a169; border-radius:12px; pointer-events:none; }
+.hunt-where-tag { position:absolute; left:31.35%; bottom:0; transform:translateX(-50%); display:inline-flex; align-items:center; gap:4px; padding:3px 10px 3px 6px; border-radius:99px; background:var(--hunt-maroon); color:var(--hunt-paper); font:600 12px/1.4 Arial,sans-serif; white-space:nowrap; }
+.hunt-where-tag svg { width:14px; height:14px; }
+.hunt-step.is-active .hunt-where-ring { animation:hunt-ring 1.8s .5s ease-out infinite; }
+.hunt-step.is-active .hunt-where-tag svg { animation:hunt-nudge-up 1.4s .4s ease-in-out infinite; }
+@keyframes hunt-ring { 0% { box-shadow:0 0 0 0 #c6a169bb; } 70%,100% { box-shadow:0 0 0 12px #c6a16900; } }
+/* Dev mode badge */
+.hunt-dev-badge { position:fixed; left:12px; bottom:12px; z-index:2147483000; display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; max-width:calc(100vw - 24px); padding:8px 8px 8px 14px; border:2px dashed #b28a48; border-radius:10px; background:#fff8e8; color:#3c1720; box-shadow:0 6px 18px #24101733; font:400 13px/1.3 Arial,sans-serif; }
+.hunt-dev-badge strong { font-weight:700; color:#6e1f2a; } .hunt-dev-badge span { color:#655b55; }
+.hunt-dev-badge button { min-height:32px; padding:4px 10px; border:1px solid #6e1f2a55; border-radius:6px; background:#fff; color:#6e1f2a; font:600 12px/1 Arial,sans-serif; cursor:pointer; }
+.hunt-dev-badge button:hover { background:#f1e6d4; }
+.hunt-dialog .hunt-dev-code code { display:inline-block; margin:6px 0; padding:4px 10px; border:1px dashed #b28a48; border-radius:4px; background:#fff; color:#6e1f2a; font:700 15px/1.3 ui-monospace,Menlo,monospace; letter-spacing:.04em; }
 .hunt-step-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:22px; }
 .hunt-step-back { display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 8px; border:0; background:none; color:var(--hunt-maroon); font:600 15px/1 Georgia,serif; cursor:pointer; }
 .hunt-step-back .hunt-arrow { width:18px; height:18px; }
@@ -158,7 +172,6 @@
 @keyframes hunt-found-grey { 0%,15% { filter:none; opacity:1; } 45%,85% { filter:grayscale(1); opacity:.5; } 100% { filter:none; opacity:1; } }
 @keyframes hunt-found-lens { 0%,10% { opacity:0; transform:translate(30px,26px) scale(.55) rotate(-18deg); } 38%,85% { opacity:1; transform:none; } 100% { opacity:0; transform:scale(1.08); } }
 @keyframes hunt-nudge-up { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
-@keyframes hunt-pill-glow { 0%,100% { box-shadow:0 2px 0 #6e1f2a22,0 0 0 0 #c6a16900; } 50% { box-shadow:0 2px 0 #6e1f2a22,0 0 0 6px #c6a16955; } }
 @keyframes hunt-shine { 0% { background-position:100% 0; } 60%,100% { background-position:-50% 0; } }
 @keyframes hunt-begin-pop { 0% { transform:none; } 40% { transform:scale(1.05); } 100% { transform:none; } }
 @keyframes hunt-intro-leave { to { opacity:0; transform:translateY(-14px) scale(.94); } }

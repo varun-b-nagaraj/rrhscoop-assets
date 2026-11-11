@@ -5,6 +5,19 @@
   // RRHS_HUNT_ENABLED in Vercel is the only switch: on for every visitor, or off for everyone.
   // The API reports it, since a browser cannot read server environment variables.
   const base = new URL('.', document.currentScript.src);
+  // Dev switch, for this browser only: every sticker shows and claims make fake codes, with no
+  // request to the Apps Script, no coupon and no email. Turn it on with ?hunt-dev=on in the address
+  // or rrhsHunt.dev() in the DevTools console; off with ?hunt-dev=off or rrhsHunt.dev(false).
+  const DEV_KEY = 'rrhs-hunt-dev', DEV_STATE = 'rrhs-hunt-dev-state';
+  const store = (key, value) => { try { if (value === undefined) return localStorage.getItem(key); if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch (_) { return null; } };
+  const devParam = new URLSearchParams(location.search).get('hunt-dev');
+  if (window.parent === window && devParam) store(DEV_KEY, devParam === 'on' ? 'on' : null);
+  window.rrhsHunt = {
+    dev(on = true) { store(DEV_KEY, on ? 'on' : null); location.reload(); return on ? 'Hunt dev mode on: fake codes only.' : 'Hunt dev mode off.'; },
+    reset() { store(DEV_STATE, null); location.reload(); return 'Fake claims cleared.'; },
+    get devMode() { return window.RRHS_HUNT_DEV === true; },
+  };
+  if (window.parent === window && store(DEV_KEY) === 'on') window.RRHS_HUNT_DEV = true;
   const load = name => new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = new URL(name, base).href;
@@ -21,7 +34,9 @@
     });
   }
   // Tell hosted iframes that this page will show their claim dialogs full-screen.
-  function announce(target) { target.postMessage({ type: 'rrhs-hunt-parent' }, base.origin); }
+  function announce(target) {
+    target.postMessage({ type: 'rrhs-hunt-parent', dev: window.RRHS_HUNT_DEV === true, found: window.RRHS_EASTER_HUNT?.foundIds?.() || [] }, base.origin);
+  }
   function broadcast() {
     if (!topLevel || !window.RRHS_HUNT_ACTIVE) return;
     for (const frame of document.querySelectorAll('iframe')) {
@@ -29,12 +44,13 @@
     }
   }
   function start(enabled) {
+    if (window.RRHS_HUNT_ACTIVE) return;
     window.RRHS_HUNT_ACTIVE = enabled;
     if (!window.RRHS_HUNT_ACTIVE) return;
     const css = document.createElement('link'); css.rel = 'stylesheet';
-    css.href = new URL('hunt.css?v=16', base).href;
+    css.href = new URL('hunt.css?v=18', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=14')).then(() => topLevel ? load('experience.js?v=17') : undefined)
+    loading = styled.then(() => load('hunt.js?v=16')).then(() => topLevel ? load('experience.js?v=19') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }
@@ -42,13 +58,20 @@
     if (!event.data || typeof event.data !== 'object') return;
     if (!topLevel && event.source === parent && allowedParents.has(event.origin) && event.data.type === 'rrhs-hunt-parent') {
       window.RRHS_HUNT_PARENT = event.origin;
+      // A parent page in dev mode runs its sticker iframes in dev mode too.
+      if (event.data.dev === true && !window.RRHS_HUNT_DEV) {
+        window.RRHS_HUNT_DEV = true; window.RRHS_HUNT_DEV_FOUND = Array.isArray(event.data.found) ? event.data.found : [];
+        if (window.RRHS_HUNT_ACTIVE) window.RRHS_EASTER_HUNT?.refresh(true);
+        else Promise.resolve(window.RRHS_HUNT_CONFIG || load('config.js?v=5')).then(() => { config = window.RRHS_HUNT_CONFIG; start(true); });
+      }
     } else if (topLevel && window.RRHS_HUNT_ACTIVE && trustedFrame(event.source, event.origin)) {
       if (event.data.type === 'rrhs-hunt-parent-query') announce(event.source);
       if (event.data.type === 'rrhs-hunt-open' && config?.locations.some(egg => egg.id === event.data.id)) Promise.resolve(loading).then(() => window.RRHS_EASTER_HUNT?.open(event.data.id));
     }
   });
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-parent-query' }, '*');
-  const status = fetch(new URL('/api/v1/easter-hunt', base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
+  const status = window.RRHS_HUNT_DEV ? Promise.resolve(true)
+    : fetch(new URL('/api/v1/easter-hunt', base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
   Promise.all([load('config.js?v=5'), status]).then(([, enabled]) => { config = window.RRHS_HUNT_CONFIG; start(enabled); })
     .catch(() => { /* Discovery never blocks shopping. */ });
 })();
