@@ -9,6 +9,7 @@
   const endpoint = assetOrigin + '/api/v1/easter-hunt';
   const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
   const stickerImage = `<img class="hunt-sticker" src="${stickerSrc}" width="256" height="256" alt="" decoding="async" draggable="false">`;
+  const arrowIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
   async function request(data) {
@@ -107,7 +108,7 @@
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
       <p id="hunt-helper" class="hunt-helper">${preview ? 'We’ll simulate delivery to your S-number@student.roundrockisd.org address.' : 'Your reward goes only to your verified school email.'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
-      <button class="hunt-primary" type="submit">Unwrap my mystery reward <span aria-hidden="true">↗</span></button></form>
+      <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
     returnOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     dialog.showModal();
@@ -146,7 +147,7 @@
       <p class="hunt-preview">Dev preview · no discount code was created.<br>${escape(result.name)}, delivery to <strong>${escape(result.email)}</strong> was simulated. No email was sent.</p>
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
       <p class="hunt-status" role="status">Preview reward reserved. Your simulated email is ready to view.</p>
-      <button type="button" class="hunt-primary">Continue shopping <span aria-hidden="true">↗</span></button>`;
+      <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
     content.querySelector('button').addEventListener('click', close);
     content.querySelector('button').focus({ preventScroll: true });
     const counter = content.querySelector('.hunt-percentage');
@@ -176,7 +177,7 @@
       mounted.clear();
     }
   });
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, getAvailability: () => availability };
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
   else {

@@ -5,6 +5,7 @@
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stickerImage = window.RRHS_EASTER_HUNT.stickerImage;
+  const arrowIcon = window.RRHS_EASTER_HUNT.arrowIcon;
   let counter, tooltip, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
   const enabled = () => window.RRHS_HUNT_ACTIVE === true;
@@ -86,7 +87,7 @@
       <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
       <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
       ${preview ? '<p class="hunt-preview">You’re viewing the development preview. Only the Inventory Intelligence test package is enabled locally. No real discounts, codes, or emails are issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
-      <button type="button" class="hunt-primary hunt-intro-start">Let’s find something <span aria-hidden="true">↗</span></button>
+      <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
       <p class="hunt-terms">Valid on the first $25 of eligible merchandise. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     intro.showModal(); intro.querySelector('.hunt-intro-start').focus({ preventScroll: true });

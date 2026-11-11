@@ -24,6 +24,7 @@
 .hunt-form input { width:100%; min-height:48px; border:1px solid #b4a69a; border-radius:6px; padding:10px 14px; background:#fff; color:var(--hunt-ink); font:400 16px/1.5 Georgia,serif; }
 .hunt-dialog .hunt-helper { margin:8px 0 0; color:var(--hunt-muted); font-size:13px; }
 .hunt-primary { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:48px; border:1px solid var(--hunt-maroon); border-radius:6px; padding:12px 16px; background:var(--hunt-maroon); color:var(--hunt-paper); font:600 15px/1.4 Georgia,serif; cursor:pointer; transition:transform .2s,filter .2s; }
+.hunt-arrow { display:inline-block; width:20px; height:20px; flex:none; vertical-align:middle; }
 .hunt-primary:hover { filter:brightness(1.12); }
 .hunt-primary:active { transform:scale(.98); }
 .hunt-primary:disabled { opacity:.6; cursor:wait; }
