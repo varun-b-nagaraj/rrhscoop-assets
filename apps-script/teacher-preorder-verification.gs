@@ -163,7 +163,7 @@ function sendCfaDispatchPreview() {
   var message = cfaDispatchMessage_({
     date: Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd'),
     orders: [{
-      number: 'SAMPLE', paymentStatus: 'PAID', name: 'Example Teacher', room: '1314', delivery: 'Next school day',
+      number: 'SAMPLE', paymentStatus: 'PAID', name: 'Example Teacher', room: '1234', delivery: 'Next school day',
       time: 'Around 12:45 p.m.', sauces: 'Chick-fil-A Sauce: 2, Ketchup: 1',
       items: [{ quantity: 2, name: 'Original Chicken Sandwich' }]
     }]
