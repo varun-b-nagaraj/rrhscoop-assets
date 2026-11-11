@@ -117,12 +117,12 @@ test('direct Ecwid receipt lookup preserves pickup confirmation and subsequent p
   };
   const config = { storeId: '123', token: 'test-ecwid-token' };
   assert.equal(context.coopReceiptOrders_(config, 100, false).length, 0);
-  const [confirmation] = context.coopReceiptOrders_(config, 100);
-  assert.equal(confirmation.id, 'PICKUP1');
-  assert.match(buildReceiptEmail(confirmation).text, /due/);
+  const confirmations = context.coopReceiptOrders_(config, 100);
+  assert.deepEqual(confirmations.map(order => order.id), ['PICKUP1', 'REGULAR']);
+  assert.match(buildReceiptEmail(confirmations[0]).text, /due/);
   paid = true;
-  const [receipt] = context.coopReceiptOrders_(config, 100);
-  assert.equal(receipt.id, 'PICKUP1');
+  const receipt = context.coopReceiptOrders_(config, 100).find(order => order.id === 'PICKUP1');
+  assert.equal(receipt.paymentStatus, 'PAID');
   assert.match(buildReceiptEmail(receipt).text, /Paid at pickup/);
 });
 

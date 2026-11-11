@@ -301,10 +301,10 @@ function setup() {
   Logger.log('Receipt and faculty dispatch automation is on.');
 }
 
-/** Run both jobs even if one service is temporarily unavailable. */
+/** Run every job even if one service is temporarily unavailable. Receipts go before status updates. */
 function runCoopJobs() {
   const failures = [];
-  for (const job of [sendCfaDispatch, sendPendingReceipts]) {
+  for (const job of [sendCfaDispatch, sendPendingReceipts, sendOrderStatusUpdates]) {
     try {
       job();
     } catch (error) {
@@ -324,9 +324,10 @@ function sendPendingReceipts() {
     const sent = JSON.parse(props.getProperty('SENT_IDS') || '[]');
 
     const config = cfaEcwidConfig_(props);
-    const orders = coopReceiptOrders_(config, since);
+    const orders = coopReceiptOrders_(config, since, true, sent);
     orders.forEach(order => {
       const id = String(order.id);
+      // ':pickup-confirmation' is the historical key for any unpaid-order confirmation.
       const notificationId = order.paymentStatus === 'AWAITING_PAYMENT' ? id + ':pickup-confirmation' : id;
       if (sent.includes(notificationId)) return;
       try {
@@ -390,16 +391,23 @@ function coopReadOrders_(config, filters) {
   return orders;
 }
 
-function coopReceiptOrders_(config, since, includePickup = true) {
+/**
+ * Orders that need a confirmation or receipt: new paid orders, new unpaid orders (confirmation),
+ * and unpaid orders we already confirmed that have since been paid (receipt).
+ */
+function coopReceiptOrders_(config, since, includeUnpaid = true, sent = []) {
   const paid = coopReadOrders_(config, 'paymentStatus=PAID&createdFrom=' + since);
   const orders = new Map(paid.map(order => [String(order.id), order]));
-  if (includePickup) {
-    const productIds = CFA_DISPATCH_PRODUCTS.map(product => product.id).join('%2C');
-    const recentPayments = coopReadOrders_(config, 'paymentStatus=PAID&updatedFrom=' + since + '&productId=' + productIds);
-    const awaitingPickup = coopReadOrders_(config, 'paymentStatus=AWAITING_PAYMENT&createdFrom=' + since + '&productId=' + productIds);
-    for (const order of [...recentPayments, ...awaitingPickup]) {
+  if (includeUnpaid) {
+    const awaiting = coopReadOrders_(config, 'paymentStatus=AWAITING_PAYMENT&createdFrom=' + since);
+    const recentPayments = coopReadOrders_(config, 'paymentStatus=PAID&updatedFrom=' + since);
+    for (const order of recentPayments) {
       const id = String(order.id);
-      if (!orders.has(id) && facultyPreorder(order) && payAtPickup(order)) orders.set(id, order);
+      const confirmedUnpaid = sent.includes(id + ':pickup-confirmation') || (facultyPreorder(order) && payAtPickup(order));
+      if (!orders.has(id) && confirmedUnpaid) orders.set(id, order);
+    }
+    for (const order of awaiting) {
+      if (!orders.has(String(order.id))) orders.set(String(order.id), order);
     }
   }
   return Array.from(orders.values())
@@ -604,6 +612,13 @@ function summaryRows(order) {
   return rows;
 }
 
+function orderRoom_(order) {
+  if (isPickup(order)) return '';
+  const raw = preorderField(order, 'cfa_delivery_room') || extraField(order, /delivery\s*location|room/i) ||
+    (facultyPreorder(order) ? preorderComment(order, 'Room') : '');
+  return /^\d+[a-z]?$/i.test(raw) ? `Room ${raw}` : raw;
+}
+
 function orderNumber(order) {
   return String(order.id || order.orderNumber || '');
 }
@@ -613,10 +628,9 @@ function buildReceiptEmail(order) {
   const name = firstName(order);
   const faculty = facultyPreorder(order);
   const pickup = isPickup(order);
-  const dueAtPickup = payAtPickup(order) && order.paymentStatus === 'AWAITING_PAYMENT';
-  const rawRoom = pickup ? '' : preorderField(order, 'cfa_delivery_room') ||
-    extraField(order, /delivery\s*location|room/i) || (faculty ? preorderComment(order, 'Room') : '');
-  const room = /^\d+[a-z]?$/i.test(rawRoom) ? `Room ${rawRoom}` : rawRoom;
+  const awaiting = order.paymentStatus === 'AWAITING_PAYMENT';
+  const dueAtPickup = payAtPickup(order) && awaiting;
+  const room = orderRoom_(order);
   const schedule = pickup ? pickupSchedule(order) || extraField(order, /^schedule$/i) :
     (faculty ? facultyDeliverySchedule(order) : '') || extraField(order, /^schedule$/i);
   const gift = extraField(order, /gift\s*message/i);
@@ -630,10 +644,12 @@ function buildReceiptEmail(order) {
   const method = pickup && faculty ? 'RRHS CO-OP store' : (order.shippingOption?.shippingMethodName || '');
   const payment = dueAtPickup ? `Pay at pickup · ${money(total)} due` :
     order.paymentStatus === 'PAID' ? (payAtPickup(order) ? 'Paid at pickup' :
-      `Paid${order.paymentMethod ? ' · ' + order.paymentMethod : ''}`) : order.paymentMethod;
+      `Paid${order.paymentMethod ? ' · ' + order.paymentMethod : ''}`) :
+    awaiting ? `Awaiting payment${order.paymentMethod ? ' · ' + order.paymentMethod : ''}` : order.paymentMethod;
   const intro = dueAtPickup ? 'Your pickup order is confirmed. Please pay when you collect it.' :
+    awaiting ? "We've got your order. Payment is still pending." :
     "We've got your order and we're on it.";
-  const attachmentNote = !dueAtPickup && order.invoices?.length
+  const attachmentNote = !awaiting && order.invoices?.length
     ? 'Your order confirmation and tax invoice are attached as PDFs.'
     : 'Your order confirmation is attached as a PDF.';
   const placed = order.createTimestamp
@@ -644,7 +660,8 @@ function buildReceiptEmail(order) {
       })
     : '';
 
-  const subject = dueAtPickup ? `Pickup confirmed · Pay at pickup · #${number}` : `Thank you for your order! Receipt for #${number}`;
+  const subject = dueAtPickup ? `Pickup confirmed · Pay at pickup · #${number}` :
+    awaiting ? `Order received · Payment pending · #${number}` : `Thank you for your order! Receipt for #${number}`;
 
   const e = escapeHtml;
   const c = COLORS;
@@ -821,4 +838,295 @@ function buildReceiptEmail(order) {
     .join('\n');
 
   return { subject, html, text };
+}
+
+
+// ---------------------------------------------------------------------------
+// Order status emails. These replace Ecwid's built-in customer notifications:
+// order status changed, shipped, ready for pickup, delivered, refunded, cancelled.
+// Order confirmations and receipts are sent by sendPendingReceipts above.
+// ---------------------------------------------------------------------------
+
+const STATUS_KEY_PREFIX = 'os_';
+const STATUS_OVERLAP_SECONDS = 5 * 60;
+const STATUS_NEW_ORDER_SECONDS = 2 * 24 * 60 * 60;
+const STATUS_KEEP_DAYS = 45;
+const STATUS_EVENTS = ['PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'READY_FOR_PICKUP', 'DELIVERED', 'WILL_NOT_DELIVER', 'RETURNED'];
+
+function trackingNumber_(order) {
+  if (order.trackingNumber) return String(order.trackingNumber);
+  const shipment = (Array.isArray(order.shipments) ? order.shipments : [])
+    .find(entry => entry && (entry.trackingNumber || entry.tracking?.trackingNumber));
+  return shipment ? String(shipment.trackingNumber || shipment.tracking.trackingNumber) : '';
+}
+
+function orderStatusState_(order) {
+  return {
+    p: String(order.paymentStatus || ''),
+    f: String(order.fulfillmentStatus || ''),
+    r: Math.round((Number(order.refundedAmount) || 0) * 100),
+    t: trackingNumber_(order),
+  };
+}
+
+function readStatusState_(value) {
+  if (!value) return null;
+  try { return JSON.parse(value); } catch (_) { return null; }
+}
+
+/** Customer-facing events between the last state we saw and the order now. */
+function orderStatusEvents_(before, order) {
+  const after = orderStatusState_(order);
+  const events = [];
+  if (after.p === 'CANCELLED') return before.p === 'CANCELLED' ? [] : ['CANCELLED'];
+  const refundedNow = /REFUNDED$/.test(after.p) && after.p !== before.p;
+  if (after.r > before.r || refundedNow) events.push('REFUNDED');
+  if (after.f !== before.f && STATUS_EVENTS.includes(after.f)) events.push(after.f);
+  else if (after.t && after.t !== before.t) events.push('SHIPPED');
+  return events;
+}
+
+function canEmailCustomer_(order) {
+  return Boolean(order.email) && !order.hidden && !order.disableAllCustomerNotifications;
+}
+
+/** Runs every minute: emails customers when staff change an order's status in Ecwid. */
+function sendOrderStatusUpdates() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const now = Math.floor(Date.now() / 1000);
+    let startAt = Number(props.getProperty('STATUS_START_AT'));
+    if (!startAt) {
+      // First run: orders that already exist are recorded without sending anything.
+      startAt = now;
+      props.setProperty('STATUS_START_AT', String(now));
+    }
+    const checkedAt = Number(props.getProperty('STATUS_CHECKED_AT')) || startAt;
+    const config = cfaEcwidConfig_(props);
+    const orders = coopReadOrders_(config, 'updatedFrom=' + (Math.min(checkedAt, now) - STATUS_OVERLAP_SECONDS))
+      .sort((a, b) => (a.updateTimestamp || 0) - (b.updateTimestamp || 0));
+    let failed = false;
+    orders.forEach(order => {
+      const key = STATUS_KEY_PREFIX + order.id;
+      const created = Number(order.createTimestamp) || 0;
+      const isNew = created >= startAt && created >= now - STATUS_NEW_ORDER_SECONDS;
+      const before = readStatusState_(props.getProperty(key)) ||
+        (isNew ? { p: '', f: 'AWAITING_PROCESSING', r: 0, t: '' } : orderStatusState_(order));
+      try {
+        if (canEmailCustomer_(order)) {
+          orderStatusEvents_(before, order).forEach(event => sendStatusEmail_(order, event, before, order.email));
+        }
+        props.setProperty(key, JSON.stringify({ ...orderStatusState_(order), at: now }));
+      } catch (err) {
+        failed = true;
+        console.error('Status email for ' + order.id + ' failed: ' + err.message);
+      }
+    });
+    // On a failure, keep the old checkpoint so the next run retries those orders.
+    if (!failed) props.setProperty('STATUS_CHECKED_AT', String(now));
+    pruneStatusStates_(props, now);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function pruneStatusStates_(props, now) {
+  const today = String(Math.floor(now / 86400));
+  if (props.getProperty('STATUS_PRUNED_DAY') === today) return;
+  const all = props.getProperties();
+  Object.keys(all).forEach(key => {
+    if (key.indexOf(STATUS_KEY_PREFIX) !== 0) return;
+    const state = readStatusState_(all[key]);
+    if (!state || !state.at || state.at < now - STATUS_KEEP_DAYS * 86400) props.deleteProperty(key);
+  });
+  props.setProperty('STATUS_PRUNED_DAY', today);
+}
+
+function sendStatusEmail_(order, event, before, to, subjectPrefix = '') {
+  const email = buildStatusEmail(order, event, before);
+  const options = { htmlBody: email.html, name: SENDER_NAME, replyTo: REPLY_TO };
+  if (FROM_ALIAS) options.from = FROM_ALIAS;
+  GmailApp.sendEmail(to, subjectPrefix + email.subject, email.text, options);
+}
+
+function statusEmailCopy_(order, event, before) {
+  const pickup = isPickup(order);
+  const room = orderRoom_(order);
+  const tracking = trackingNumber_(order);
+  const total = Number(order.total) || 0;
+  const dueAtPickup = payAtPickup(order) && order.paymentStatus === 'AWAITING_PAYMENT';
+  const card = /card|stripe|apple pay|google pay|link/i.test(order.paymentMethod || '');
+  switch (event) {
+    case 'PROCESSING':
+      return { title: 'We’re preparing your order', message: 'A CO-OP student is getting your order ready now.' };
+    case 'SHIPPED':
+    case 'OUT_FOR_DELIVERY':
+      if (pickup) return statusEmailCopy_(order, 'READY_FOR_PICKUP', before);
+      return {
+        title: 'Your order is on its way',
+        message: room ? `A CO-OP student is bringing your order to ${room}.` : 'A CO-OP student is on the way with your order.',
+        extra: tracking ? `Tracking number: ${tracking}` : '',
+      };
+    case 'READY_FOR_PICKUP':
+      return {
+        title: 'Your order is ready for pickup',
+        message: 'Stop by the RRHS CO-OP store to pick it up.',
+        extra: dueAtPickup ? `Please pay ${money(total)} when you collect it.` : '',
+      };
+    case 'DELIVERED':
+      return pickup
+        ? { title: 'Your order was picked up', message: 'Thanks for picking up your order. Enjoy!' }
+        : { title: 'Your order was delivered', message: `We dropped off your order${room ? ' at ' + room : ''}. Enjoy!` };
+    case 'WILL_NOT_DELIVER':
+      return { title: 'We couldn’t complete your order', message: 'Something came up and we weren’t able to deliver this order. Reply to this email and we’ll make it right.' };
+    case 'RETURNED':
+      return { title: 'Your order was returned', message: 'We’ve marked this order as returned. If a refund is due, you’ll get a separate email when it’s issued.' };
+    case 'REFUNDED': {
+      const refunded = (Number(order.refundedAmount) || 0) - (Number(before && before.r) || 0) / 100;
+      const amount = refunded > 0 ? refunded : total;
+      return {
+        title: 'Your refund is on the way',
+        message: `We refunded ${money(amount)}${order.paymentMethod ? ' to your ' + order.paymentMethod.toLowerCase() : ''}.`,
+        extra: card ? 'Card refunds usually take 5–10 business days to show up.' : '',
+      };
+    }
+    case 'CANCELLED':
+      return { title: 'Your order was cancelled', message: 'This order has been cancelled. If you already paid, you’ll get a separate email when your refund is issued.' };
+    default:
+      return { title: 'Your order was updated', message: `Your order status is now: ${statusLabel(order.fulfillmentStatus)}.` };
+  }
+}
+
+function buildStatusEmail(order, event, before) {
+  const number = orderNumber(order);
+  const name = firstName(order);
+  const copy = statusEmailCopy_(order, event, before);
+  const pickup = isPickup(order);
+  // The badge names the update being announced, not whatever Ecwid shows now.
+  const status = event === 'REFUNDED' ? 'Refunded' : event === 'CANCELLED' ? 'Cancelled' :
+    pickup && /^(SHIPPED|OUT_FOR_DELIVERY)$/.test(event) ? 'Ready for pickup' :
+    pickup && event === 'DELIVERED' ? 'Picked up' : statusLabel(event);
+  const items = lineItems(order);
+  const total = Number(order.total) || 0;
+  const subject = `${copy.title} · #${number}`;
+  const greeting = name ? `Hi ${name},` : 'Hi,';
+  const e = escapeHtml;
+  const c = COLORS;
+
+  const itemRows = items.map(it => `
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid ${c.line};font-size:15px;color:${c.ink};">${e(it.name)} <span style="color:${c.muted};">&times; ${it.quantity}</span></td>
+          <td style="padding:8px 0;border-bottom:1px solid ${c.line};font-size:15px;color:${c.ink};text-align:right;white-space:nowrap;">${money(it.total)}</td>
+        </tr>`).join('');
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>${e(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:${c.paper};font-family:Georgia,'Times New Roman',serif;color:${c.ink};">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${e(copy.message)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${c.paper};">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${c.line};">
+          <tr>
+            <td align="center" style="padding:32px 32px 8px;">
+              <img src="${LOGO_URL}" width="66" height="96" alt="Round Rock CO-OP" style="display:block;width:66px;height:96px;">
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:16px 32px 4px;">
+              <div style="font-size:28px;line-height:1.2;color:${c.maroon};font-weight:bold;">${e(copy.title)}</div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:10px 40px 24px;font-size:16px;line-height:1.55;color:${c.ink};">
+              ${e(greeting)}<br>${e(copy.message)}${copy.extra ? `<br><br><strong>${e(copy.extra)}</strong>` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${c.cream};">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${c.muted};">Order number</div>
+                    <div style="font-size:20px;font-weight:bold;color:${c.ink};margin-top:2px;">#${e(number)}</div>
+                  </td>
+                  <td style="padding:16px 20px;text-align:right;">
+                    <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${c.muted};">Status</div>
+                    <div style="display:inline-block;margin-top:4px;padding:4px 10px;background:${c.maroon};color:#ffffff;font-size:13px;font-weight:bold;">${e(status)}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 0;">
+              <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${c.muted};padding-bottom:4px;border-bottom:2px solid ${c.ink};">Your items</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemRows}
+                <tr>
+                  <td style="padding:10px 0 0;font-size:16px;font-weight:bold;color:${c.ink};">Total</td>
+                  <td style="padding:10px 0 0;font-size:16px;font-weight:bold;color:${c.maroon};text-align:right;">${money(total)}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px 32px;font-size:14px;line-height:1.55;color:${c.muted};">
+              Questions about your order? Just reply to this email or write to
+              <a href="mailto:${STORE_EMAIL}" style="color:${c.maroon};">${STORE_EMAIL}</a>.
+              Thanks for supporting the student-run CO-OP!
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:18px 32px;background:${c.maroon};font-size:13px;color:#ffffff;">
+              <a href="${STORE_URL}" style="color:#ffffff;text-decoration:none;font-weight:bold;">${STORE_NAME}</a>
+              &middot; Round Rock High School
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = [
+    copy.title,
+    '',
+    greeting,
+    copy.message,
+    copy.extra || null,
+    '',
+    `Order number: #${number}`,
+    `Status: ${status}`,
+    '',
+    'Your items:',
+    ...items.map(it => `- ${it.name} x${it.quantity}: ${money(it.total)}`),
+    `Total: ${money(total)}`,
+    '',
+    `Questions? Reply to this email or write to ${STORE_EMAIL}.`,
+    '',
+    `${STORE_NAME} - ${STORE_URL}`,
+  ].filter(line => line !== null).join('\n');
+
+  return { subject, html, text };
+}
+
+/** Emails you one sample of every status email, built from the latest order. Marks nothing as sent. */
+function sendTestStatusEmails() {
+  const config = cfaEcwidConfig_(PropertiesService.getScriptProperties());
+  const [sample] = coopReadOrders_(config, 'limit=1');
+  if (!sample) throw new Error('No orders found to use as a sample.');
+  const to = Session.getActiveUser().getEmail();
+  const before = { ...orderStatusState_(sample), r: 0 };
+  ['PROCESSING', 'SHIPPED', 'READY_FOR_PICKUP', 'DELIVERED', 'WILL_NOT_DELIVER', 'RETURNED', 'REFUNDED', 'CANCELLED']
+    .forEach(event => sendStatusEmail_(sample, event, before, to, '[Preview] '));
+  Logger.log('Sent 8 sample status emails for order ' + sample.id + ' to ' + to + '.');
 }

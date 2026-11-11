@@ -289,6 +289,26 @@ existing district verification project. Keep the existing
 Script reads orders and downloads receipt PDFs directly from Ecwid.
 
 Deploy the Apps Script update before the corresponding Vercel code update.
+### Customer emails (replaces Ecwid's customer notifications)
+
+The minute trigger sends every customer email, so Ecwid's built-in customer
+notifications can stay off:
+
+- **Order confirmation / receipt** (`sendPendingReceipts`): a receipt for paid
+  orders, an "Order received · Payment pending" confirmation for unpaid orders,
+  and the receipt once a confirmed unpaid order is paid.
+- **Status updates** (`sendOrderStatusUpdates`): one email when staff change an
+  order to Processing, Shipped/Out for delivery, Ready for pickup, Delivered,
+  Will not deliver, or Returned, when a tracking number is added, when a refund
+  is issued, and when an order is cancelled. Only the latest change is sent if
+  several land in the same minute. Orders with customer notifications disabled
+  in Ecwid are skipped.
+
+The status job records existing orders on its first run without emailing anyone.
+`sendTestStatusEmails` emails you a `[Preview]` of each status email built from
+the latest order. The store has no downloadable products, so Ecwid's "Download
+e-goods" email has no replacement.
+
 Run `checkCoopSetup` to verify Ecwid access without sending mail. Existing
 combined triggers continue with the saved script. For a new install, remove
 any separate receipt trigger, then run `setup` in the combined project.
