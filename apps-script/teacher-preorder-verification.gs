@@ -115,7 +115,7 @@ function buildEasterEggRewardEmail(reward) {
   if (!preview && !/^[A-Z0-9-]{16,80}$/.test(reward.code || '')) throw new Error('A fulfilled reward code is required');
   var name = String(reward.name || 'Dragon').trim().slice(0, 150);
   var code = preview ? (/^PREVIEW-[A-F0-9]{12}$/.test(reward.reference || '') ? reward.reference : 'NO CODE · DEVELOPMENT PREVIEW') : reward.code;
-  var subject = (preview ? '[Preview] ' : '') + 'You Found a Hidden CO-OP Reward! 🎁';
+  var subject = (preview ? '[Preview] ' : '') + 'You Found a Hidden CO-OP Reward!';
   var terms = 'Valid on the first $25 of your eligible merchandise subtotal. One use only. Excludes taxes, delivery fees, and other noneligible charges. Cannot be combined with other promotional codes. Expires Friday, November 13, 2026, at 11:59 PM Central.';
   var text = (preview ? 'DEVELOPMENT PREVIEW. No coupon was created. Preview references cannot be redeemed.\n\n' : '') +
     'Hi ' + name + ',\n\nCongratulations! You spotted the red CO-OP dragon sticker holding a package in the RRHS CO-OP E-Commerce Easter Egg Hunt!\n\n' +

@@ -76,3 +76,7 @@ test('school-origin preflight succeeds without sending mail and errors retain re
   assert.equal(rejected.statusCode, 403);
   assert.equal(rejected.headers['Access-Control-Allow-Origin'], undefined);
 });
+test('Apps Script text avoids emoji, which GmailApp garbles in subject lines', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'), 'utf8');
+  assert.equal([...source].filter(ch => ch.codePointAt(0) > 0xffff).join(''), '');
+});
