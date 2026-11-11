@@ -11,7 +11,7 @@ const out = new URL('../api/v1/_hunt-locations/', import.meta.url).pathname;
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-await context.addInitScript(() => { try { sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); } catch (_) {} });
+await context.addInitScript(() => { try { sessionStorage.setItem('rrhs-hunt-intro-off', 'true'); } catch (_) {} });
 await context.route('**/api/v1/easter-hunt*', route => route.request().method() === 'GET'
   ? route.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'live', status: 'active', remaining: config.locations.length,
     eggs: config.locations.map(spot => ({ id: spot.id, available: true })) }) })

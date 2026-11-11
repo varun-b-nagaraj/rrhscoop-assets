@@ -10,8 +10,8 @@
   let counter, tooltip, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
   const enabled = () => window.RRHS_HUNT_ACTIVE === true;
-  function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-seen') === 'true'; } catch (_) { return false; } }
-  function remember() { try { sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); } catch (_) {} }
+  // The intro replays on every page load. Only our screenshot tools switch it off.
+  function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-off') === 'true'; } catch (_) { return false; } }
   function counterState() {
     // Until the live count loads (or if it can't), show the full twenty rather than a guess.
     const sample = !data || !Number.isFinite(data.remaining);
@@ -78,7 +78,7 @@
   }
   function introduction() {
     if (!enabled()) return;
-    stopTour(); remember();
+    stopTour();
     const { found, remaining, preview } = counterState();
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
     intro.setAttribute('aria-labelledby', 'hunt-intro-title'); intro.setAttribute('aria-describedby', 'hunt-intro-copy');
@@ -104,7 +104,7 @@
   }
   function showInformation() {
     if (!enabled() || intro) return;
-    clearTimeout(timer); returnFocus = document.activeElement; remember(); introduction();
+    clearTimeout(timer); returnFocus = document.activeElement; introduction();
   }
   function start() {
     if (!enabled() || tour || intro) return;

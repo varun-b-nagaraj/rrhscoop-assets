@@ -66,8 +66,8 @@ module.exports = async function handler(req, res) {
     res.statusCode = 200; return res.end(JSON.stringify(email));
   }
   if (req.method === 'GET' && huntEnabled()) {
-    // Every open tab polls; let Vercel's edge answer most of them.
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=30');
+    // Every open tab polls every 5 seconds; Vercel's edge answers most of them, at most 2 seconds old.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=2, stale-while-revalidate=2');
     try {
       const { mode, status, expiresAt, remaining, eggs } = await require('../../teacher-preorders/service').mailAction('hunt-availability', {});
       res.statusCode = 200; return res.end(JSON.stringify({ mode, status, expiresAt, remaining, eggs }));

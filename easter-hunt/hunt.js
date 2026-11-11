@@ -12,8 +12,9 @@
   const arrowIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
-  async function request(data) {
-    const response = await fetch(endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
+  // `fresh` skips Vercel's short cache so a click always sees the latest claims.
+  async function request(data, fresh) {
+    const response = await fetch(fresh ? `${endpoint}?fresh=${Date.now()}` : endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
       headers: data ? { 'Content-Type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined,
       signal: AbortSignal.timeout(10000) });
     const result = await response.json();
@@ -36,6 +37,22 @@
     const egg = availability?.eggs?.find(entry => entry.id === id);
     return Boolean(egg && (egg.found ?? (availability.status === 'active' && !egg.available)));
   }
+  // Tell this browser's other tabs and the page's sticker iframes the moment a sticker is found.
+  const channel = 'BroadcastChannel' in window ? new BroadcastChannel('rrhs-hunt') : null;
+  function markFound(id, announce = true) {
+    if (!config.locations.some(spot => spot.id === id)) return;
+    foundHere.add(id); mount();
+    if (active?.id === id) unavailable();
+    if (!announce) return;
+    channel?.postMessage({ type: 'rrhs-hunt-found', id });
+    if (window.parent === window) for (const frame of document.querySelectorAll('iframe')) {
+      try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-found', id }, assetOrigin); } catch (_) {}
+    }
+  }
+  if (channel) channel.onmessage = event => { if (event.data?.type === 'rrhs-hunt-found') markFound(event.data.id, false); };
+  addEventListener('message', event => {
+    if (event.data?.type === 'rrhs-hunt-found' && event.source === window.parent && event.origin === window.RRHS_HUNT_PARENT) markFound(event.data.id, false);
+  });
   function paint(button, id) {
     const isFound = found(id);
     button.style.visibility = isFound || available(id) ? 'visible' : 'hidden';
@@ -146,15 +163,16 @@
       try {
         const result = await request({ action: 'claim', eggId: id, studentId: input.value.trim(), idempotencyKey: active.key });
         if (version !== generation) return;
-        active.submitting = false; active.claimed = true; foundHere.add(id); mount();
+        active.submitting = false; active.claimed = true; markFound(id);
         reveal(result, version); refresh();
       } catch (error) {
         if (version !== generation) return;
         active.submitting = false; submit.disabled = false; input.disabled = false;
-        status.textContent = error.message; input.focus(); refresh();
+        status.textContent = error.message; input.focus(); refresh(true);
       }
     });
     if (!available(id)) unavailable();
+    refresh(true);
   }
   function unavailable() {
     if (!active || active.claimed || active.submitting) return;
@@ -187,10 +205,10 @@
     }
     requestAnimationFrame(tick);
   }
-  async function refresh() {
-    if (!window.RRHS_HUNT_ACTIVE || refreshPending || document.hidden) return;
+  async function refresh(fresh) {
+    if (!window.RRHS_HUNT_ACTIVE || (refreshPending && !fresh) || document.hidden) return;
     refreshPending = true;
-    try { availability = await request(); if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable(); }
+    try { availability = await request(null, fresh === true); if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable(); }
     catch (_) { availability = null; if (window.RRHS_HUNT_ACTIVE) mount(); }
     finally { refreshPending = false; }
     document.dispatchEvent(new CustomEvent('rrhs-hunt-availability', { detail: availability }));
@@ -209,6 +227,6 @@
   else {
     const observer = new MutationObserver(mount); observer.observe(document.body, { childList: true, subtree: true });
   }
-  setInterval(refresh, 15000);
-  addEventListener('focus', refresh); document.addEventListener('visibilitychange', refresh);
+  setInterval(refresh, 5000);
+  addEventListener('focus', () => refresh()); document.addEventListener('visibilitychange', () => refresh());
 })();

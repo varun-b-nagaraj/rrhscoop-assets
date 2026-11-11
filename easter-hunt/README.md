@@ -25,7 +25,7 @@ To stop claims temporarily without redeploying, use **Pause hunt** on the dashbo
 
 ## How a claim works
 
-1. The website asks `/api/v1/easter-hunt` for availability. Vercel caches the answer for 10 seconds. The Apps Script is the only source of truth: once anyone claims a sticker, every visitor sees it greyed out under a magnifying glass and it can no longer be opened (within about 15 seconds, the page's refresh interval).
+1. The website asks `/api/v1/easter-hunt` for availability. Pages check every 5 seconds and Vercel caches the answer for 2 seconds. The Apps Script is the only source of truth: once anyone claims a sticker, every visitor sees it greyed out under a magnifying glass and it can no longer be opened. The finder's own tabs and the page's iframes switch instantly; everyone else within a few seconds. Opening a sticker always re-checks with the server, skipping the cache.
 2. The student enters their S-number. The API forwards the claim to the Apps Script web app (`RRHS_CFA_VERIFICATION_URL`).
 3. Under its script lock, the Apps Script:
    - checks the hunt window (Nov 9 – Fri Nov 13, 11:59 PM Central);

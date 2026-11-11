@@ -176,7 +176,7 @@ test('the API forwards live claims and caches availability at the edge', async (
     const open = res();
     await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, open);
     assert.equal(open.body.mode, 'live'); assert.equal(open.body.remaining, 9);
-    assert.match(open.headers['Cache-Control'], /s-maxage=10/);
+    assert.match(open.headers['Cache-Control'], /s-maxage=2/);
     service.mailAction = async () => { throw Object.assign(new Error(service.HUNT_TAKEN || 'This package could not be claimed.'), { status: 409 }); };
     const taken = res();
     await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's1', eggId: 'shop-snacks', idempotencyKey: 'x' } }, taken);
