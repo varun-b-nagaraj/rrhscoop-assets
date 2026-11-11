@@ -486,16 +486,20 @@
     const visible = element => element.getClientRects().length > 0;
     const next = (container, label) => [...container.querySelectorAll('button')].find(button =>
       !button.disabled && visible(button) && button.textContent.trim() === label);
+    const onPayment = () => /\/checkoutPD(?:[/?&]|$)/i.test(location.hash);
     window.Ecwid.openPage('cart');
-    const cart = await waitForCheckout(() => host.querySelector('#ec-cart-email-input') && host);
+    // On a repeat checkout Ecwid may still show the old payment page, and it can skip the email
+    // field once it knows the customer, so wait for the cart's own Checkout button instead.
+    const cart = await waitForCheckout(() => !onPayment() && next(host, 'Checkout') && host, 8000);
     if (!cart) return false;
     const terms = cart.querySelector('.ec-cart__agreement input[type="checkbox"]');
     if (terms && !terms.checked) clickSetupControl(terms);
     if (!clickSetupControl(next(cart, 'Checkout'))) return false;
 
-    const address = await waitForCheckout(() => stage('address') || stage('delivery'));
+    // Ecwid skips steps it already has answers for, so a returning checkout can land on payment.
+    const address = await waitForCheckout(() => stage('address') || stage('delivery') || onPayment());
     if (!address) return false;
-    if (address.matches('.ec-cart-step--address')) {
+    if (address !== true && address.matches('.ec-cart-step--address')) {
       const addressTab = () => [...(stage('address') || address).querySelectorAll('.ec-tabs__tab')].find(option =>
         visible(option) && (pickup ? /pick it up/i : /deliver to address/i).test(option.textContent));
       const tab = pickup ? await waitForCheckout(addressTab, 1800) : addressTab();
@@ -524,7 +528,6 @@
       }
     }
 
-    const onPayment = () => /\/checkoutPD(?:[/?&]|$)/i.test(location.hash);
     const deliveryStep = await waitForCheckout(() => stage('delivery') || onPayment());
     if (!deliveryStep) return false;
     if (deliveryStep !== true) {
@@ -570,6 +573,8 @@
     checkoutHost.classList.remove('is-payment-ready');
     checkoutHost.classList.add('is-preparing');
     checkoutHost.hidden = false;
+    drawerScroll.scrollTop = 0;
+    drawerScroll.classList.add('is-preparing');
     $('checkout-status').hidden = false;
     $('checkout-fulfillment-note').hidden = true;
     message('checkout-error', '');
@@ -582,6 +587,7 @@
     checkoutHost.hidden = !checkoutValid;
     checkoutHost.classList.toggle('is-payment-ready', checkoutValid);
     checkoutHost.classList.remove('is-preparing');
+    drawerScroll.classList.remove('is-preparing');
     $('checkout-status').hidden = true;
     $('checkout-fulfillment-note').hidden = !checkoutValid;
     if (checkoutValid) {

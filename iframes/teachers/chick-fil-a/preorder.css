@@ -201,7 +201,14 @@ html.preorder-overlay .page {
 .checkout-spinner { width:36px; height:36px; border:2px solid var(--line); border-top-color:var(--maroon); border-radius:50%; animation:checkout-spin 850ms linear infinite; }
 @keyframes checkout-spin { to { transform:rotate(1turn); } }
 @media(prefers-reduced-motion:reduce) { .checkout-spinner { animation:none; } }
-.ecwid-host.is-preparing { position:fixed; inset:0; opacity:0; overflow:auto; }
+.drawer-scroll.is-preparing { position:relative; overflow:hidden; }
+/* While Ecwid is driven behind the scenes, the loader covers the whole drawer body and scrolling is locked. */
+.drawer-scroll.is-preparing #payment-view { animation:none; }
+.drawer-scroll.is-preparing .checkout-loading { position:absolute; inset:0; z-index:10; min-height:0; background:var(--paper); animation:arrive 280ms var(--ease) both; }
+.ecwid-host.is-preparing { opacity:0; transform:translateY(48px); }
+.ecwid-host.is-payment-ready { animation:checkout-reveal 420ms var(--ease) both; }
+@keyframes checkout-reveal { from { opacity:0; transform:translateY(48px); } to { opacity:1; transform:none; } }
+@media(prefers-reduced-motion:reduce) { .ecwid-host.is-payment-ready { animation:none; } }
 .ecwid-host.is-preparing,.ecwid-host.is-preparing *,
 body:has(.ecwid-host.is-preparing) .ec-date-selector__menu,
 body:has(.ecwid-host.is-preparing) .ec-date-selector__menu * { pointer-events:none !important; }
