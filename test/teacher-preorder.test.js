@@ -117,3 +117,8 @@ test('pickup requires a time and includes the selected school day in Ecwid comme
   assert.match(s.orderComments(order, 'teacher@roundrockisd.org', delivery),
     /Pickup schedule: Wednesday, November 11 \(2026-11-11\) · 12:45 p\.m\. Central/);
 });
+test('classroom delivery times must fall between 12:40 and 2:25 p.m.',()=> {
+  for (const time of ['12:40', '13:30', '14:25', '']) assert.equal(s.validateOrder({ ...valid(), time }).time, time);
+  for (const time of ['12:39', '14:26', '08:00', '23:59']) assert.throws(() => s.validateOrder({ ...valid(), time }), /between 12:40 and 2:25/);
+  assert.equal(s.validateOrder({ ...valid(), fulfillment: 'pickup', room: '', time: '11:00' }).time, '11:00', 'pickup times use their own schedule');
+});

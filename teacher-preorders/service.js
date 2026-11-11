@@ -11,6 +11,8 @@ const SAUCE_LIMIT = 10;
 const SAUCES = Object.freeze({ ranch: 'Garden Herb Ranch', cfa: 'Chick-fil-A Sauce', buffalo: 'Zesty Buffalo', ketchup: 'Ketchup' });
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
 const CUTOFF_HOUR = 16;
+// Classroom delivery window teachers can request, Central time (24-hour HH:MM).
+const DELIVERY_WINDOW = { start: '12:40', end: '14:25' };
 
 function fail(status, message) { const err = new Error(message); err.status = status; throw err; }
 function emailAddress(value) {
@@ -99,6 +101,9 @@ function validateOrder(body) {
   const time = String(body.time || '').trim();
   if (fulfillment === 'pickup' && !time) fail(400, 'Choose a pickup time.');
   if (time && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) fail(400, 'Choose a valid time.');
+  if (fulfillment === 'delivery' && time && (time < DELIVERY_WINDOW.start || time > DELIVERY_WINDOW.end)) {
+    fail(400, 'Choose a delivery time between 12:40 and 2:25 p.m.');
+  }
   return { items, sauces, name, room, time, fulfillment };
 }
 async function ecwid(path) {
@@ -172,4 +177,4 @@ function orderComments(order, email, delivery) {
     `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');
 }
-module.exports = { MENU, SAUCES, SAUCE_LIMIT, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, checkoutSeconds, validateOrder, catalog, pickupTimes, mailAction, orderSauces, orderComments, pickupScheduleLabel };
+module.exports = { DELIVERY_WINDOW, MENU, SAUCES, SAUCE_LIMIT, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, checkoutSeconds, validateOrder, catalog, pickupTimes, mailAction, orderSauces, orderComments, pickupScheduleLabel };

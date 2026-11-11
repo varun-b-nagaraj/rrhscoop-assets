@@ -298,6 +298,11 @@
       message('details-error', 'Choose an available pickup time or select classroom delivery.');
       return;
     }
+    if (fulfillment === 'delivery' && details.time && (details.time < '12:40' || details.time > '14:25')) {
+      message('details-error', 'Choose a delivery time between 12:40 and 2:25 p.m., or leave it blank for around 12:45 p.m.');
+      $('delivery-time').focus();
+      return;
+    }
     busy($('send-code'), 'Checking your email…', async()=> {
       if (token && verifiedEmail === details.email) { try { await request({ action:'session', token }); rememberVerification(); review(); return; } catch (err) { if (err.status !== 401) throw err; forget(); } }
       if (token) forget();
