@@ -41,6 +41,9 @@ const server = createServer();
       assert.equal(await page.locator('.hunt-tour-package').evaluate(el => getComputedStyle(el, '::after').height), '3px', 'Keyboard users retain a small focus underline');
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-found.png' });
       await page.locator('.hunt-tour-package').click();
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('.hunt-tour').getAttribute('data-phase'), 'poof');
+      assert.ok(await page.locator('.hunt-tour-caption').evaluate(el => Number(getComputedStyle(el).opacity)) > .95, 'Opening caption must remain visible during the dragon exit');
       await page.waitForFunction(() => document.querySelector('.hunt-tour')?.dataset.phase === 'expanding');
       const centers = await page.evaluate(() => {
         const ring = document.querySelector('.hunt-lens circle').getBoundingClientRect();
@@ -50,13 +53,15 @@ const server = createServer();
           [sticker.x + sticker.width / 2, sticker.y + sticker.height / 2],
           [Number(hole.getAttribute('cx')), Number(hole.getAttribute('cy'))]];
       });
-      for (const [x,y] of centers) assert.ok(Math.abs(x - viewport.width / 2) < 1 && Math.abs(y - viewport.height / 2) < 1, 'Glass, dragon, and light must expand from the viewport center');
+      for (const [x,y] of centers) assert.ok(Math.abs(x - centers[0][0]) < 1 && Math.abs(y - centers[0][1]) < 1, 'Glass, dragon, and light must share the expansion center');
+      await page.waitForTimeout(400);
+      assert.ok(await page.locator('.hunt-tour-caption').evaluate(el => Number(getComputedStyle(el).opacity)) < .1, 'Opening caption fades only once expansion begins');
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-centered-transition.png' });
       await page.locator('.hunt-intro-dialog').waitFor({ state: 'visible' });
       await page.waitForFunction(() => document.querySelector('.hunt-intro-dialog').getAnimations().every(a => a.playState === 'finished'));
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-centered-modal.png' });
       assert.deepEqual(errors, []); await page.close();
     }
-    console.log('Passed desktop, mobile and landscape checks: five-second search with restrained zooms, pauses and a compact final frame, aligned optical centers, centered glass/light/sticker expansion, and modal reveal.');
+    console.log('Passed desktop, mobile and landscape checks: five-second search with restrained zooms, pauses and a compact final frame, aligned optical centers, aligned expansion and caption timing, and modal reveal.');
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });
