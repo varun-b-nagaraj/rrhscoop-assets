@@ -23,7 +23,7 @@ const { createServer } = require('./easter-hunt-preview.cjs');
             const active = dialog.querySelector('.hunt-step.is-active');
             const box = dialog.getBoundingClientRect(), section = active.getBoundingClientRect();
             const nav = dialog.querySelector('.hunt-step-nav').getBoundingClientRect();
-            return { artBottom:Math.max(...[active.querySelector('.hunt-hero'), ...active.querySelector('.hunt-hero').children].map(el=>el.getBoundingClientRect().bottom)), headingTop:active.querySelector('h2').getBoundingClientRect().top, width:box.width, height:box.height, overflow:dialog.scrollWidth-dialog.clientWidth,
+            return { artBottom:Math.max(...[active.querySelector('.hunt-hero'), ...active.querySelector('.hunt-hero').children].map(el=>el.getBoundingClientRect().bottom)), artTop:active.querySelector('.hunt-hero').getBoundingClientRect().top, headingBottom:active.querySelector('h2').getBoundingClientRect().bottom, headingTop:active.querySelector('h2').getBoundingClientRect().top, width:box.width, height:box.height, overflow:dialog.scrollWidth-dialog.clientWidth,
               visible:[...dialog.querySelectorAll('.hunt-step')].filter(el=>getComputedStyle(el).visibility==='visible').length,
               next: (() => { const r=dialog.querySelector('.hunt-step-next').getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; })(),
               back: (() => { const r=dialog.querySelector('.hunt-step-back').getBoundingClientRect(); return {width:r.width,height:r.height}; })(),
@@ -31,7 +31,15 @@ const { createServer } = require('./easter-hunt-preview.cjs');
               gap:nav.top-dialog.querySelector('.hunt-steps').getBoundingClientRect().bottom, scroll:dialog.scrollHeight-dialog.clientHeight };
           });
           assert.ok(Math.abs(layout.back.width-layout.next.width)<1 && Math.abs(layout.back.height-layout.next.height)<1,`Back and Next must have matching button sizes (${viewport.width}, step ${step}, ${JSON.stringify(layout.back)} ${JSON.stringify(layout.next)})`);
-          assert.ok(layout.artBottom<=layout.headingTop,'Artwork must not overlap the heading');
+          assert.ok(layout.artBottom<=layout.headingTop || layout.headingBottom<=layout.artTop,'Artwork must not overlap the heading');
+          if (step===1) {
+            const cards=await page.locator('.hunt-step.is-active .hunt-how li').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height};}));
+            for(let i=0;i<cards.length;i++) for(let j=i+1;j<cards.length;j++) {
+              const a=cards[i],b=cards[j];
+              assert.ok(a.right<=b.left || b.right<=a.left || a.bottom<=b.top || b.bottom<=a.top,'Triangle cards must not overlap');
+              assert.ok(Math.abs(a.height-b.height)<1,'Triangle cards should have equal heights');
+            }
+          }
           assert.equal(layout.visible,1,'Only the active slide should be visible');
           if (!anchor) anchor=layout.next;
           for (const key of ['x','y','width','height']) assert.ok(Math.abs(layout.next[key]-anchor[key])<1, `Button ${key} must stay fixed across slides (${viewport.width}x${viewport.height}, step ${step}, ${JSON.stringify(anchor)} -> ${JSON.stringify(layout.next)})`);

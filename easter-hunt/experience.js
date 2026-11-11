@@ -78,26 +78,26 @@
     const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
     const steps = [
       `<p class="hunt-eyebrow">This is what you’re looking for</p>
+       <h2>Good things hide in plain sight.</h2>
        <div class="hunt-hero"><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
-       <h2>Good things hide<br>in plain sight.</h2>
        <p>${TOTAL} CO-OP dragons are hiding around this website. The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden dragons</span><span><strong>10–35%</strong> off</span><span><strong>1</strong> per person</span></div>`,
       `<p class="hunt-eyebrow">How to claim</p>
-       <div class="hunt-hero"><div class="hunt-how-frame"><svg class="hunt-how-arrows" viewBox="0 0 320 230" fill="none" aria-hidden="true"><path d="M218 46H264V124m-5-6 5 6 5-6M198 184H124m6-5-6 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ol class="hunt-how">
-         <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>a dragon on any page</span></li>
-         <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>the sticker</span></li>
-         <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>with your S&#8209;number</span></li>
+       <h2>Find. Tap. Claim.</h2>
+       <div class="hunt-hero"><div class="hunt-how-frame"><svg class="hunt-how-arrows" viewBox="0 0 344 260" fill="none" aria-hidden="true"><path d="M224 44H282V162m-5-6 5 6 5-6M224 216H120m6-5-6 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ol class="hunt-how">
+         <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>Find a dragon</span></li>
+         <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>Open the sticker</span></li>
+         <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>Use your S&#8209;number</span></li>
        </ol></div></div>
-       <h2>Spot it. Tap it.<br>Claim it.</h2>
        <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
       `<p class="hunt-eyebrow">First come, first served</p>
+       <h2>Once it’s found, it’s gone.</h2>
        <div class="hunt-hero"><div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div></div>
-       <h2>Once it’s found,<br>it’s gone.</h2>
        <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
       `<p class="hunt-eyebrow">Look up, top right</p>
+       <h2>Come back anytime.</h2>
        <div class="hunt-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
          <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure></div>
-       <h2>Come back<br>anytime.</h2>
        <p>Tap the dragon counter in the top right of your page beside search and cart to reopen this guide and see how many are left.</p>
        ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
     ];
@@ -125,7 +125,8 @@
       const last = index === steps.length - 1;
       next.classList.toggle('hunt-begin', last);
       next.parentElement.classList.toggle('is-last', last);
-      next.querySelector('span').textContent = last ? 'Let’s begin!' : 'Next';
+      next.querySelector('span').textContent = last ? 'Begin!' : 'Next';
+      next.setAttribute('aria-label', last ? 'Begin the hunt' : 'Next step');
       next.focus({ preventScroll: true });
     }
     function begin() {
