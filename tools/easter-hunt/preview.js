@@ -27,7 +27,7 @@
     if (!connected) return Promise.reject(new Error('Open the storefront from this dashboard to connect it.'));
     return new Promise((resolve, reject) => {
       const id = ++sequence;
-      const timeout = setTimeout(() => { waiting.delete(id); reject(new Error('The storefront connection timed out. Open it again from this dashboard.')); }, 6000);
+      const timeout = setTimeout(() => { waiting.delete(id); reject(new Error('The storefront connection timed out. Open it again from this dashboard.')); }, action === 'send-preview' ? 30000 : 6000);
       waiting.set(id, { resolve, reject, timeout }); connected.postMessage({ id, action, input });
     });
   }
@@ -41,6 +41,8 @@
     $('connection').textContent = 'Connecting privately to your storefront tab…';
     const attempt = () => {
       if (target.closed) { clearInterval(poll); $('connection').textContent = 'Storefront closed. Your last presentation records are saved on this browser.'; return; }
+      // A newly opened tab briefly retains the dashboard origin before navigation.
+      try { if (target.location.origin !== origin) return; } catch (_) {}
       target.postMessage({ type: 'rrhs-hunt-presenter-enable' }, origin);
       connectingPort?.close(); const channel = new MessageChannel(); connectingPort = channel.port1;
       channel.port1.onmessage = async event => {

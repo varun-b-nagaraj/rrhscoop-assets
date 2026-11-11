@@ -3,6 +3,16 @@
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  const origin = req.headers?.origin;
+  const allowedOrigin = !origin || ['https://rrhscoop-assets.vercel.app', 'https://rrhscoop.roundrockisd.org'].includes(origin) ||
+    (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
+  res.setHeader('Vary', 'Origin');
+  if (!allowedOrigin) { res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the CO-OP preview to continue.' })); }
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // JSON requests from the school storefront preflight before sending any mail.
+  if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
   const query = new URL(req.url || '/', 'https://rrhscoop-assets.vercel.app').searchParams;
   if (req.method === 'POST') {
     let body = req.body;
@@ -11,10 +21,6 @@ module.exports = async function handler(req, res) {
       else if (typeof body === 'string') { if (Buffer.byteLength(body) > 2048) throw new Error(); body = JSON.parse(body); }
     } catch (_) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Invalid preview request.' })); }
     if (body?.action === 'send-preview') {
-      const origin = req.headers?.origin;
-      if (origin && !['https://rrhscoop-assets.vercel.app', 'https://rrhscoop.roundrockisd.org'].includes(origin) && !(process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))) {
-        res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the CO-OP preview to continue.' }));
-      }
       if (body.studentId !== 's151579' || ![10,15,20,25,35].includes(body.percentage) || !/^PREVIEW-[A-F0-9]{12}$/.test(body.reference || '')) {
         res.statusCode = 400; return res.end(JSON.stringify({ error: 'Real preview delivery is currently limited to the presenter mailbox.' }));
       }
