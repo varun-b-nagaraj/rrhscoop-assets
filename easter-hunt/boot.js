@@ -32,9 +32,9 @@
     window.RRHS_HUNT_ACTIVE = enabled;
     if (enabled && !loading) {
       const css = document.createElement('link'); css.rel = 'stylesheet';
-      css.href = new URL('hunt.css?v=3', base).href;
+      css.href = new URL('hunt.css?v=4', base).href;
       const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-      loading = styled.then(() => load('hunt.js?v=3')).then(() => topLevel ? load('experience.js?v=1') : undefined).catch(() => { loading = null; });
+      loading = styled.then(() => load('hunt.js?v=4')).then(() => topLevel ? load('experience.js?v=2') : undefined).catch(() => { loading = null; });
     }
     if (changed) document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled } }));
     broadcast();
@@ -59,5 +59,5 @@
     }
   });
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-override-query' }, '*');
-  load('config.js?v=2').then(() => { config = window.RRHS_HUNT_CONFIG; reconcile(); }).catch(() => { /* Discovery never blocks shopping. */ });
+  load('config.js?v=3').then(() => { config = window.RRHS_HUNT_CONFIG; reconcile(); }).catch(() => { /* Discovery never blocks shopping. */ });
 })();

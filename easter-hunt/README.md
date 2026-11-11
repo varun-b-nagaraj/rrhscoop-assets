@@ -2,6 +2,12 @@
 
 The current implementation is a **local development preview**, as requested. It is not a live promotion. No Ecwid coupons are created, no student emails are sent, and no production database is changed. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
 
+All hunt stickers use the supplied transparent dragon holding a CO-OP package,
+stored unchanged in `easter-hunt/dragon-package-sticker.png`. The introduction
+shows the same image with “This is what you’re looking for.” Hidden locations,
+the search counter, spotlight, claim/reward screens, and reward email use that
+asset. The location PDF also shows the dragon, with each placement highlighted.
+
 ## Run the preview
 
 With Node 18+:

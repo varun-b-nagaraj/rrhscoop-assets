@@ -5,6 +5,7 @@
     HUNT_ENABLED: false,
     DEV_PREVIEW_ENABLED: true,
     DEV_ALL_EGGS_ENABLED: false,
+    stickerPath: 'dragon-package-sticker.png?v=1',
     startsAt: '2026-11-09T00:00:00-06:00',
     // Exclusive cutoff: includes the entire 11:59 PM minute on Friday, Central.
     expiresAt: '2026-11-14T00:00:00-06:00',

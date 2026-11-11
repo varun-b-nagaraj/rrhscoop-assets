@@ -6,5 +6,7 @@ const source = readFileSync(require.resolve('../apps-script/teacher-preorder-ver
 const context = {};
 runInNewContext(source, context, { timeout: 1000 });
 module.exports = function previewEmail(percentage = 35) {
-  return context.buildEasterEggRewardEmail({ percentage, name: 'Dragon', preview: true });
+  const email = context.buildEasterEggRewardEmail({ percentage, name: 'Dragon', preview: true });
+  // Show the local asset before the corresponding CDN deployment is published.
+  return { ...email, html: email.html.replace('https://rrhscoop-assets.vercel.app/easter-hunt/dragon-package-sticker.png?v=1', '/easter-hunt/dragon-package-sticker.png?v=1') };
 };

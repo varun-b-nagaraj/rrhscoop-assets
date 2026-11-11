@@ -7,7 +7,8 @@
   const preview = !config.HUNT_ENABLED || (config.DEV_PREVIEW_ENABLED && local);
   // Live mode remains closed at the API, regardless of the client switch.
   const endpoint = assetOrigin + '/api/v1/easter-hunt';
-  const packageSvg = '<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path class="hunt-box" d="m10 23 22 11 22-11v25L32 59 10 48Z"/><path class="hunt-lid" d="M10 23 32 12l22 11-22 11Z"/><path class="hunt-ribbon" d="m22 17 22 11v15M32 34v25M10 23l22 11 22-11"/></svg>';
+  const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
+  const stickerImage = `<img class="hunt-sticker" src="${stickerSrc}" width="256" height="256" alt="" decoding="async" draggable="false">`;
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
   async function request(data) {
@@ -54,8 +55,8 @@
   function EasterEgg(id) {
     const button = document.createElement('button'); button.type = 'button';
     button.className = 'hunt-egg'; button.dataset.eggId = id;
-    button.setAttribute('aria-label', 'Open hidden package');
-    button.innerHTML = packageSvg;
+    button.setAttribute('aria-label', 'Open hidden CO-OP dragon sticker');
+    button.innerHTML = stickerImage;
     button.addEventListener('click', event => {
       event.stopPropagation();
       if (window.RRHS_HUNT_PARENT && window.parent !== window) parent.postMessage({ type: 'rrhs-hunt-open', id }, window.RRHS_HUNT_PARENT);
@@ -98,9 +99,9 @@
     trigger = button; const version = ++generation;
     active = { id, key: crypto.randomUUID(), submitting: false };
     const content = dialog.querySelector('.hunt-content');
-    content.innerHTML = `<div class="hunt-package hunt-discovered">${packageSvg}</div><p class="hunt-eyebrow">A little CO-OP luck</p>
+    content.innerHTML = `<div class="hunt-package hunt-discovered">${stickerImage}</div><p class="hunt-eyebrow">A little CO-OP luck</p>
       <h2 id="hunt-title">You found a<br>hidden package!</h2>
-      <p>One of twelve little discoveries. A mystery reward, just for a Dragon like you.</p>
+      <p>You spotted our CO-OP dragon sticker! One of twelve little discoveries, with a mystery reward just for you.</p>
       ${preview ? '<p class="hunt-preview">Dev preview · verification and email are simulated.<br>No real reward, coupon, or email is created.</p>' : ''}
       <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
@@ -139,7 +140,7 @@
   }
   function reveal(result, version) {
     const content = dialog.querySelector('.hunt-content');
-    content.innerHTML = `<div class="hunt-package hunt-unwrapped">${packageSvg}<div class="hunt-confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${Math.round(Math.cos(i * 2.4) * 140)}px;--y:${Math.round(Math.sin(i * 2.4) * 110)}px"></i>`).join('')}</div></div>
+    content.innerHTML = `<div class="hunt-package hunt-unwrapped">${stickerImage}<div class="hunt-confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${Math.round(Math.cos(i * 2.4) * 140)}px;--y:${Math.round(Math.sin(i * 2.4) * 110)}px"></i>`).join('')}</div></div>
       <p class="hunt-eyebrow">A lovely little find</p><h2 id="hunt-title">You unlocked<br><span class="hunt-percentage" aria-hidden="true">0</span><span aria-hidden="true">% OFF!</span><span class="hunt-sr-only">${result.percentage}% OFF!</span></h2>
       <p>Valid on the first $25 of your eligible cart subtotal.</p>
       <p class="hunt-preview">Dev preview · no discount code was created.<br>${escape(result.name)}, delivery to <strong>${escape(result.email)}</strong> was simulated. No email was sent.</p>
@@ -175,7 +176,7 @@
       mounted.clear();
     }
   });
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, getAvailability: () => availability };
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
   else {

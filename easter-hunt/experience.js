@@ -4,7 +4,7 @@
   const config = window.RRHS_HUNT_CONFIG;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  const packageSvg = '<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path class="hunt-box" d="m10 23 22 11 22-11v25L32 59 10 48Z"/><path class="hunt-lid" d="M10 23 32 12l22 11-22 11Z"/><path class="hunt-ribbon" d="m22 17 22 11v15M32 34v25M10 23l22 11 22-11"/></svg>';
+  const stickerImage = window.RRHS_EASTER_HUNT.stickerImage;
   let counter, tooltip, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
   const enabled = () => window.RRHS_HUNT_ACTIVE === true;
@@ -24,10 +24,10 @@
     const value = `${found}/12`;
     if (count.textContent !== value) count.textContent = value;
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
-    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 packages found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
+    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
-      ? 'Development preview: this is an example count. The live hunt is closed. Twelve packages will be hidden around the CO-OP website. Select this counter to replay the introduction.'
-      : `${preview ? 'Local development preview. ' : ''}${found} of 12 hidden packages have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test package is enabled; no real coupons or emails are created. ' : 'Find a package for a mystery reward. One reward per verified student. '}Select to replay the introduction.`;
+      ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this counter to replay the introduction.'
+      : `${preview ? 'Local development preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to replay the introduction.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -42,7 +42,7 @@
     if (counter?.isConnected && (!search || counter.nextElementSibling === search)) return;
     if (!counter) {
       counter = document.createElement('div'); counter.className = 'hunt-counter';
-      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-describedby="hunt-counter-tip">${packageSvg}<span><span class="hunt-counter-count" aria-live="polite">0/12</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
+      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-describedby="hunt-counter-tip">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/12</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
       tooltip = document.createElement('div'); tooltip.id = 'hunt-counter-tip'; tooltip.className = 'hunt-counter-tooltip';
       tooltip.setAttribute('role', 'tooltip'); tooltip.hidden = true; document.body.append(tooltip);
       const show = () => { tooltip.hidden = false; placeTooltip(); };
@@ -80,11 +80,11 @@
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
     intro.setAttribute('aria-labelledby', 'hunt-intro-title'); intro.setAttribute('aria-describedby', 'hunt-intro-copy');
     intro.innerHTML = `<button type="button" class="hunt-close" aria-label="Close introduction">×</button>
-      <div class="hunt-intro-seal">${packageSvg}</div><p class="hunt-eyebrow">Opening week. Eyes open.</p>
+      <div class="hunt-intro-seal">${stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"')}</div><p class="hunt-eyebrow">This is what you’re looking for</p>
       <h2 id="hunt-intro-title">Good things hide<br>in plain sight.</h2>
-      <p id="hunt-intro-copy">Twelve little packages are tucked around the CO-OP website. Spot one, unwrap it, and discover a mystery reward.</p>
-      <div class="hunt-intro-rules"><span><strong>12</strong> hidden packages</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
-      <p class="hunt-intro-hint">Look for the little package. The counter beside search tracks discoveries across the hunt.</p>
+      <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twelve are tucked around the website. Spot one and discover a mystery reward.</p>
+      <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
+      <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
       ${preview ? '<p class="hunt-preview">You’re viewing the development preview. Only the Inventory Intelligence test package is enabled locally. No real discounts, codes, or emails are issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something <span aria-hidden="true">↗</span></button>
       <p class="hunt-terms">Valid on the first $25 of eligible merchandise. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
@@ -107,7 +107,7 @@
     tour.setAttribute('aria-label', 'Follow the light to discover the CO-OP package hunt');
     tour.innerHTML = `<svg class="hunt-spotlight" aria-hidden="true"><defs><mask id="rrhs-hunt-spotlight-mask" maskUnits="userSpaceOnUse"><rect width="100%" height="100%" fill="white"/><circle class="hunt-spotlight-hole" r="110" fill="black"/></mask></defs><rect width="100%" height="100%" fill="#180e14" fill-opacity=".84" mask="url(#rrhs-hunt-spotlight-mask)"/></svg>
       <div class="hunt-lens" aria-hidden="true"><svg viewBox="0 0 380 380" fill="none"><path d="m229 229 109 109" stroke="#3c1720" stroke-width="36" stroke-linecap="round"/><path d="m239 239 92 92" stroke="#a88148" stroke-width="18" stroke-linecap="round"/><circle cx="140" cy="140" r="127" stroke="#4b1924" stroke-width="18"/><circle cx="140" cy="140" r="121" stroke="#c6a169" stroke-width="7"/><circle cx="140" cy="140" r="115" stroke="#f0dfbf" stroke-opacity=".65" stroke-width="2"/><path d="M63 112a82 82 0 0 1 46-48" stroke="#fff8e8" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/></svg></div>
-      <button type="button" class="hunt-tour-package" aria-label="Inspect the hidden package" hidden>${packageSvg}</button>
+      <button type="button" class="hunt-tour-package" aria-label="Inspect the hidden CO-OP dragon sticker" hidden>${stickerImage}</button>
       <p class="hunt-tour-caption" role="status">Something’s hiding in plain sight.<br><span>Follow the light.</span></p>
       <button type="button" class="hunt-tour-skip">Skip introduction <span aria-hidden="true">×</span></button>`;
     document.body.append(tour); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
@@ -132,9 +132,9 @@
       position(points[segment][0] + (points[segment+1][0]-points[segment][0])*eased, points[segment][1] + (points[segment+1][1]-points[segment][1])*eased);
       if (progress < 3) frame = requestAnimationFrame(scan);
       else {
-        clue.hidden = false; clue.style.transform = `translate3d(${destination[0] - 30}px,${destination[1] - 30}px,0)`;
+        clue.hidden = false; clue.style.transform = `translate3d(${destination[0] - 40}px,${destination[1] - 40}px,0)`;
         tour.classList.add('hunt-tour-found');
-        tour.querySelector('.hunt-tour-caption').innerHTML = 'A little discovery.<br><span>Click the package to take a closer look.</span>';
+        tour.querySelector('.hunt-tour-caption').innerHTML = 'A little discovery.<br><span>Click the dragon sticker to take a closer look.</span>';
         clue.focus({ preventScroll: true });
       }
     }

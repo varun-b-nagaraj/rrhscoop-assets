@@ -117,13 +117,14 @@ function buildEasterEggRewardEmail(reward) {
   var subject = (preview ? '[Preview] ' : '') + 'You Found a Hidden CO-OP Reward! 🎁';
   var terms = 'Valid on the first $25 of your eligible merchandise subtotal. One use only. Excludes taxes, delivery fees, and other noneligible charges. Cannot be combined with other promotional codes. Expires Friday, November 13, 2026, at 11:59 PM Central.';
   var text = (preview ? 'DEVELOPMENT PREVIEW. No coupon was created and no email was sent.\n\n' : '') +
-    'Hi ' + name + ',\n\nCongratulations! You found one of the hidden packages in the RRHS CO-OP E-Commerce Easter Egg Hunt!\n\n' +
+    'Hi ' + name + ',\n\nCongratulations! You spotted the red CO-OP dragon sticker holding a package in the RRHS CO-OP E-Commerce Easter Egg Hunt!\n\n' +
     "You've unlocked " + reward.percentage + '% OFF your next eligible CO-OP online order.\n\n' +
     (preview ? code : 'Your exclusive discount code: ' + code) + '\n\n' + terms + '\n\n' +
     'Shop now at https://rrhscoop.roundrockisd.org\n\nThanks for participating in our E-Commerce Opening Week!\nRRHS CO-OP';
   var html = cfaEmail_('E-Commerce Opening Week', 'A little luck. A lovely reward.',
     (preview ? '<p style="padding:12px;border:1px dashed #6e1f2a;background:#f1eee8;">Development preview. No coupon was created and no email was sent.</p>' : '') +
-    '<p>Hi ' + cfaEscape_(name) + ',</p><p>You found one of our twelve hidden packages. Consider this a little thank-you for exploring the student-run CO-OP.</p>' +
+    '<p style="margin:16px 0;text-align:center;"><img src="https://rrhscoop-assets.vercel.app/easter-hunt/dragon-package-sticker.png?v=1" width="128" height="128" alt="Red CO-OP dragon holding a package" style="display:block;width:128px;height:128px;margin:0 auto;object-fit:contain;"></p>' +
+    '<p>Hi ' + cfaEscape_(name) + ',</p><p>You found one of our twelve hidden CO-OP dragon stickers. Consider this a little thank-you for exploring the student-run CO-OP.</p>' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px;background:#f1eee8;border-top:3px solid #6e1f2a;border-bottom:1px solid #cbb991;">' +
     '<p style="margin:0;color:#6e1f2a;font:400 56px/1.1 Georgia,serif;">' + reward.percentage + '% OFF</p>' +
     '<p style="margin:12px 0 0;">On the first $25 of your eligible cart subtotal.</p></td></tr></table>' +
