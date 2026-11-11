@@ -176,7 +176,7 @@ html.preorder-overlay .page {
 .drawer-sauces h3 { color:var(--maroon); font-size:25px; }
 .drawer-sauces > p { font-size:14px; margin:2px 0 6px; }
 .drawer-sauces .stepper { background:var(--cream); }
-.drawer-footer { flex:0 0 auto; border-top:1px solid var(--line); background:var(--paper); padding:20px 30px max(20px, env(safe-area-inset-bottom)); }
+.drawer-footer { display:block; flex:0 0 auto; margin-top:0; border-top:1px solid var(--line); background:var(--paper); padding:20px 30px max(20px, env(safe-area-inset-bottom)); }
 .drawer-footer .drawer-total { margin-top:0; }
 .drawer-footer .full { margin-top:14px; }
 .drawer-total { display:flex; align-items:center; justify-content:space-between; gap:16px; font-weight:600; }
