@@ -174,23 +174,22 @@
     frame = requestAnimationFrame(scan);
     clue.addEventListener('click', () => {
       if (!tour || clue.disabled) return; clue.disabled = true;
-      const began = performance.now(), center = [innerWidth / 2, innerHeight / 2];
-      const coverScale = (Math.hypot(center[0], center[1]) + 24) / (radius - 3);
-      tour.classList.add('hunt-tour-transitioning'); tour.dataset.phase = 'centering';
+      // The dragon poofs away, then the glass grows from where it rests until it fills the screen.
+      const began = performance.now(), [x, y] = destination;
+      const farthest = Math.max(Math.hypot(x, y), Math.hypot(innerWidth - x, y), Math.hypot(x, innerHeight - y), Math.hypot(innerWidth - x, innerHeight - y));
+      const coverScale = (farthest + 24) / (radius - 3), poof = 380, grow = 750;
+      tour.classList.add('hunt-tour-transitioning', 'hunt-tour-poof'); tour.dataset.phase = 'poof';
+      clue.insertAdjacentHTML('beforeend', '<span class="hunt-poof" aria-hidden="true">' +
+        Array.from({ length: 8 }, (_, i) => `<i style="--a:${i * 45}deg"></i>`).join('') + '</span>');
       tour.querySelector('.hunt-tour-caption').textContent = 'Opening your discovery…';
       function expand(now) {
         if (!tour || !enabled()) return;
         const elapsed = Math.max(0, now - began);
-        if (elapsed < 600) {
-          const t = elapsed / 600, ease = t * t * (3 - 2 * t);
-          position(destination[0] + (center[0] - destination[0]) * ease,
-            destination[1] + (center[1] - destination[1]) * ease, settledScale + (1.08 - settledScale) * ease);
-        } else {
+        if (elapsed >= poof) {
           tour.dataset.phase = 'expanding';
-          const t = Math.min(1, (elapsed - 600) / 500), ease = t * t * (3 - 2 * t);
-          position(...center, 1.08 + (coverScale - 1.08) * ease, 0, 1 + .35 * ease);
-          lens.style.opacity = String(1 - Math.min(1, t / .85));
-          clue.style.opacity = String(1 - ease);
+          const t = Math.min(1, (elapsed - poof) / grow), ease = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          position(x, y, settledScale + (coverScale - settledScale) * ease);
+          lens.style.opacity = String(1 - Math.max(0, (t - .55) / .45));
           veil.style.opacity = String(ease);
           if (t === 1) { introduction(); return; }
         }

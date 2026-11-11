@@ -67,6 +67,10 @@
 .hunt-egg:focus,.hunt-tour .hunt-tour-package:focus { outline:none; box-shadow:none; }
 .hunt-egg:focus-visible::after,.hunt-tour-package:focus-visible::after { content:""; position:absolute; left:25%; right:25%; bottom:0; height:3px; border-radius:2px; background:#c6a169; }
 .hunt-tour-found .hunt-tour-package .hunt-sticker { animation:hunt-clue-pop .48s cubic-bezier(.22,1,.36,1) backwards; }
+.hunt-tour-poof .hunt-tour-package { cursor:default; }
+.hunt-tour-poof .hunt-tour-package .hunt-sticker { animation:hunt-poof .38s cubic-bezier(.4,0,.2,1) forwards; }
+.hunt-poof { position:absolute; left:50%; top:50%; width:0; height:0; pointer-events:none; }
+.hunt-poof i { position:absolute; left:-9px; top:-9px; width:18px; height:18px; border-radius:50%; background:#fff8e8; opacity:0; transform:rotate(var(--a)) translateY(0) scale(.4); animation:hunt-puff .5s cubic-bezier(.22,1,.36,1) forwards; }
 .hunt-tour-transitioning .hunt-tour-caption { opacity:0; transition:opacity .15s ease; }
 .hunt-intro-dialog { width:min(500px,calc(100% - 32px)); }
 .hunt-intro-dialog[open] { animation:hunt-intro-arrive .25s cubic-bezier(.22,1,.36,1) both; }
@@ -77,6 +81,8 @@
 .hunt-intro-rules strong { display:block; margin-bottom:6px; color:var(--hunt-maroon); font:400 24px/1.2 Georgia,serif; }
 .hunt-dialog .hunt-intro-hint { font-size:14px; color:var(--hunt-muted); }
 .hunt-presenter-link { min-height:44px; margin-top:8px; padding:8px; border:0; background:transparent; color:var(--hunt-maroon); font:400 13px/1.4 Georgia,serif; text-decoration:underline; cursor:pointer; }
+@keyframes hunt-poof { 0% { transform:scale(1); opacity:1; filter:blur(0); } 35% { transform:scale(1.18) rotate(-4deg); opacity:1; } 100% { transform:scale(.2) rotate(8deg); opacity:0; filter:blur(4px); } }
+@keyframes hunt-puff { 0% { opacity:.9; transform:rotate(var(--a)) translateY(0) scale(.4); } 100% { opacity:0; transform:rotate(var(--a)) translateY(-54px) scale(1.15); } }
 @keyframes hunt-scrim-in { from { opacity:0; } to { opacity:1; } }
 @keyframes hunt-clue-pop { 0% { opacity:0; transform:translateY(8px) scale(.55) rotate(-8deg); } 60% { opacity:1; transform:translateY(-3px) scale(1.12) rotate(4deg); } 82% { transform:scale(.97) rotate(-2deg); } 100% { opacity:1; transform:none; } }
 @keyframes hunt-intro-arrive { from { opacity:0; transform:scale(.94); } to { opacity:1; transform:none; } }
