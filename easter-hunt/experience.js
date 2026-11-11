@@ -11,8 +11,20 @@
   let counter, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
   const enabled = () => window.RRHS_HUNT_ACTIVE === true;
-  // The intro replays on every page load. Only our screenshot tools switch it off.
-  function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-off') === 'true'; } catch (_) { return false; } }
+  const introShownKey = 'rrhs-hunt-intro-shown';
+  const isReload = performance.getEntriesByType('navigation')[0]?.type === 'reload';
+  let shownThisDocument = false;
+  // Keep ordinary page navigation quiet, but replay after a browser reload.
+  function seen() {
+    if (shownThisDocument) return true;
+    try { return sessionStorage.getItem('rrhs-hunt-intro-off') === 'true' ||
+      (!isReload && sessionStorage.getItem(introShownKey) === 'true'); }
+    catch (_) { return false; }
+  }
+  function remember() {
+    shownThisDocument = true;
+    try { sessionStorage.setItem(introShownKey, 'true'); } catch (_) {}
+  }
   function counterState() {
     // Until the live count loads (or if it can't), show the full twenty rather than a guess.
     // Count only the stickers this website shows, as the server reports them.
@@ -163,12 +175,11 @@
   }
   function showInformation() {
     if (!enabled() || intro) return;
-    clearTimeout(timer); returnFocus = document.activeElement; introduction();
+    clearTimeout(timer); returnFocus = document.activeElement; remember(); introduction();
   }
   function start() {
     if (!enabled() || tour || intro) return;
-    // Marked as seen only once it finishes, so leaving or reloading mid-intro plays it again.
-    clearTimeout(timer); returnFocus = document.activeElement;
+    clearTimeout(timer); returnFocus = document.activeElement; remember();
     if (motion.matches) { introduction(true); return; }
     tour = document.createElement('dialog'); tour.className = 'hunt-tour';
     tour.setAttribute('aria-label', 'Follow the light to discover the CO-OP package hunt');
