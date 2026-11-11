@@ -132,10 +132,12 @@
 .hunt-step-art .hunt-sticker { width:100%; height:100%; }
 .hunt-hero .hunt-intro-seal { width:144px; height:144px; }
 .hunt-step.is-active .hunt-intro-seal .hunt-sticker { animation:hunt-bob 3.2s .5s ease-in-out infinite; }
-.hunt-dragon-hero { position:relative; }
-.hunt-hero-cloud { position:absolute; left:8%; top:32%; width:96px; opacity:.8; }
+.hunt-dragon-hero { position:relative; isolation:isolate; }
+.hunt-hero-clouds { position:absolute; left:50%; top:50%; width:min(100%,280px); height:100px; transform:translate(-50%,-40%); z-index:0; pointer-events:none; }
+.hunt-hero-cloud { position:absolute; left:0; top:24px; width:148px; opacity:.85; }
 .hunt-hero-cloud svg { display:block; width:100%; height:auto; }
-.hunt-hero-cloud:last-child { left:auto; right:8%; transform:scaleX(-1); }
+.hunt-hero-cloud:nth-child(2) { left:70px; top:4px; width:122px; opacity:.65; }
+.hunt-hero-cloud:last-child { left:auto; right:0; top:40px; width:118px; transform:scaleX(-1); }
 .hunt-dragon-hero .hunt-intro-seal { z-index:1; }
 .hunt-step:nth-child(2) .hunt-hero { height:164px; }
 .hunt-step:nth-child(3) .hunt-hero { height:184px; }
@@ -218,7 +220,7 @@
 .hunt-guide-clouds { position:absolute; inset:0; overflow:hidden; border-radius:inherit; pointer-events:none; }
 .hunt-guide-clouds svg { position:absolute; left:-16px; bottom:-7px; width:100px; height:54px; }
 .hunt-guide-clouds svg+svg { left:auto; right:-16px; transform:scaleX(-1); }
-@media(max-width:420px) { .hunt-intro-dialog { padding:20px 16px 14px; } .hunt-step>.hunt-eyebrow { gap:6px; margin-inline:12px; font-size:10px; letter-spacing:.08em; } .hunt-step>.hunt-eyebrow::before,.hunt-step>.hunt-eyebrow::after { flex-basis:20px; } .hunt-how { gap:16px; } .hunt-how li { padding:10px 3px; } .hunt-how li:not(:last-child)::after { right:-15px; width:12px; } .hunt-how strong { font-size:17px; } .hunt-how-icon { width:58px; } .hunt-how-icon .hunt-sticker { max-width:100%; } .hunt-step-nav { grid-template-columns:repeat(2,minmax(0,1fr)); } .hunt-step-nav .hunt-step-next,.hunt-step-nav .hunt-step-back { min-height:56px; font-size:13px; } .hunt-hero-cloud { left:0; width:80px; } .hunt-hero-cloud:last-child { right:0; } }
-@media(max-height:650px) { .hunt-hero { --hero:112px; margin-bottom:12px; } .hunt-hero .hunt-intro-seal { width:112px; height:112px; } .hunt-step:nth-child(2) .hunt-hero { height:140px; } .hunt-step:nth-child(3) .hunt-hero { height:132px; } .hunt-step-art.hunt-art-found { width:132px; height:132px; } .hunt-step .hunt-header-hero { height:104px; } .hunt-header-hero .hunt-where { padding-bottom:26px; } .hunt-how li { height:140px; padding-top:6px; } .hunt-how-icon { height:50px; } .hunt-how-icon svg { height:48px; } .hunt-how-icon .hunt-sticker { height:52px; width:52px; } .hunt-step h2 { font-size:24px; } .hunt-step { font-size:13px; } .hunt-step .hunt-simple-title { margin-bottom:12px; } .hunt-hero-cloud { width:72px; } }
+@media(max-width:420px) { .hunt-intro-dialog { padding:20px 16px 14px; } .hunt-step>.hunt-eyebrow { gap:6px; margin-inline:12px; font-size:10px; letter-spacing:.08em; } .hunt-step>.hunt-eyebrow::before,.hunt-step>.hunt-eyebrow::after { flex-basis:20px; } .hunt-how { gap:16px; } .hunt-how li { padding:10px 3px; } .hunt-how li:not(:last-child)::after { right:-15px; width:12px; } .hunt-how strong { font-size:17px; } .hunt-how-icon { width:58px; } .hunt-how-icon .hunt-sticker { max-width:100%; } .hunt-step-nav { grid-template-columns:repeat(2,minmax(0,1fr)); } .hunt-step-nav .hunt-step-next,.hunt-step-nav .hunt-step-back { min-height:56px; font-size:13px; } }
+@media(max-height:650px) { .hunt-hero { --hero:112px; margin-bottom:12px; } .hunt-hero .hunt-intro-seal { width:112px; height:112px; } .hunt-step:nth-child(2) .hunt-hero { height:140px; } .hunt-step:nth-child(3) .hunt-hero { height:132px; } .hunt-step-art.hunt-art-found { width:132px; height:132px; } .hunt-step .hunt-header-hero { height:104px; } .hunt-header-hero .hunt-where { padding-bottom:26px; } .hunt-how li { height:140px; padding-top:6px; } .hunt-how-icon { height:50px; } .hunt-how-icon svg { height:48px; } .hunt-how-icon .hunt-sticker { height:52px; width:52px; } .hunt-step h2 { font-size:24px; } .hunt-step { font-size:13px; } .hunt-step .hunt-simple-title { margin-bottom:12px; } }
 @media(max-width:360px) { .hunt-step-nav .hunt-step-next.hunt-begin { font-size:12px; gap:4px; } .hunt-step-nav .hunt-arrow { width:16px; height:16px; } }
 @media(prefers-reduced-motion:reduce) { .hunt-egg,.hunt-dialog,.hunt-dialog *,.hunt-tour *,.hunt-counter * { animation:none!important; transition:none!important; } .hunt-confetti { display:none; } }

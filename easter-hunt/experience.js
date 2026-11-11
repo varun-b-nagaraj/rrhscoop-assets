@@ -81,7 +81,7 @@
     const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
     const steps = [
       `<p class="hunt-eyebrow">The CO-OP Dragon Hunt</p>
-       <div class="hunt-hero hunt-dragon-hero"><span class="hunt-hero-cloud">${cloudArt}</span><div class="hunt-step-art hunt-intro-seal">${dragon}</div><span class="hunt-hero-cloud">${cloudArt}</span></div>
+       <div class="hunt-hero hunt-dragon-hero"><div class="hunt-hero-clouds" aria-hidden="true"><span class="hunt-hero-cloud">${cloudArt}</span><span class="hunt-hero-cloud">${cloudArt}</span><span class="hunt-hero-cloud">${cloudArt}</span></div><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
        <h2>Good things hide<br>in plain sight.</h2>
        <p>${TOTAL} CO-OP dragons are hiding around this website.<br>The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span>${stickerImage}<strong>${TOTAL}</strong> hidden dragons</span><span>${tagIcon}<strong>10–35%</strong> off</span><span>${giftIcon}<strong>1</strong> per person</span></div>`,
