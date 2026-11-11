@@ -138,15 +138,16 @@
     }
     position(...points[0]);
     // Travel, linger and tilt at four spots rather than continuously shaking.
+    const settledScale = .95;
     const stops = [
       { at: 0, point: 0, scale: 1, angle: -5 },
       { at: 450, point: 0, scale: 1.12, angle: 3 },
-      { at: 1550, point: 1, scale: 2.2, angle: -7 },
-      { at: 1950, point: 1, scale: 2.2, angle: 5 },
-      { at: 3050, point: 2, scale: 1.35, angle: 4 },
-      { at: 3500, point: 2, scale: 1.35, angle: -6 },
-      { at: 4600, point: 3, scale: 2.5, angle: -4 },
-      { at: 5100, point: 3, scale: 2.5, angle: 0 }
+      { at: 1550, point: 1, scale: 1.45, angle: -7 },
+      { at: 1950, point: 1, scale: 1.45, angle: 5 },
+      { at: 3050, point: 2, scale: 1.1, angle: 4 },
+      { at: 3500, point: 2, scale: 1.1, angle: -6 },
+      { at: 4400, point: 3, scale: 1.4, angle: -4 },
+      { at: 5100, point: 3, scale: settledScale, angle: 0 }
     ];
     const began = performance.now();
     function scan(now) {
@@ -183,11 +184,11 @@
         if (elapsed < 600) {
           const t = elapsed / 600, ease = t * t * (3 - 2 * t);
           position(destination[0] + (center[0] - destination[0]) * ease,
-            destination[1] + (center[1] - destination[1]) * ease, 2.5 - .7 * ease);
+            destination[1] + (center[1] - destination[1]) * ease, settledScale + (1.08 - settledScale) * ease);
         } else {
           tour.dataset.phase = 'expanding';
           const t = Math.min(1, (elapsed - 600) / 500), ease = t * t * (3 - 2 * t);
-          position(...center, 1.8 + (coverScale - 1.8) * ease, 0, 1 + .35 * ease);
+          position(...center, 1.08 + (coverScale - 1.08) * ease, 0, 1 + .35 * ease);
           lens.style.opacity = String(1 - Math.min(1, t / .85));
           clue.style.opacity = String(1 - ease);
           veil.style.opacity = String(ease);

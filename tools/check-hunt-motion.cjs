@@ -25,13 +25,15 @@ const server = createServer();
         }));
         await page.waitForTimeout(80);
       }
-      assert.ok(Math.max(...samples.map(s => s.scale)) - Math.min(...samples.map(s => s.scale)) > 1.4, 'Glass should grow to 2.5 times its starting size while searching');
+      assert.ok(Math.max(...samples.map(s => s.scale)) - Math.min(...samples.map(s => s.scale)) > .4, 'Glass should visibly zoom between search stops');
       for (const sample of samples) {
-        assert.ok(sample.scale >= .99 && sample.scale <= 2.51, 'Searching glass should stay within the intended zoom range');
+        assert.ok(sample.scale >= .94 && sample.scale <= 1.46, 'Searching glass should stay within the intended zoom range');
         assert.ok(Math.abs(sample.x - sample.lightX) < 1 && Math.abs(sample.y - sample.lightY) < 1, 'Light must stay centered inside the moving glass');
       }
       await page.locator('.hunt-tour-package').waitFor({ state: 'visible' });
       await page.waitForTimeout(500);
+      const settled = await page.locator('.hunt-lens').evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return Math.hypot(m.a, m.b); });
+      assert.ok(Math.abs(settled - .95) < .01, 'Glass should settle into a compact frame around the dragon');
       assert.equal(await page.locator('.hunt-tour-package').evaluate(el => el === document.activeElement), false, 'Dragon must not receive automatic focus/highlight');
       await page.keyboard.press('Tab');
       await page.locator('.hunt-tour-package').focus();
@@ -55,6 +57,6 @@ const server = createServer();
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-centered-modal.png' });
       assert.deepEqual(errors, []); await page.close();
     }
-    console.log('Passed desktop, mobile and landscape checks: five-second search with large zooms and pauses, aligned optical centers, centered glass/light/sticker expansion, and modal reveal.');
+    console.log('Passed desktop, mobile and landscape checks: five-second search with restrained zooms, pauses and a compact final frame, aligned optical centers, centered glass/light/sticker expansion, and modal reveal.');
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });
