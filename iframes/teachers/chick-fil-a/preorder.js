@@ -16,6 +16,7 @@
   const drawer = $('preorder-drawer');
   const drawerShell = drawer.querySelector('.drawer-shell');
   const drawerScroll = $('drawer-scroll');
+  const checkoutHost = $('ecwid-checkout');
   let parentOrigin = 'https://rrhscoop.roundrockisd.org';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
   try { token = localStorage.getItem(STORE_KEY) || ''; } catch (_) {}
@@ -61,17 +62,28 @@
     $('continue-preorder').disabled = selectedItems().length === 0;
     $('review-order').disabled = selectedItems().length === 0;
   }
-  const stepLabels = {
-    selections: '01 / Your order', details: '02 / Fulfillment', verify: '03 / Email verification',
-    review: '04 / Checkout', payment: '04 / Checkout', complete: 'Order received',
+  const drawerSteps = {
+    selections: { label: '01 / Your order', title: 'Review your preorder' },
+    details: { label: '02 / Fulfillment', title: 'Where’s lunch headed?', back: 'selections', backLabel: 'Back to your selections' },
+    verify: { label: '03 / Email verification', title: 'Check your district inbox', back: 'details', backLabel: 'Back to preorder details' },
+    review: { label: '04 / Checkout', title: 'Review and pay', back: 'details', backLabel: 'Edit preorder details' },
+    payment: { label: '04 / Checkout', title: 'Payment', back: 'review', backLabel: 'Back to preorder review' },
+    complete: { label: 'Order received', title: 'Thanks for your preorder' },
   };
+  function updateDrawerBack() {
+    const step = drawerSteps[currentView];
+    $('drawer-back').hidden = !step?.back || (currentView === 'payment' && preparing);
+    if (step?.backLabel) $('drawer-back').setAttribute('aria-label', step.backLabel);
+  }
   function show(view) {
     currentView = view;
     drawer.querySelectorAll('.view').forEach(section => { section.hidden = section.id !== `${view}-view`; });
-    $('drawer-step').textContent = stepLabels[view];
+    $('drawer-step').textContent = drawerSteps[view].label;
+    $('drawer-label').textContent = drawerSteps[view].title;
+    updateDrawerBack();
     drawerScroll.scrollTop = 0;
     summary();
-    if (drawer.open) $(`${view}-title`)?.focus({ preventScroll: true });
+    if (drawer.open) $('drawer-label').focus({ preventScroll: true });
   }
   let finishOpening;
   let openingPromise;
@@ -105,7 +117,7 @@
     // Commit the offscreen position before starting the transition.
     drawerShell.getBoundingClientRect();
     drawer.classList.add('is-visible');
-    $(`${currentView}-title`)?.focus({ preventScroll: true });
+    $('drawer-label').focus({ preventScroll: true });
   }
   async function closeDrawer() {
     if (!drawer.open || !drawer.classList.contains('is-visible')) return;
@@ -198,7 +210,16 @@
     openDrawer('selections');
   });
   $('continue-preorder').addEventListener('click', () => show('details'));
-  document.querySelectorAll('[data-back]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.back)));
+  $('drawer-back').addEventListener('click', () => {
+    const back = drawerSteps[currentView]?.back;
+    if (!back || (currentView === 'payment' && preparing)) return;
+    if (currentView === 'payment') {
+      checkoutValid = false;
+      checkoutHost.hidden = true;
+      clearTimeout(expiryTimer);
+    }
+    show(back);
+  });
   function rememberVerification() {
     try { if ($('remember-email').checked) localStorage.setItem(STORE_KEY, token); else localStorage.removeItem(STORE_KEY); } catch (_) {}
   }
@@ -344,7 +365,7 @@
             show('complete');
           });
           window.Ecwid.OnCartChanged.add(cart=> {
-            if (preparing || currentView !== 'payment') return;
+            if (preparing || currentView !== 'payment' || checkoutHost.hidden) return;
             checkoutValid = matchingCart(cart) && Date.now() < checkout.expiresAt &&
               (!cart.shippingMethod || matchingFulfillment(cart));
             message('checkout-error', checkoutValid ? '' : 'Your checkout items changed. Go back to preorder review to rebuild your lunch order.');
@@ -524,36 +545,64 @@
       }
     }
     if (!await waitForCheckout(onPayment)) return false;
+    await confirmPaymentScreen();
+    return true;
+  }
+  async function confirmPaymentScreen() {
+    const paymentForm = await waitForCheckout(() =>
+      checkoutHost.querySelector('.ec-cart-step--payment.ec-cart-step--current input[name="checkout-payment-method"]'), 12000);
+    if (!paymentForm) throw new Error('The payment form did not load. Go back and try again.');
     const prepared = await getCart();
     if (!matchingCart(prepared) || !matchingFulfillment(prepared)) {
       throw new Error('Ecwid could not confirm the selected items and fulfillment. Return to preorder review and try again.');
     }
     // Ecwid mounts a fresh notes field when it opens payment.
-    savePaymentNotes(await waitForCheckout(paymentNotes));
-    return true;
+    savePaymentNotes(paymentNotes());
+  }
+  function startPaymentSetup() {
+    preparing = true;
+    checkoutValid = false;
+    checkoutHost.inert = false;
+    checkoutHost.classList.remove('is-payment-ready');
+    checkoutHost.classList.add('is-preparing');
+    checkoutHost.hidden = false;
+    $('checkout-status').hidden = false;
+    $('checkout-fulfillment-note').hidden = true;
+    message('checkout-error', '');
+    show('payment');
+  }
+  function finishPaymentSetup(error) {
+    preparing = false;
+    checkoutValid = !error && drawer.open && currentView === 'payment';
+    checkoutHost.inert = !checkoutValid;
+    checkoutHost.hidden = !checkoutValid;
+    checkoutHost.classList.toggle('is-payment-ready', checkoutValid);
+    checkoutHost.classList.remove('is-preparing');
+    $('checkout-status').hidden = true;
+    $('checkout-fulfillment-note').hidden = !checkoutValid;
+    if (checkoutValid) {
+      $('checkout-fulfillment-note').textContent = checkout.fulfillment === 'pickup'
+        ? `Pickup at the CO-OP · ${checkout.delivery.label} · ${displayTime(checkout.time)}`
+        : `Room ${checkout.room} delivery · ${checkout.delivery.label} · ${checkout.time ? displayTime(checkout.time) : 'around 12:45 p.m.'}`;
+      checkoutExpiry();
+      drawerScroll.scrollTop = 0;
+      $('drawer-label').focus({ preventScroll: true });
+    } else if (error && currentView === 'payment') {
+      message('checkout-error', error.message);
+    }
+    updateDrawerBack();
   }
   async function prepareCheckout() {
     if (!$('preorder-terms').checked) {
       $('preorder-terms').focus();
       throw new Error('Agree to the CO-OP store policies to continue.');
     }
-    checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
-    if (!drawer.open) return;
-    try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
-    checkoutExpiry();
-    $('checkout-fulfillment-note').textContent = checkout.fulfillment === 'pickup'
-      ? `Pickup at the RRHS CO-OP · ${checkout.pickupSchedule}`
-      : `Classroom delivery · Room ${checkout.room} · ${checkout.delivery.label} · ${checkout.time ? displayTime(checkout.time) : 'around 12:45 p.m.'}`;
-    const host = $('ecwid-checkout');
-    show('payment');
-    preparing = true;
-    checkoutValid = false;
-    host.inert = false;
-    host.classList.remove('is-payment-ready');
-    host.classList.add('is-preparing');
-    $('checkout-status').hidden = false;
-    message('checkout-error', '');
+    startPaymentSetup();
+    let error;
     try {
+      checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
+      if (!drawer.open) return;
+      try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
       await loadWidget();
       if (!drawer.open) return;
       await clearCart();
@@ -587,21 +636,32 @@
       const cart = await getCart();
       if (!matchingCart(cart)) throw new Error('Your checkout items changed. Please return to preorder review and try again.');
       if (!drawer.open) return;
-      const ready = await advanceToPayment();
-      if (!ready && checkout.fulfillment === 'pickup') throw new Error('Ecwid could not confirm your pickup details. Return to preorder review and try again.');
-      checkoutValid = true; host.inert = false; $('checkout-status').hidden = true;
-      host.classList.toggle('is-payment-ready', ready);
-      if (!ready) message('checkout-error', 'Your preorder details are saved. Complete any remaining steps below to reach payment.');
+      if (!await advanceToPayment()) throw new Error('Checkout could not open the payment screen. Go back and try again.');
     } catch (err) {
-      message('checkout-error',err.message); $('checkout-status').hidden=true;
-      // Keep the native form inaccessible if setup or validation failed.
-      host.inert = true;
-    } finally { preparing=false; if (checkoutValid) host.classList.remove('is-preparing'); sendHeight(); }
+      error = err;
+    } finally {
+      finishPaymentSetup(error);
+      sendHeight();
+    }
   }
   $('pay-now').addEventListener('click',()=>busy($('pay-now'),'Preparing checkout…',prepareCheckout,'payment-error'));
-  $('back-from-payment').addEventListener('click',()=>{ checkoutValid=false; clearTimeout(expiryTimer); show('review'); });
+  const insideCheckout = target => target.closest('#ecwid-checkout, .ec-date-selector__menu');
+  window.addEventListener('keydown', event => {
+    if (!preparing || currentView !== 'payment' || !event.isTrusted) return;
+    if (event.key === 'Tab' || insideCheckout(event.target)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.key === 'Tab') $('close-preorder').focus({ preventScroll: true });
+      if (event.key === 'Escape') closeDrawer();
+    }
+  }, true);
   // Guard native checkout controls as well as the custom preorder buttons.
   window.addEventListener('click',event=> {
+    if (preparing && event.isTrusted && insideCheckout(event.target)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (preparing && setupControl?.contains(event.target)) return;
     const button = event.target.closest('button,input[type=submit]');
     if (!button || !button.closest('#ecwid-checkout')) return;
@@ -672,13 +732,17 @@
           renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],[details.fulfillment === 'pickup' ? 'pickup-time' : 'delivery-time',details.time]])$(id).value=value;
           renderPickupTimes();
-          review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;await openDrawer('payment');preparing=true;configurePickupFields();await loadWidget();preparing=false;
-          checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();
+          review();
+          startPaymentSetup();
+          await openDrawer('payment');
+          configurePickupFields();
+          await loadWidget();
+          await confirmPaymentScreen();
+          finishPaymentSetup();
         } catch (err) {
-          preparing = false;
-          checkoutValid = false;
-          $('ecwid-checkout').inert = true;
-          message('page-error', 'We could not resume this checkout. If you already paid, check your Ecwid receipt before ordering again. ' + err.message);
+          const failure = new Error('We could not resume this checkout. If you already paid, check your Ecwid receipt before ordering again. ' + err.message);
+          if (drawer.open) finishPaymentSetup(failure);
+          else message('page-error', failure.message);
         }
       }
 
