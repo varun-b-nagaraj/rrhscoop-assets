@@ -41,10 +41,10 @@
     window.RRHS_HUNT_ACTIVE = enabled;
     if (enabled && !loading && document.documentElement.dataset.huntPresenter !== 'true') {
       const css = document.createElement('link'); css.rel = 'stylesheet';
-      css.href = new URL('hunt.css?v=7', base).href;
+      css.href = new URL('hunt.css?v=8', base).href;
       const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
       loading = styled.then(() => !config.HUNT_ENABLED ? load('demo-store.js?v=1').then(() => load('demo-client.js?v=2')) : undefined)
-        .then(() => load('hunt.js?v=6')).then(() => topLevel ? load('experience.js?v=5') : undefined).catch(() => { loading = null; });
+        .then(() => load('hunt.js?v=6')).then(() => topLevel ? load('experience.js?v=6') : undefined).catch(() => { loading = null; });
     }
     if (changed) document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled } }));
     broadcast();

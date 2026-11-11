@@ -30,7 +30,7 @@ The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in lo
 
 The header counter appears immediately before Ecwid's search control. It shows the total found across the hunt, with remaining rewards and an explanation on hover or keyboard focus. On local standalone pages without the storefront header, it appears at the top right for testing.
 
-Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page. Its clear lens reveals the actual page beneath it, then settles on a package. Clicking or keyboard-activating that package expands the light into an introduction modal. The demonstration package consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the raised counter button opens the information modal directly, without replaying the spotlight.
+Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page with a gentle size pulse and tilt. Its clear lens reveals the actual page beneath it, then the dragon sticker pops into view. Clicking or keyboard-activating the sticker brings the glass, light, and dragon to the viewport center together before they expand into the introduction modal. The demonstration sticker consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the raised counter button opens the information modal directly, without replaying the spotlight.
 
 ```js
 window.RRHS_HUNT_INTRO.replay(); // Replay after the experience has loaded.
@@ -165,6 +165,7 @@ Optional browser QA without adding project dependencies:
 npm install --prefix /tmp/rrhs-hunt-qa --no-package-lock playwright
 node tools/check-easter-hunt-browser.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
 node tools/check-hunt-dashboard.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
+node tools/check-hunt-motion.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
 ```
 
 If Chromium is not installed, run `/tmp/rrhs-hunt-qa/node_modules/.bin/playwright install chromium` first. Browser tests cover desktop, small/large mobile, tablet, landscape, reduced motion, enlarged text, keyboard focus/escape, non-consuming dismissal, simulated claims, lost availability, and mobile email width. They also verify the default-off gate, immediate on/off toggles, per-tab persistence, three-second introduction, spotlight click/skip, header counter tooltip, and trusted iframe discovery bridge. All tests use fictional or locally entered preview data, no live Ecwid writes and no real email.
