@@ -105,15 +105,15 @@
          <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>with your S&#8209;number</span></li>
        </ol>
        <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
-      `<div class="hunt-step-art hunt-art-found" aria-hidden="true">${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div>
-       <p class="hunt-eyebrow">First come, first served</p>
+      `<p class="hunt-eyebrow">First come, first served</p>
+       <div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div>
        <h2>Once it’s found,<br>it’s gone.</h2>
        <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
       `<figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="800" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
          <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure>
        <p class="hunt-eyebrow">Look up, top right</p>
        <h2>Come back<br>anytime.</h2>
-       <p>Tap the dragon counter beside search and cart to reopen this guide and see how many are left.</p>
+       <p>Tap the dragon counter in the top right of your page beside search and cart to reopen this guide and see how many are left.</p>
        ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
     ];
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
