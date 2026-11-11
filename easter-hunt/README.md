@@ -30,7 +30,7 @@ The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in lo
 
 The header counter appears immediately before Ecwid's search control. It shows the total found across the hunt, with remaining rewards and an explanation on hover or keyboard focus. On local standalone pages without the storefront header, it appears at the top right for testing.
 
-Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page. Its clear lens reveals the actual page beneath it, then settles on a package. Clicking or keyboard-activating that package expands the light into an introduction modal. The demonstration package consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the counter replays it.
+Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page. Its clear lens reveals the actual page beneath it, then settles on a package. Clicking or keyboard-activating that package expands the light into an introduction modal. The demonstration package consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the raised counter button opens the information modal directly, without replaying the spotlight.
 
 ```js
 window.RRHS_HUNT_INTRO.replay(); // Replay after the experience has loaded.

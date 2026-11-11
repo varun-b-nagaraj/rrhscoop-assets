@@ -27,8 +27,8 @@
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
-      ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this counter to replay the introduction.'
-      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to replay the introduction.`;
+      ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this button to read the hunt details.'
+      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to read the hunt details again.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -43,7 +43,7 @@
     if (counter?.isConnected && (!search || counter.nextElementSibling === search)) return;
     if (!counter) {
       counter = document.createElement('div'); counter.className = 'hunt-counter';
-      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-describedby="hunt-counter-tip">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/12</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
+      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog" aria-describedby="hunt-counter-tip" title="Read the hunt details">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/12</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
       tooltip = document.createElement('div'); tooltip.id = 'hunt-counter-tip'; tooltip.className = 'hunt-counter-tooltip';
       tooltip.setAttribute('role', 'tooltip'); tooltip.hidden = true; document.body.append(tooltip);
       const show = () => { tooltip.hidden = false; placeTooltip(); };
@@ -51,7 +51,7 @@
       counter.addEventListener('pointerenter', show); counter.addEventListener('pointerleave', hide);
       counter.addEventListener('focusin', show); counter.addEventListener('focusout', hide);
       counter.addEventListener('keydown', event => { if (event.key === 'Escape') { hide(); event.stopPropagation(); } });
-      counter.querySelector('button').addEventListener('click', () => { hide(); start(); });
+      counter.querySelector('button').addEventListener('click', () => { hide(); showInformation(); });
     }
     if (search) {
       header?.classList.remove('hunt-header-active'); header = search.closest('.ins-header'); header.classList.add('hunt-header-active');
@@ -101,6 +101,10 @@
       const box = intro.getBoundingClientRect();
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dismiss();
     });
+  }
+  function showInformation() {
+    if (!enabled() || intro) return;
+    clearTimeout(timer); returnFocus = document.activeElement; remember(); introduction();
   }
   function start() {
     if (!enabled() || tour || intro) return;
@@ -179,6 +183,6 @@
   addEventListener('resize', () => { placeTooltip(); if (tour) dismiss(); });
   addEventListener('scroll', placeTooltip, { passive: true });
   motion.addEventListener('change', () => { if (motion.matches && tour) introduction(); });
-  window.RRHS_HUNT_INTRO = { replay: start, dismiss };
+  window.RRHS_HUNT_INTRO = { replay: start, open: showInformation, dismiss };
   if (enabled()) activate();
 })();

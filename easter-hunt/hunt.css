@@ -39,8 +39,9 @@
 .hunt-confetti i:nth-child(even) { background:var(--hunt-gold); }
 .hunt-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .hunt-counter { position:relative; display:inline-flex; align-items:center; flex:none; margin-inline-end:8px; color:var(--rrhs-maroon,#6e1f2a); }
-.hunt-counter-trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:5px 10px; border:1px solid #6e1f2a30; border-radius:6px; background:var(--rrhs-paper,#faf8f4); color:inherit; cursor:pointer; font:500 13px/1.3 var(--rrhs-font-body,Georgia),serif; white-space:nowrap; transition:background .2s,border-color .2s; }
-.hunt-counter-trigger:hover { background:var(--rrhs-cream,#f1eee8); border-color:#6e1f2a70; }
+.hunt-counter-trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:5px 10px; border:1px solid #6e1f2a70; border-radius:6px; background:var(--rrhs-cream,#f1eee8); color:inherit; box-shadow:0 2px 0 #6e1f2a26; cursor:pointer; font:500 13px/1.3 var(--rrhs-font-body,Georgia),serif; white-space:nowrap; transition:background .2s,border-color .2s,transform .2s,box-shadow .2s; }
+.hunt-counter-trigger:hover { background:#e8e0d4; border-color:var(--rrhs-maroon,#6e1f2a); }
+.hunt-counter-trigger:active { transform:translateY(1px); box-shadow:none; }
 .hunt-counter-trigger:focus-visible,.hunt-tour button:focus-visible { outline:3px solid #c6a169; outline-offset:4px; }
 .hunt-counter-trigger>.hunt-sticker { width:22px; height:22px; }
 .hunt-counter-count { font-variant-numeric:tabular-nums; font-weight:700; }
