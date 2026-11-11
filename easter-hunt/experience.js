@@ -67,43 +67,49 @@
   }
   // A short four-screen guide. After the tour it must be finished once ("Let the hunt begin!");
   // reopened from the header counter it can be closed at any time.
-  const tapIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.6" opacity=".55"/><circle cx="12" cy="12" r="10.5" stroke="currentColor" stroke-width="1.2" opacity=".25"/></svg>';
-  const mailIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
   const upIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const backIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const cloudArt = '<svg viewBox="0 0 120 64" fill="none" aria-hidden="true"><path d="M10 55C-5 43 3 22 21 23 17 3 49-7 61 14 78 2 99 14 94 32 120 24 130 55 108 59H21Z" fill="#f9e2ca"/><path d="M24 41C46 50 58 22 39 22 25 22 31 37 39 32M76 47C91 53 99 37 89 34" stroke="#fffaf3" stroke-width="3" stroke-linecap="round"/></svg>';
+  const tagIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12 12 3h9v9l-9 9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="17" cy="7" r="1.5" fill="currentColor"/></svg>';
+  const giftIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10h16v11H4Zm-1-4h18v4H3Zm9 0v15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 6C3 7 5-2 10 2c1 1 2 4 2 4Zm0 0c9 1 7-8 2-4-1 1-2 4-2 4Z" stroke="currentColor" stroke-width="2"/></svg>';
+  const laptopIcon = '<svg class="hunt-mini-laptop" viewBox="0 0 64 40" fill="none" aria-hidden="true"><rect x="9" y="2" width="46" height="30" rx="3" fill="#faf8f4" stroke="currentColor" stroke-width="2.5"/><path d="M3 33h58l-5 5H8Z" fill="#f9e2ca" stroke="currentColor" stroke-width="2.5"/><path d="m29 13 6 7m-7-1 7-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const couponMail = '<svg viewBox="0 0 72 68" fill="none" aria-hidden="true"><path d="M9 28 36 8l27 20v34H9Z" fill="#faf8f4" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="m25 8 29 3-3 30-29-3Z" fill="#edb45b" stroke="currentColor" stroke-width="2.5"/><path d="m31 30 13-12m-9 0h.1m6 13h.1" stroke="#fffaf3" stroke-width="4" stroke-linecap="round"/><path d="m9 28 27 17 27-17M9 62V29l27 16 27-16v33Z" fill="#faf8f4" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>';
   function introduction(locked = false) {
     if (!enabled()) return;
     stopTour();
     const { found, remaining, preview } = counterState();
     const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
     const steps = [
-      `<p class="hunt-eyebrow">This is what you’re looking for</p>
-       <h2>Good things hide in plain sight.</h2>
-       <div class="hunt-hero"><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
-       <p>${TOTAL} CO-OP dragons are hiding around this website. The deeper the page, the bigger the reward.</p>
-       <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden dragons</span><span><strong>10–35%</strong> off</span><span><strong>1</strong> per person</span></div>`,
+      `<p class="hunt-eyebrow">The CO-OP Dragon Hunt</p>
+       <div class="hunt-hero hunt-dragon-hero"><span class="hunt-hero-cloud">${cloudArt}</span><div class="hunt-step-art hunt-intro-seal">${dragon}</div><span class="hunt-hero-cloud">${cloudArt}</span></div>
+       <h2>Good things hide<br>in plain sight.</h2>
+       <p>${TOTAL} CO-OP dragons are hiding around this website.<br>The deeper the page, the bigger the reward.</p>
+       <div class="hunt-intro-rules"><span>${stickerImage}<strong>${TOTAL}</strong> hidden dragons</span><span>${tagIcon}<strong>10–35%</strong> off</span><span>${giftIcon}<strong>1</strong> per person</span></div>`,
       `<p class="hunt-eyebrow">How to claim</p>
-       <h2>Find. Tap. Claim.</h2>
-       <div class="hunt-hero"><div class="hunt-how-frame"><svg class="hunt-how-arrows" viewBox="0 0 344 260" fill="none" aria-hidden="true"><path d="M224 44H282V162m-5-6 5 6 5-6M224 216H120m6-5-6 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ol class="hunt-how">
-         <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>Find a dragon</span></li>
-         <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>Open the sticker</span></li>
-         <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>Use your S&#8209;number</span></li>
-       </ol></div></div>
-       <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
+       <h2 class="hunt-simple-title">It’s simple!</h2>
+       <div class="hunt-hero hunt-how-hero"><ol class="hunt-how">
+         <li><span class="hunt-how-icon hunt-spot-art">${stickerImage}${laptopIcon}</span><strong>1. Spot</strong><span>a dragon on<br>any page</span></li>
+         <li><span class="hunt-how-icon hunt-tap-art">${stickerImage}</span><strong>2. Tap</strong><span>the sticker</span></li>
+         <li><span class="hunt-how-icon">${couponMail}</span><strong>3. Claim</strong><span>with your<br>S-number</span></li>
+       </ol></div>
+       <p class="hunt-intro-hint"><span class="hunt-info-icon" aria-hidden="true">i</span><span>Teachers and staff: use your @roundrockisd.org email. Your code will arrive in your school inbox.</span></p>`,
       `<p class="hunt-eyebrow">First come, first served</p>
-       <h2>Once it’s found, it’s gone.</h2>
        <div class="hunt-hero"><div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div></div>
-       <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
+       <h2>Once it’s found,<br>it’s gone.</h2>
+       <p>The first person to claim a dragon keeps it.<br>Everyone else sees it under a magnifying glass.</p>`,
       `<p class="hunt-eyebrow">Look up, top right</p>
+       <div class="hunt-hero hunt-header-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
+         <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here!</span></figure></div>
        <h2>Come back anytime.</h2>
-       <div class="hunt-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
-         <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure></div>
        <p>Tap the dragon counter in the top right of your page beside search and cart to reopen this guide and see how many are left.</p>
-       ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
+       <p class="hunt-intro-tally">${stickerImage}<span>${remaining} of ${TOTAL} dragons still hiding</span></p>
+       ${preview ? '<p class="hunt-guide-preview">Development preview · no real coupon is issued.</p>' : ''}`,
     ];
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
     intro.setAttribute('aria-label', 'How the CO-OP package hunt works');
+    intro.tabIndex = -1;
     intro.innerHTML = `${locked ? '' : '<button type="button" class="hunt-close" aria-label="Close the guide">×</button>'}
+      <div class="hunt-guide-clouds" aria-hidden="true">${cloudArt}${cloudArt}</div>
       <div class="hunt-steps">${steps.map((html, i) => `<section class="hunt-step" aria-label="Step ${i + 1} of ${steps.length}">${html}</section>`).join('')}</div>
       <div class="hunt-step-nav">
         <button type="button" class="hunt-step-back">${backIcon}<span>Back</span></button>
@@ -114,7 +120,7 @@
     const sections = [...intro.querySelectorAll('.hunt-step')], dots = [...intro.querySelectorAll('.hunt-dots i')];
     const back = intro.querySelector('.hunt-step-back'), next = intro.querySelector('.hunt-step-next');
     let step = -1, finishing = false;
-    function show(index) {
+    function show(index, focusNext = false) {
       const direction = index > step ? 'next' : 'prev'; step = index;
       sections.forEach((section, i) => {
         const on = i === index; section.inert = !on; section.classList.toggle('is-active', on);
@@ -125,9 +131,9 @@
       const last = index === steps.length - 1;
       next.classList.toggle('hunt-begin', last);
       next.parentElement.classList.toggle('is-last', last);
-      next.querySelector('span').textContent = last ? 'Begin!' : 'Next';
+      next.querySelector('span').textContent = last ? 'Let the hunt begin!' : 'Next';
       next.setAttribute('aria-label', last ? 'Begin the hunt' : 'Next step');
-      next.focus({ preventScroll: true });
+      if (focusNext) next.focus({ preventScroll: true });
     }
     function begin() {
       if (finishing) return; finishing = true;
@@ -142,11 +148,11 @@
     next.addEventListener('click', () => { if (step < steps.length - 1) show(step + 1); else begin(); });
     intro.addEventListener('keydown', event => {
       if (event.target.closest('input')) return;
-      if (event.key === 'ArrowRight' && step < steps.length - 1) show(step + 1);
-      if (event.key === 'ArrowLeft' && step > 0) show(step - 1);
+      if (event.key === 'ArrowRight' && step < steps.length - 1) show(step + 1, true);
+      if (event.key === 'ArrowLeft' && step > 0) show(step - 1, true);
     });
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    intro.showModal(); show(0);
+    intro.showModal(); intro.focus({ preventScroll: true }); show(0);
     intro.querySelector('.hunt-close')?.addEventListener('click', dismiss);
     intro.addEventListener('cancel', event => { event.preventDefault(); if (!locked) dismiss(); });
     intro.addEventListener('click', event => {
