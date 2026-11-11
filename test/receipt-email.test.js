@@ -134,3 +134,42 @@ test('pickup receipt uses the schedule saved by the preorder drawer', () => {
   };
   assert.match(buildReceiptEmail(pickup).text, /Scheduled for: Wednesday, November 11 · 12:45 p\.m\. Central/);
 });
+
+test('receipt PDFs follow Ecwid redirects to its S3 bucket without the API token', () => {
+  const calls = [];
+  const pdf = { getBlob: () => ({ getContentType: () => 'application/pdf', setName() { return this; } }) };
+  const signed = 'https://save-pdf.s3.amazonaws.com/2026/invoice/1/2/invoice.pdf?X-Amz-Signature=abc';
+  context.UrlFetchApp = { fetch(url, options) {
+    calls.push({ url, options });
+    if (url.startsWith('https://app.ecwid.com/')) {
+      return { getResponseCode: () => 302, getHeaders: () => ({ Location: signed }) };
+    }
+    return { ...pdf, getResponseCode: () => 200 };
+  } };
+  const result = context.coopEcwidPdf_({ storeId: '123', token: 'secret' }, '/orders/ORD1/invoice-pdf');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, signed);
+  assert.equal(calls[1].options.headers, undefined, 'the Ecwid token must not be sent to S3');
+  assert.equal(result.getResponseCode(), 200);
+
+  context.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 302, getHeaders: () => ({ Location: 'https://evil.example/x.pdf' }) }) };
+  assert.throws(() => context.coopEcwidPdf_({ storeId: '123', token: 'secret' }, '/orders/ORD1/invoice-pdf'), /unexpected address/);
+});
+
+test('receipts attach both PDFs when Ecwid serves them through S3 redirects', () => {
+  const fetched = [];
+  const sentMail = [];
+  const blob = { getContentType: () => 'application/pdf', setName(name) { return { name }; } };
+  context.UrlFetchApp = { fetch(url) {
+    fetched.push(url);
+    if (url.includes('save-pdf.s3.amazonaws.com')) return { getResponseCode: () => 200, getBlob: () => blob };
+    return { getResponseCode: () => 302, getHeaders: () => ({ Location: 'https://save-pdf.s3.amazonaws.com/2026/invoice/x.pdf?sig=1' }) };
+  } };
+  context.GmailApp = { sendEmail: (to, subject, body, options) => sentMail.push({ to, subject, options }) };
+  context.sendReceipt_({
+    ...order, paymentStatus: 'PAID',
+    invoices: [{ link: 'https://app.shopsettings.com/download_tax_invoice?ownerId=1&orderId=2&token=t' }],
+  }, 'teacher@roundrockisd.org', { storeId: '123', token: 'secret' });
+  assert.deepEqual(sentMail[0].options.attachments.map(file => file.name), ['Order-Confirmation-ORDTEST1.pdf', 'Tax-Invoice-ORDTEST1.pdf']);
+  assert.equal(fetched.length, 4);
+});

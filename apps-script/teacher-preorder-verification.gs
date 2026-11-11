@@ -379,6 +379,39 @@ function coopEcwidFetch_(config, path) {
   return response;
 }
 
+/**
+ * Ecwid answers invoice-pdf with a 302 to a short-lived signed S3 link. Follow it only to
+ * Ecwid's PDF bucket, and without the API token (the link carries its own signature).
+ */
+function coopEcwidPdf_(config, path) {
+  return coopFetchPdf_('https://app.ecwid.com/api/v3/' + config.storeId + path,
+    { Authorization: 'Bearer ' + config.token }, path.split('?')[0]);
+}
+
+/** Tax invoice links point at Ecwid's download page, which also redirects to S3. */
+const TAX_INVOICE_LINK = /^https:\/\/app\.(ecwid|shopsettings)\.com\/download_tax_invoice\?/;
+
+function coopFetchPdf_(url, headers, label) {
+  const options = { muteHttpExceptions: true, followRedirects: false };
+  if (headers) options.headers = headers;
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+  if (code === 200) return response;
+  if (code !== 301 && code !== 302 && code !== 303 && code !== 307) {
+    throw new Error('Ecwid returned ' + code + ' for ' + label);
+  }
+  const responseHeaders = response.getHeaders() || {};
+  const location = String(responseHeaders.Location || responseHeaders.location || '');
+  if (!/^https:\/\/save-pdf\.s3\.amazonaws\.com\//.test(location)) {
+    throw new Error('Ecwid redirected ' + label + ' to an unexpected address.');
+  }
+  const pdf = UrlFetchApp.fetch(location, { muteHttpExceptions: true, followRedirects: false });
+  if (pdf.getResponseCode() !== 200) {
+    throw new Error('Ecwid PDF download returned ' + pdf.getResponseCode() + ' for ' + label);
+  }
+  return pdf;
+}
+
 function coopReadOrders_(config, filters) {
   const orders = [];
   for (let offset = 0; offset < 500; offset += 100) {
@@ -425,14 +458,12 @@ function receiptPdf_(response, name) {
 
 function sendReceipt_(order, to, config) {
   const id = String(order.id);
-  const confirmation = coopEcwidFetch_(config, '/orders/' + encodeURIComponent(id) + '/invoice-pdf');
+  const confirmation = coopEcwidPdf_(config, '/orders/' + encodeURIComponent(id) + '/invoice-pdf');
   const attachments = [receiptPdf_(confirmation, 'Order-Confirmation-' + id + '.pdf')];
   const invoice = order.paymentStatus === 'PAID' && Array.isArray(order.invoices) &&
-    order.invoices.find(entry => /^https:\/\/app\.ecwid\.com\/download_tax_invoice\?/.test(entry.link || ''));
+    order.invoices.find(entry => TAX_INVOICE_LINK.test(entry.link || ''));
   if (invoice) {
-    const response = UrlFetchApp.fetch(invoice.link, { muteHttpExceptions: true, followRedirects: false });
-    if (response.getResponseCode() !== 200) throw new Error('Ecwid tax invoice returned ' + response.getResponseCode());
-    attachments.push(receiptPdf_(response, 'Tax-Invoice-' + id + '.pdf'));
+    attachments.push(receiptPdf_(coopFetchPdf_(invoice.link, null, 'tax invoice'), 'Tax-Invoice-' + id + '.pdf'));
   }
   const receipt = buildReceiptEmail(order);
   const options = { htmlBody: receipt.html, attachments, name: SENDER_NAME, replyTo: REPLY_TO };
