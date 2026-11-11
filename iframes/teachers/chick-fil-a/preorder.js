@@ -565,7 +565,33 @@
     }
     // Ecwid mounts a fresh notes field when it opens payment.
     savePaymentNotes(paymentNotes());
+    await waitForCheckoutToSettle();
   }
+  // Keep the loader up until Ecwid stops rendering (cart summary, payment methods, wallet frames).
+  async function waitForCheckoutToSettle() {
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const end = Date.now() + 6000;
+    let lastChange = Date.now();
+    const observer = new MutationObserver(() => { lastChange = Date.now(); });
+    observer.observe(checkoutHost, { childList: true, subtree: true, characterData: true });
+    try {
+      while (Date.now() < end && Date.now() - lastChange < 700) await sleep(100);
+      const frames = [...checkoutHost.querySelectorAll('iframe')].map(frame => new Promise(resolve => {
+        frame.addEventListener('load', resolve, { once: true });
+        try { if (frame.contentDocument?.readyState === 'complete') resolve(); } catch (_) {}
+      }));
+      await Promise.race([Promise.all(frames), sleep(Math.min(2000, Math.max(0, end - Date.now())))]);
+      const images = [...checkoutHost.querySelectorAll('img')].filter(image => !image.complete)
+        .map(image => new Promise(resolve => { image.addEventListener('load', resolve, { once: true }); image.addEventListener('error', resolve, { once: true }); }));
+      await Promise.race([Promise.all(images), sleep(1500)]);
+    } finally {
+      observer.disconnect();
+    }
+  }
+  // Overflow hidden still allows script scrolling, and Ecwid scrolls its widget into view.
+  drawerScroll.addEventListener('scroll', () => {
+    if (drawerScroll.classList.contains('is-preparing') && drawerScroll.scrollTop) drawerScroll.scrollTop = 0;
+  });
   function startPaymentSetup() {
     preparing = true;
     checkoutValid = false;
