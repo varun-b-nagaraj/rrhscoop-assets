@@ -400,7 +400,7 @@ function projectCard(project, index) {
             <p class="card-category">${escapeHTML(project.category)}</p>
             <span class="status" data-status="${escapeHTML(project.status)}">${escapeHTML(project.status)}</span>
           </div>
-          <h3>${escapeHTML(project.title)}</h3>
+          <h3${project.id === 'inventory-intelligence' ? ' data-egg-location="inventory-intelligence"' : ''}>${escapeHTML(project.title)}</h3>
           <p class="card-summary">${escapeHTML(project.summary)}</p>
           <div class="card-footer"><span>View case study</span><span aria-hidden="true">→</span></div>
         </div>

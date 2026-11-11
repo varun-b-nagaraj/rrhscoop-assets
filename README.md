@@ -2,6 +2,14 @@
 
 Static assets + client-side scripts used by the RRHS COOP Ecwid storefront embed.
 
+## Hidden package hunt (development preview)
+
+Run `node tools/easter-hunt-preview.cjs` and open `http://127.0.0.1:4173`.
+One package beside Inventory Intelligence supports the full simulated discovery
+flow. No coupons or emails are created. Live claims remain disabled by a plain
+boolean and a closed server endpoint. See [the hunt setup notes](easter-hunt/README.md)
+for preview controls, Apps Script instructions, tests, and live-launch blockers.
+
 ## Runtime (Performance)
 
 File: `rrhs-runtime.js` 
