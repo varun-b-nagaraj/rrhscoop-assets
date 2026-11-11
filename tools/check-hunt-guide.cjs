@@ -23,12 +23,15 @@ const { createServer } = require('./easter-hunt-preview.cjs');
             const active = dialog.querySelector('.hunt-step.is-active');
             const box = dialog.getBoundingClientRect(), section = active.getBoundingClientRect();
             const nav = dialog.querySelector('.hunt-step-nav').getBoundingClientRect();
-            return { width:box.width, height:box.height, overflow:dialog.scrollWidth-dialog.clientWidth,
+            return { artBottom:Math.max(...[active.querySelector('.hunt-hero'), ...active.querySelector('.hunt-hero').children].map(el=>el.getBoundingClientRect().bottom)), headingTop:active.querySelector('h2').getBoundingClientRect().top, width:box.width, height:box.height, overflow:dialog.scrollWidth-dialog.clientWidth,
               visible:[...dialog.querySelectorAll('.hunt-step')].filter(el=>getComputedStyle(el).visibility==='visible').length,
               next: (() => { const r=dialog.querySelector('.hunt-step-next').getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; })(),
+              back: (() => { const r=dialog.querySelector('.hunt-step-back').getBoundingClientRect(); return {width:r.width,height:r.height}; })(),
               dots: (() => { const r=dialog.querySelector('.hunt-dots').getBoundingClientRect(); return {bottom:r.bottom}; })(),
               gap:nav.top-dialog.querySelector('.hunt-steps').getBoundingClientRect().bottom, scroll:dialog.scrollHeight-dialog.clientHeight };
           });
+          assert.ok(Math.abs(layout.back.width-layout.next.width)<1 && Math.abs(layout.back.height-layout.next.height)<1,`Back and Next must have matching button sizes (${viewport.width}, step ${step}, ${JSON.stringify(layout.back)} ${JSON.stringify(layout.next)})`);
+          assert.ok(layout.artBottom<=layout.headingTop,'Artwork must not overlap the heading');
           assert.equal(layout.visible,1,'Only the active slide should be visible');
           if (!anchor) anchor=layout.next;
           for (const key of ['x','y','width','height']) assert.ok(Math.abs(layout.next[key]-anchor[key])<1, `Button ${key} must stay fixed across slides (${viewport.width}x${viewport.height}, step ${step}, ${JSON.stringify(anchor)} -> ${JSON.stringify(layout.next)})`);
@@ -43,6 +46,9 @@ const { createServer } = require('./easter-hunt-preview.cjs');
         await page.locator('.hunt-step-back').click();
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('.hunt-intro-dialog').count(),0);
+        await page.evaluate(() => window.RRHS_HUNT_INTRO.open());
+        for (let i=0;i<4;i++) await page.locator('.hunt-step-next').click();
+        await page.locator('.hunt-intro-dialog').waitFor({state:'detached',timeout:1000});
         assert.deepEqual(errors,[]);
         await page.close();
       }

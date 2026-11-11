@@ -83,7 +83,7 @@
 .hunt-intro-dialog[open] { animation:hunt-intro-arrive .25s cubic-bezier(.22,1,.36,1) both; }
 .hunt-intro-seal { display:grid; place-items:center; width:112px; height:112px; margin:0 auto 10px; }
 .hunt-intro-seal .hunt-sticker { width:100%; height:100%; }
-.hunt-intro-rules { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:16px 0; margin:20px 0; border-block:1px solid #ddd2c4; }
+.hunt-intro-rules { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:16px 0; margin:20px 0; border:0; }
 .hunt-intro-rules span { color:var(--hunt-muted); font:400 12px/1.4 Georgia,serif; }
 .hunt-intro-rules strong { display:block; margin-bottom:6px; color:var(--hunt-maroon); font:400 24px/1.2 Georgia,serif; }
 .hunt-dialog .hunt-intro-hint { font-size:14px; color:var(--hunt-muted); }
@@ -108,10 +108,10 @@
 .hunt-intro-dialog[open] { display:flex; flex-direction:column; }
 .hunt-steps { display:grid; flex:0 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; }
 .hunt-intro-dialog>.hunt-step-nav,.hunt-intro-dialog>.hunt-terms { flex-shrink:0; }
-.hunt-step { grid-area:1/1; display:flex; flex-direction:column; align-items:stretch; visibility:hidden; opacity:0; min-width:0; }
+.hunt-step { grid-area:1/1; display:flex; flex-direction:column; align-items:stretch; justify-content:center; visibility:hidden; opacity:0; min-width:0; }
 .hunt-step>.hunt-eyebrow { margin:0 32px 16px; }
 /* Share the tallest slide height so paging never moves the navigation. */
-.hunt-hero { --hero:152px; display:grid; place-items:center; height:var(--hero); margin:0 0 20px; }
+.hunt-hero { --hero:230px; display:grid; place-items:center; height:var(--hero); flex-shrink:0; margin:0 0 20px; }
 .hunt-hero>* { margin:0!important; }
 .hunt-step h2 { margin-bottom:12px; font-size:clamp(30px,5vw,36px); }
 .hunt-step>p:last-child { margin-bottom:0; }
@@ -123,19 +123,24 @@
 .hunt-step.is-active>:nth-child(4) { animation-delay:.15s; } .hunt-step.is-active>:nth-child(5) { animation-delay:.2s; }
 .hunt-step-art { position:relative; display:grid; place-items:center; width:112px; height:112px; margin:0 auto 12px; }
 .hunt-step-art .hunt-sticker { width:100%; height:100%; }
-.hunt-hero .hunt-intro-seal { width:132px; height:132px; }
+.hunt-hero .hunt-intro-seal { width:176px; height:176px; }
 .hunt-step.is-active .hunt-intro-seal .hunt-sticker { animation:hunt-bob 3.2s .5s ease-in-out infinite; }
-.hunt-how { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; padding:0; list-style:none; }
-.hunt-how li { display:flex; flex-direction:column; align-items:center; gap:4px; padding:16px 8px 14px; border:1px solid #e3d8ca; border-radius:12px; background:#fffdf9; font-size:13px; line-height:1.35; color:var(--hunt-muted); }
+.hunt-how-frame { position:relative; width:min(100%,344px); height:230px; }
+.hunt-how-arrows { position:absolute; inset:0; width:100%; height:100%; color:var(--hunt-gold); }
+.hunt-how { position:absolute; inset:0; margin:0; padding:0; list-style:none; }
+.hunt-how li { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:34%; min-height:96px; padding:8px 5px; border:1px solid #e3d8ca; border-radius:12px; background:#fffdf9; font-size:12px; line-height:1.3; color:var(--hunt-muted); }
+.hunt-how li:nth-child(1) { left:33%; top:0; }
+.hunt-how li:nth-child(2) { right:0; bottom:0; }
+.hunt-how li:nth-child(3) { left:0; bottom:0; }
 .hunt-how strong { color:var(--hunt-maroon); font:400 19px/1.2 var(--rrhs-font-title,"Playfair Display"),Georgia,serif; }
-.hunt-how-icon { display:grid; place-items:center; width:46px; height:46px; margin-bottom:6px; border-radius:50%; background:var(--hunt-cream); color:var(--hunt-maroon); }
+.hunt-how-icon { display:grid; place-items:center; width:38px; height:38px; margin-bottom:2px; border-radius:50%; background:var(--hunt-cream); color:var(--hunt-maroon); }
 .hunt-how-icon svg { width:24px; height:24px; } .hunt-how-icon .hunt-sticker { width:34px; height:34px; }
 .hunt-step.is-active .hunt-how li { animation:hunt-step-rise .5s cubic-bezier(.22,1,.36,1) both; }
 .hunt-step.is-active .hunt-how li:nth-child(2) { animation-delay:.14s; } .hunt-step.is-active .hunt-how li:nth-child(3) { animation-delay:.28s; }
 .hunt-step.is-active .hunt-how li:nth-child(2) .hunt-how-icon svg { animation:hunt-tap 1.6s .8s ease-in-out infinite; }
 /* Screen 3: one big magnifier, centered as a whole. The glass drops in once and stays.
    The resting state is the finished look, so reduced motion shows it too. */
-.hunt-step-art.hunt-art-found { width:var(--hero); height:var(--hero); }
+.hunt-step-art.hunt-art-found { width:220px; height:220px; }
 .hunt-art-halo { position:absolute; left:6%; top:6%; width:66%; height:66%; border-radius:50%; background:radial-gradient(circle,#f3e7d3 0%,#f3e7d300 70%); transform:scale(1.35); }
 .hunt-art-found .hunt-sticker { position:absolute; left:22.5%; top:22.5%; width:33%!important; height:33%!important; transform:scale(1.6); filter:grayscale(1); opacity:.6; }
 .hunt-art-found .hunt-found-lens { display:block; position:absolute; inset:0; width:100%; height:100%; transform-origin:39.3% 39.3%; filter:drop-shadow(0 6px 12px #24101733); }
@@ -163,20 +168,15 @@
 .hunt-dev-badge button:hover { background:#f1e6d4; }
 .hunt-dialog .hunt-dev-code code { display:inline-block; margin:6px 0; padding:4px 10px; border:1px dashed #b28a48; border-radius:4px; background:#fff; color:#6e1f2a; font:700 15px/1.3 ui-monospace,Menlo,monospace; letter-spacing:.04em; }
 /* Dots have their own row; reserve the final label width on every slide. */
-.hunt-step-nav { display:grid; grid-template-columns:minmax(64px,1fr) minmax(0,224px); grid-template-areas:'dots dots' 'back next'; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid #e4ddd2; }
-.hunt-dots { grid-area:dots; justify-self:center; } .hunt-step-back { grid-area:back; justify-self:start; } .hunt-step-nav .hunt-step-next { grid-area:next; justify-self:end; }
-.hunt-step-back { display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 8px; border:0; background:none; color:var(--hunt-maroon); font:600 15px/1 Georgia,serif; cursor:pointer; }
+.hunt-step-nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-areas:'dots dots' 'back next'; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid #e4ddd2; }
+.hunt-dots { grid-area:dots; justify-self:center; } .hunt-step-back { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:52px; padding:12px 16px; border:1px solid var(--hunt-maroon); border-radius:6px; background:transparent; color:var(--hunt-maroon); font:600 15px/1.4 Georgia,serif; cursor:pointer; transition:background .2s; }
+.hunt-step-back:hover { background:var(--hunt-cream); }
 .hunt-step-back .hunt-arrow { width:18px; height:18px; }
 .hunt-dots { display:flex; gap:6px; }
 .hunt-dots i { width:7px; height:7px; border-radius:99px; background:#d9c9b7; transition:width .35s cubic-bezier(.22,1,.36,1),background .35s; }
 .hunt-dots i.is-active { width:22px; background:var(--hunt-maroon); }
 .hunt-step-nav .hunt-step-next { width:100%; white-space:nowrap; min-width:0; min-height:52px; transition:transform .2s,filter .2s; }
 .hunt-step-nav .hunt-step-next.hunt-begin { min-width:0; background:linear-gradient(100deg,var(--hunt-maroon) 30%,#93303f 50%,var(--hunt-maroon) 70%) 0 0/250% 100%; animation:hunt-shine 2.4s ease-in-out infinite; }
-.hunt-intro-dialog .hunt-confetti i { left:var(--ox,50%); top:var(--oy,85%); width:7px; height:11px; border-radius:2px; }
-.hunt-intro-dialog .hunt-confetti i:nth-child(3n) { background:#c6a169; width:9px; height:9px; border-radius:50%; }
-.hunt-intro-dialog .hunt-confetti i { animation-delay:calc(var(--i)*.025s); animation-duration:1.1s; }
-.hunt-intro-begin .hunt-step.is-active>* { animation:hunt-begin-pop .6s cubic-bezier(.34,1.56,.64,1) both; }
-.hunt-intro-begin .hunt-step-next { transform:scale(1.04); }
 .hunt-intro-leave { animation:hunt-intro-leave .32s cubic-bezier(.55,0,.75,.2) both!important; }
 .hunt-intro-leave::backdrop { opacity:0; transition:opacity .32s; }
 .hunt-counter.hunt-counter-pulse .hunt-counter-trigger { animation:hunt-counter-pulse 1.1s ease-out 3; }
@@ -187,9 +187,8 @@
 @keyframes hunt-tap { 0%,100% { transform:scale(1); } 20% { transform:scale(.82); } 40% { transform:scale(1.08); } 55% { transform:scale(1); } }
 @keyframes hunt-nudge-up { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
 @keyframes hunt-shine { 0% { background-position:100% 0; } 60%,100% { background-position:-50% 0; } }
-@keyframes hunt-begin-pop { 0% { transform:none; } 40% { transform:scale(1.05); } 100% { transform:none; } }
-@keyframes hunt-intro-leave { to { opacity:0; transform:translateY(-14px) scale(.94); } }
+@keyframes hunt-intro-leave { 25% { opacity:1; transform:scale(1.025); } to { opacity:0; transform:scale(.78); } }
 @keyframes hunt-counter-pulse { 0% { box-shadow:0 0 0 0 #c6a169cc; } 100% { box-shadow:0 0 0 14px #c6a16900; } }
-@media(max-width:420px) { .hunt-how { gap:6px; } .hunt-how li { padding:12px 4px; font-size:12px; } .hunt-hero { --hero:144px; } .hunt-hero .hunt-intro-seal { width:132px; height:132px; } .hunt-step-nav .hunt-step-next { min-width:0; } .hunt-intro-dialog { padding:28px 20px 18px; } .hunt-step-nav { grid-template-columns:64px minmax(0,1fr); gap:12px; } .hunt-step-nav .hunt-step-next { padding-inline:12px; gap:8px; font-size:14px; white-space:normal; min-height:68px; } }
-@media(max-height:550px) { .hunt-hero { --hero:108px; margin-bottom:12px; } .hunt-hero .hunt-intro-seal { width:96px; height:96px; } .hunt-intro-dialog { padding-top:24px; } }
+@media(max-width:420px) { .hunt-hero { --hero:230px; } .hunt-hero .hunt-intro-seal { width:176px; height:176px; } .hunt-step-nav .hunt-step-next { min-width:0; } .hunt-intro-dialog { padding:28px 20px 18px; } .hunt-step-nav { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .hunt-step-nav .hunt-step-next,.hunt-step-nav .hunt-step-back { padding-inline:12px; gap:8px; font-size:14px; white-space:normal; min-height:68px; } }
+@media(max-height:550px) { .hunt-hero { --hero:230px; margin-bottom:12px; } .hunt-intro-dialog { padding-top:24px; } }
 @media(prefers-reduced-motion:reduce) { .hunt-egg,.hunt-dialog,.hunt-dialog *,.hunt-tour *,.hunt-counter * { animation:none!important; transition:none!important; } .hunt-confetti { display:none; } }

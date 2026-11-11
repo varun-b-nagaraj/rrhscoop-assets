@@ -83,11 +83,11 @@
        <p>${TOTAL} CO-OP dragons are hiding around this website. The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden dragons</span><span><strong>10–35%</strong> off</span><span><strong>1</strong> per person</span></div>`,
       `<p class="hunt-eyebrow">How to claim</p>
-       <div class="hunt-hero"><ol class="hunt-how">
+       <div class="hunt-hero"><div class="hunt-how-frame"><svg class="hunt-how-arrows" viewBox="0 0 320 230" fill="none" aria-hidden="true"><path d="M218 46H264V124m-5-6 5 6 5-6M198 184H124m6-5-6 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><ol class="hunt-how">
          <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>a dragon on any page</span></li>
          <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>the sticker</span></li>
          <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>with your S&#8209;number</span></li>
-       </ol></div>
+       </ol></div></div>
        <h2>Spot it. Tap it.<br>Claim it.</h2>
        <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
       `<p class="hunt-eyebrow">First come, first served</p>
@@ -105,7 +105,6 @@
     intro.setAttribute('aria-label', 'How the CO-OP package hunt works');
     intro.innerHTML = `${locked ? '' : '<button type="button" class="hunt-close" aria-label="Close the guide">×</button>'}
       <div class="hunt-steps">${steps.map((html, i) => `<section class="hunt-step" aria-label="Step ${i + 1} of ${steps.length}">${html}</section>`).join('')}</div>
-      <div class="hunt-confetti" aria-hidden="true"></div>
       <div class="hunt-step-nav">
         <button type="button" class="hunt-step-back">${backIcon}<span>Back</span></button>
         <div class="hunt-dots" aria-hidden="true">${steps.map(() => '<i></i>').join('')}</div>
@@ -126,23 +125,17 @@
       const last = index === steps.length - 1;
       next.classList.toggle('hunt-begin', last);
       next.parentElement.classList.toggle('is-last', last);
-      next.querySelector('span').textContent = last ? 'Let the hunt begin!' : 'Next';
+      next.querySelector('span').textContent = last ? 'Let’s begin!' : 'Next';
       next.focus({ preventScroll: true });
     }
     function begin() {
       if (finishing) return; finishing = true;
-      const burst = intro.querySelector('.hunt-confetti');
-      // Confetti bursts out of the button, mostly upward.
-      const button = next.getBoundingClientRect(), box = intro.getBoundingClientRect();
-      burst.style.setProperty('--ox', `${button.left - box.left + button.width / 2}px`);
-      burst.style.setProperty('--oy', `${button.top - box.top + intro.scrollTop + button.height / 2}px`);
-      burst.innerHTML = Array.from({ length: 34 }, (_, i) => { const angle = Math.PI * (1.05 + (i / 34) * 0.9) + Math.sin(i * 7.3) * 0.25, reach = 120 + ((i * 53) % 140);
-        return `<i style="--i:${i % 11};--x:${Math.round(Math.cos(angle) * reach)}px;--y:${Math.round(Math.sin(angle) * reach)}px"></i>`; }).join('');
-      intro.classList.add('hunt-intro-begin');
+      intro.classList.add('hunt-intro-leave');
       setTimeout(() => {
-        intro?.classList.add('hunt-intro-leave');
-        setTimeout(() => { dismiss(); counter?.classList.remove('hunt-counter-pulse'); void counter?.offsetWidth; counter?.classList.add('hunt-counter-pulse'); }, motion.matches ? 0 : 320);
-      }, motion.matches ? 0 : 1100);
+        dismiss();
+        counter?.classList.remove('hunt-counter-pulse'); void counter?.offsetWidth;
+        counter?.classList.add('hunt-counter-pulse');
+      }, motion.matches ? 0 : 320);
     }
     back.addEventListener('click', () => { if (step > 0 && !finishing) show(step - 1); });
     next.addEventListener('click', () => { if (step < steps.length - 1) show(step + 1); else begin(); });
