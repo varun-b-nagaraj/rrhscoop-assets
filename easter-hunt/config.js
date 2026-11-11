@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const config = Object.freeze({
-    HUNT_ENABLED: false,
+    HUNT_ENABLED: true,
     DEV_PREVIEW_ENABLED: true,
     DEV_ALL_EGGS_ENABLED: false,
     stickerPath: 'dragon-package-sticker.png?v=1',
