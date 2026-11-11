@@ -1,6 +1,6 @@
 # Hidden package hunt
 
-Twenty dragon stickers hidden around the CO-OP website, one per page (the long Teacher Hub has a top and a bottom one). A student who finds one enters their S-number and gets a percent-off coupon, emailed to their school inbox. The deeper the page, the bigger the reward:
+Twenty dragon stickers hidden around the CO-OP website, one per page (the long Teacher Hub has a top and a bottom one). A student who finds one enters their S-number (or staff enter their `@roundrockisd.org` email) and gets a percent-off coupon, emailed to that school inbox. One reward per person. The deeper the page, the bigger the reward:
 
 | Reward | Stickers |
 | --- | --- |
@@ -29,10 +29,10 @@ To stop claims temporarily without redeploying, use **Pause hunt** on the dashbo
 2. The student enters their S-number. The API forwards the claim to the Apps Script web app (`RRHS_CFA_VERIFICATION_URL`).
 3. Under its script lock, the Apps Script:
    - checks the hunt window (Nov 9 – Fri Nov 13, 11:59 PM Central);
-   - checks one reward per student and one per sticker;
+   - checks one reward per person (S-number or staff email) and one per sticker;
    - gives the sticker's fixed reward;
    - creates a single-use, uncapped percent-off Ecwid coupon (`RRHSHUNT-…`);
-   - records the claim, then emails the code to `S-number@student.roundrockisd.org`.
+   - records the claim, then emails the code to `S-number@student.roundrockisd.org`, or to the staff email as entered.
 4. The website sees only the percentage, never the code.
 5. If the email fails, the minute job (`runCoopJobs`) retries it, up to 5 attempts.
 

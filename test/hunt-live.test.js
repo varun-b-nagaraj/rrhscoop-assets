@@ -260,3 +260,38 @@ test('a new promo deletes the hunt coupons, clears every claim and empties the l
   assert.equal(rows, 2, 'header plus the "new promo started" row');
   assert.equal(env.claim('s100010', 'shop-snacks').ok, true, 'students can claim again in the new promo');
 });
+
+test('staff claim with their @roundrockisd.org email and get the code there, one reward each', () => {
+  const env = runtime();
+  const result = env.claim(' Jane.Doe@RoundRockISD.org ', 'teachers-top');
+  assert.equal(result.ok, true);
+  assert.equal(result.email, 'jane.doe@roundrockisd.org');
+  assert.equal(result.percentage, 15);
+  assert.equal(env.sent[0][0], 'jane.doe@roundrockisd.org');
+  assert.match(env.sent[0][2], /RRHSHUNT-/);
+  assert.match(env.coupons[0].body.name, /jane\.doe@roundrockisd\.org/);
+  assert.equal(env.claim('jane.doe@roundrockisd.org', 'leadership').status, 409, 'one reward per staff email');
+  for (const bad of ['jane@gmail.com', 'jane@student.roundrockisd.org', 'jane@roundrockisd.org.evil.com', '@roundrockisd.org']) {
+    assert.equal(env.claim(bad, 'faq').status, 400, bad);
+  }
+  assert.equal(env.sent.length, 1);
+});
+
+test('the dashboard screenshot route needs a valid session and returns the circled image', async () => {
+  const service = require('../teacher-preorders/service'), original = service.mailAction;
+  const handler = require('../api/v1/easter-hunt');
+  const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
+  const origin = 'https://rrhscoop-assets.vercel.app';
+  try {
+    service.mailAction = async (action) => { assert.equal(action, 'hunt-admin-check'); throw Object.assign(new Error('Sign in again to view the dashboard.'), { status: 401 }); };
+    const denied = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: 'faq', token: 'x' } }, denied);
+    assert.equal(denied.statusCode, 401); assert.equal('image' in denied.body, false);
+    service.mailAction = async () => ({ ok: true, email: 'rrhs_coop_store@roundrockisd.org' });
+    const missing = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: '../../.env', token: 'x' } }, missing);
+    assert.equal(missing.statusCode, 404);
+    for (const spot of config.locations) {
+      const shown = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: spot.id, token: 'x' } }, shown);
+      assert.equal(shown.statusCode, 200, spot.id); assert.match(shown.body.image, /^data:image\/jpeg;base64,\/9j\//);
+    }
+  } finally { service.mailAction = original; }
+});

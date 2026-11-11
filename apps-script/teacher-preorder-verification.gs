@@ -207,22 +207,29 @@ function huntCreateCoupon_(props, studentId, eggId, percentage, code) {
   return result.id;
 }
 
+/** Where the code goes: a staff email as entered, or the student's school mailbox. */
+function huntEmail_(who) {
+  return who.indexOf('@') === -1 ? who + '@student.roundrockisd.org' : who;
+}
+
 function huntSendReward_(claim) {
   var email = buildEasterEggRewardEmail({ percentage: claim.percentage, name: 'Dragon', code: claim.code });
   var options = { htmlBody: email.html, name: SENDER_NAME, replyTo: REPLY_TO };
   if (FROM_ALIAS) options.from = FROM_ALIAS;
-  GmailApp.sendEmail(claim.studentId + '@student.roundrockisd.org', email.subject, email.text, options);
+  GmailApp.sendEmail(huntEmail_(claim.studentId), email.subject, email.text, options);
 }
 
 function huntResult_(claim) {
-  return { ok: true, mode: 'live', percentage: claim.percentage, email: claim.studentId + '@student.roundrockisd.org',
+  return { ok: true, mode: 'live', percentage: claim.percentage, email: huntEmail_(claim.studentId),
     emailStatus: claim.emailStatus === 'sent' ? 'sent' : 'pending', expiresAt: HUNT_EXPIRES_AT };
 }
 
 /** Caller holds the script lock, so the checks and the write below cannot interleave. */
 function huntClaim_(input, props) {
+  // Students claim with their S-number; staff with their @roundrockisd.org email. One reward each.
   var studentId = String(input.studentId || '').trim().toLowerCase();
-  if (!/^s\d{4,10}$/.test(studentId)) return { ok: false, status: 400, error: 'Enter your S-number including the s, for example s123456.' };
+  var staff = /^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/.test(studentId);
+  if (!staff && !/^s\d{4,10}$/.test(studentId)) return { ok: false, status: 400, error: 'Enter your S-number, like s123456, or your @roundrockisd.org staff email.' };
   if (HUNT_EGGS.indexOf(input.eggId) === -1 || !/^[a-f0-9-]{36}$/i.test(input.idempotencyKey || '')) return { ok: false, status: 400, error: 'Please reopen the package and try again.' };
   var state = huntState_(props);
   var repeat = state.claims.filter(function (claim) { return claim.key === input.idempotencyKey; })[0];
@@ -241,7 +248,7 @@ function huntClaim_(input, props) {
   var percentage = HUNT_REWARDS[input.eggId], code = huntCode_();
   try { var couponId = huntCreateCoupon_(props, studentId, input.eggId, percentage, code); }
   catch (error) { console.error(error.message); huntLog_(props, 'Coupon failed', { studentId: studentId, eggId: input.eggId, percentage: percentage }, error.message); return { ok: false, status: 503, error: 'We couldn’t wrap your reward just now. Please try again in a minute.' }; }
-  var claim = { key: input.idempotencyKey, studentId: studentId, eggId: input.eggId, percentage: percentage, code: code,
+  var claim = { key: input.idempotencyKey, studentId: studentId, email: huntEmail_(studentId), eggId: input.eggId, percentage: percentage, code: code,
     couponId: couponId, at: new Date().toISOString(), emailStatus: 'sending', attempts: 1 };
   state.claims.push(claim);
   // Record the claim before mailing, so a mail failure can never hand out a second reward.

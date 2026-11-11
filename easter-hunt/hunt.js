@@ -110,9 +110,9 @@
       <h2 id="hunt-title">You found a<br>hidden package!</h2>
       <p>You spotted our CO-OP dragon sticker! One of twenty little discoveries, with a mystery reward just for you.</p>
       ${preview ? '<p class="hunt-preview">Local development preview · no real reward or coupon is created.</p>' : ''}
-      <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
-      <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
-      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Local previews send no email.' : 'We’ll email your one-time code to your school inbox (S-number@student.roundrockisd.org).'}</p>
+      <form class="hunt-form"><label for="hunt-student">${preview ? 'Your S-number, including the s' : 'Your S-number or staff email'}</label>
+      <input id="hunt-student" name="studentId" type="text" placeholder="${preview ? 's123456' : 's123456 or name@roundrockisd.org'}" maxlength="80" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
+      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Local previews send no email.' : 'Students: enter your S-number, including the s. Staff: enter your @roundrockisd.org email. We’ll email your one-time code to your school inbox.'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
@@ -122,7 +122,10 @@
     input.focus({ preventScroll: true });
     content.querySelector('form').addEventListener('submit', async event => {
       event.preventDefault(); if (active?.submitting || version !== generation) return;
-      if (!/^s\d{4,10}$/i.test(input.value.trim())) { status.textContent = 'Include the s followed by your student number.'; input.focus(); return; }
+      const who = input.value.trim();
+      // Students use their S-number; staff use their district email (local previews: S-numbers only).
+      const valid = /^s\d{4,10}$/i.test(who) || (!preview && /^[a-z0-9][a-z0-9._+-]{0,63}@roundrockisd\.org$/i.test(who));
+      if (!valid) { status.textContent = preview ? 'Include the s followed by your student number.' : 'Enter your S-number, like s123456, or your @roundrockisd.org staff email.'; input.focus(); return; }
       active.submitting = true; submit.disabled = true; input.disabled = true;
       status.textContent = preview ? 'Opening your preview package…' : 'Unwrapping your reward…';
       try {
