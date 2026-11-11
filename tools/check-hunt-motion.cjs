@@ -15,7 +15,7 @@ const server = createServer();
       await page.waitForFunction(() => window.RRHS_HUNT_INTRO);
       await page.evaluate(() => window.RRHS_HUNT_INTRO.replay());
       const samples = [];
-      for (let i = 0; i < 18; i++) {
+      for (let i = 0; i < 65; i++) {
         samples.push(await page.evaluate(() => {
           const lens = document.querySelector('.hunt-lens'), hole = document.querySelector('.hunt-spotlight-hole');
           const circle = lens.querySelector('circle').getBoundingClientRect();
@@ -25,9 +25,9 @@ const server = createServer();
         }));
         await page.waitForTimeout(80);
       }
-      assert.ok(Math.max(...samples.map(s => s.scale)) - Math.min(...samples.map(s => s.scale)) > .015, 'Glass should gently expand and shrink while searching');
+      assert.ok(Math.max(...samples.map(s => s.scale)) - Math.min(...samples.map(s => s.scale)) > 1.4, 'Glass should grow to 2.5 times its starting size while searching');
       for (const sample of samples) {
-        assert.ok(sample.scale >= .97 && sample.scale <= 1.07, 'Searching glass must stay close to its current size');
+        assert.ok(sample.scale >= .99 && sample.scale <= 2.51, 'Searching glass should stay within the intended zoom range');
         assert.ok(Math.abs(sample.x - sample.lightX) < 1 && Math.abs(sample.y - sample.lightY) < 1, 'Light must stay centered inside the moving glass');
       }
       await page.locator('.hunt-tour-package').waitFor({ state: 'visible' });
@@ -55,6 +55,6 @@ const server = createServer();
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-centered-modal.png' });
       assert.deepEqual(errors, []); await page.close();
     }
-    console.log('Passed desktop, mobile and landscape checks: gentle search pulse, aligned optical centers, centered glass/light/sticker expansion, and modal reveal.');
+    console.log('Passed desktop, mobile and landscape checks: five-second search with large zooms and pauses, aligned optical centers, centered glass/light/sticker expansion, and modal reveal.');
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });

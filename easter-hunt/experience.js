@@ -137,16 +137,32 @@
       clue.style.transform = `translate3d(${x - 40}px,${y - 40}px,0) scale(${stickerScale})`;
     }
     position(...points[0]);
+    // Travel, linger and tilt at four spots rather than continuously shaking.
+    const stops = [
+      { at: 0, point: 0, scale: 1, angle: -5 },
+      { at: 450, point: 0, scale: 1.12, angle: 3 },
+      { at: 1550, point: 1, scale: 2.2, angle: -7 },
+      { at: 1950, point: 1, scale: 2.2, angle: 5 },
+      { at: 3050, point: 2, scale: 1.35, angle: 4 },
+      { at: 3500, point: 2, scale: 1.35, angle: -6 },
+      { at: 4600, point: 3, scale: 2.5, angle: -4 },
+      { at: 5100, point: 3, scale: 2.5, angle: 0 }
+    ];
     const began = performance.now();
     function scan(now) {
       if (!tour || !enabled()) return;
-      const progress = Math.max(0, Math.min(3, (now - began) / 760)), segment = Math.min(2, Math.floor(progress));
-      const t = progress === 3 ? 1 : progress - segment, eased = t * t * (3 - 2 * t);
-      const breathe = 1 + .06 * Math.sin(progress * Math.PI) ** 2 - .02 * Math.sin(progress * 2 * Math.PI) ** 2;
-      position(points[segment][0] + (points[segment+1][0]-points[segment][0])*eased,
-        points[segment][1] + (points[segment+1][1]-points[segment][1])*eased,
-        breathe, 3 * Math.sin(progress * 2 * Math.PI));
-      if (progress < 3) frame = requestAnimationFrame(scan);
+      const elapsed = Math.max(0, Math.min(5100, now - began));
+      const index = stops.findIndex((stop, i) => i > 0 && elapsed <= stop.at);
+      const next = stops[index < 0 ? stops.length - 1 : index];
+      const previous = stops[Math.max(0, (index < 0 ? stops.length - 1 : index) - 1)];
+      const t = Math.min(1, (elapsed - previous.at) / (next.at - previous.at));
+      const eased = t * t * (3 - 2 * t);
+      const from = points[previous.point], to = points[next.point];
+      position(from[0] + (to[0] - from[0]) * eased,
+        from[1] + (to[1] - from[1]) * eased,
+        previous.scale + (next.scale - previous.scale) * eased,
+        previous.angle + (next.angle - previous.angle) * eased);
+      if (elapsed < 5100) frame = requestAnimationFrame(scan);
       else {
         clue.hidden = false;
         tour.classList.add('hunt-tour-found');
@@ -164,14 +180,14 @@
       function expand(now) {
         if (!tour || !enabled()) return;
         const elapsed = Math.max(0, now - began);
-        if (elapsed < 340) {
-          const t = elapsed / 340, ease = t * t * (3 - 2 * t);
+        if (elapsed < 600) {
+          const t = elapsed / 600, ease = t * t * (3 - 2 * t);
           position(destination[0] + (center[0] - destination[0]) * ease,
-            destination[1] + (center[1] - destination[1]) * ease, 1 + .08 * ease);
+            destination[1] + (center[1] - destination[1]) * ease, 2.5 - .7 * ease);
         } else {
           tour.dataset.phase = 'expanding';
-          const t = Math.min(1, (elapsed - 340) / 340), ease = t * t * (3 - 2 * t);
-          position(...center, 1.08 + (coverScale - 1.08) * ease, 0, 1 + .35 * ease);
+          const t = Math.min(1, (elapsed - 600) / 500), ease = t * t * (3 - 2 * t);
+          position(...center, 1.8 + (coverScale - 1.8) * ease, 0, 1 + .35 * ease);
           lens.style.opacity = String(1 - Math.min(1, t / .85));
           clue.style.opacity = String(1 - ease);
           veil.style.opacity = String(ease);
