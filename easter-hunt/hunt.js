@@ -55,8 +55,26 @@
     return spot.text ? [...matches].find(element => element.textContent.includes(spot.text)) || null : matches[0] || null;
   }
   // The glass is centered on the sticker; the handle reaches out past its bottom-right corner.
+  // A sticker with a check: "you found yours".
+  const oneFindIcon = '<svg class="hunt-one-find-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#6e1f2a"/><path d="m10 16.5 4 4 8-9" stroke="#faf8f4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const lensIcon = '<svg class="hunt-found-lens" viewBox="0 0 56 56" fill="none" aria-hidden="true"><path d="M35.5 35.5 51 51" stroke="#3c1720" stroke-width="7" stroke-linecap="round"/><path d="M37.5 37.5 49.5 49.5" stroke="#a88148" stroke-width="2.6" stroke-linecap="round"/><circle cx="22" cy="22" r="19" fill="#fff8e8" fill-opacity=".22" stroke="#4b1924" stroke-width="3.6"/><circle cx="22" cy="22" r="16.8" stroke="#c6a169" stroke-width="1.3"/><path d="M10.5 17.5a12.5 12.5 0 0 1 7-7.2" stroke="#fff" stroke-opacity=".75" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const foundHere = new Set();
+  // One find per person: once this browser claims a dragon, every other dragon leaves its screen.
+  // Saved per promo scope, so a reset or a new promo brings them back. Iframes learn it from their parent page.
+  const DONE_KEY = 'rrhs-hunt-done';
+  let holdVanish = false, doneAnnounce = null;
+  function doneId() {
+    if (window.parent !== window && window.RRHS_HUNT_PARENT) return window.RRHS_HUNT_DONE_ID || null;
+    if (dev()) return devState().claims[0]?.eggId || null;
+    try { const saved = JSON.parse(localStorage.getItem(DONE_KEY)); return saved && availability?.scope && saved.scope === availability.scope ? saved.id : null; }
+    catch (_) { return null; }
+  }
+  function announceDone(id) {
+    channel?.postMessage({ type: 'rrhs-hunt-done', id });
+    if (window.parent === window) for (const frame of document.querySelectorAll('iframe')) {
+      try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-done', id }, assetOrigin); } catch (_) {}
+    }
+  }
   function available(id) { return !foundHere.has(id) && availability?.eggs?.some(egg => egg.id === id && egg.available); }
   // The server decides: once anyone claims a sticker it stays on the page, disabled, under a magnifying glass.
   function found(id) {
@@ -76,12 +94,27 @@
       try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-found', id }, assetOrigin); } catch (_) {}
     }
   }
-  if (channel) channel.onmessage = event => { if (event.data?.type === 'rrhs-hunt-found') markFound(event.data.id, false); };
+  if (channel) channel.onmessage = event => { if (event.data?.type === 'rrhs-hunt-found') markFound(event.data.id, false); if (event.data?.type === 'rrhs-hunt-done') mount(); };
   addEventListener('message', event => {
-    if (event.data?.type !== 'rrhs-hunt-found' || event.source !== window.parent || event.origin !== window.RRHS_HUNT_PARENT) return;
+    if (event.source !== window.parent || event.origin !== window.RRHS_HUNT_PARENT) return;
+    if (event.data?.type === 'rrhs-hunt-done') { window.RRHS_HUNT_DONE_ID = event.data.id; markFound(event.data.id, false); return; }
+    if (event.data?.type !== 'rrhs-hunt-found') return;
     for (const id of event.data.ids || [event.data.id]) markFound(id, false);
   });
   function paint(button, id) {
+    const mine = doneId();
+    if (mine && id !== mine) {
+      button.disabled = true;
+      if (holdVanish || button.classList.contains('hunt-vanish')) return;
+      // Seen on screen: poof away. Off screen or already gone: just hide.
+      const box = button.getBoundingClientRect(), seen = button.style.visibility === 'visible' && box.bottom > 0 && box.top < innerHeight && box.width > 0;
+      if (seen && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        button.classList.add('hunt-vanish'); button.addEventListener('animationend', () => { button.style.visibility = 'hidden'; }, { once: true });
+      } else { button.classList.add('hunt-vanish'); button.style.visibility = 'hidden'; }
+      button.setAttribute('aria-hidden', 'true'); button.tabIndex = -1;
+      return;
+    }
+    button.classList.remove('hunt-vanish'); button.removeAttribute('aria-hidden'); button.removeAttribute('tabindex');
     const isFound = found(id);
     button.style.visibility = isFound || available(id) ? 'visible' : 'hidden';
     button.classList.toggle('hunt-found', isFound); button.disabled = isFound;
@@ -133,6 +166,7 @@
   }
   function close() {
     generation++; active = null;
+    if (holdVanish) { holdVanish = false; requestAnimationFrame(() => mount()); if (doneAnnounce) { announceDone(doneAnnounce); doneAnnounce = null; } }
     dialog.close(); document.body.style.overflow = returnOverflow;
     const focusTarget = trigger && !trigger.disabled && getComputedStyle(trigger).visibility !== 'hidden'
       ? trigger : trigger?.parentElement.querySelector('.project-card-button');
@@ -173,6 +207,7 @@
       <form class="hunt-form"><label for="hunt-student">${preview ? 'Your S-number, including the s' : 'Your S-number or staff email'}</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="${preview ? 's123456' : 's123456 or name@roundrockisd.org'}" maxlength="80" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
       <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Local previews send no email.' : 'Students: enter your S-number, including the s. Staff: enter your @roundrockisd.org email. We’ll email your one-time code to your school inbox.'}</p>
+      <p class="hunt-one-find">${oneFindIcon}<span><strong>This is your one find.</strong> Once you unwrap it, the other dragons leave your screen.</span></p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per person. Ends Friday, November 13 at 11:59 PM Central.</p>`;
@@ -191,7 +226,9 @@
       try {
         const result = await request({ action: 'claim', eggId: id, studentId: input.value.trim(), idempotencyKey: active.key });
         if (version !== generation) return;
-        active.submitting = false; active.claimed = true; markFound(id);
+        active.submitting = false; active.claimed = true; holdVanish = true;
+        if (!dev()) try { localStorage.setItem(DONE_KEY, JSON.stringify({ scope: availability?.scope, id })); } catch (_) {}
+        doneAnnounce = id; markFound(id);
         reveal(result, version); refresh();
       } catch (error) {
         if (version !== generation) return;
@@ -221,9 +258,10 @@
       <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : 'No email is sent from a local preview.'}`
         : result.mode === 'dev' ? 'Dev mode: this fake claim is saved only in this browser. Use Reset claims to clear it.'
         : result.emailStatus === 'sent' ? 'Reward saved. Check your school inbox for the code.' : 'Reward saved. Your email is being retried; check your school inbox in a few minutes.'}</p>
+      <div class="hunt-complete">${oneFindIcon}<div><strong>Your hunt is complete</strong><span>When you close this, the other dragons leave your screen so other Dragons can find them.</span></div></div>
       <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
-    content.querySelector('button').addEventListener('click', close);
-    content.querySelector('button').focus({ preventScroll: true });
+    content.querySelector('button.hunt-primary').addEventListener('click', close);
+    content.querySelector('button.hunt-primary').focus({ preventScroll: true });
     const counter = content.querySelector('.hunt-percentage');
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const start = performance.now();
@@ -242,6 +280,8 @@
       // A reset (or a new promo) changes the scope: forget what this tab marked as found.
       if (availability?.scope && next.scope && availability.scope !== next.scope) foundHere.clear();
       availability = next; if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable();
+      // Iframes can load after this page; keep telling them this person has already found theirs.
+      if (window.parent === window && !holdVanish && doneId()) announceDone(doneId());
       // Dev mode: fake claims live in this page's storage, so keep the sticker iframes in step.
       if (dev() && window.parent === window) { const ids = availability.eggs.filter(egg => egg.found).map(egg => egg.id);
         if (ids.length) for (const frame of document.querySelectorAll('iframe')) { try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-found', ids }, assetOrigin); } catch (_) {} } } }
@@ -257,7 +297,7 @@
       mounted.clear();
     }
   });
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, lensIcon, foundIds: () => [...new Set([...foundHere, ...devState().claims.map(claim => claim.eggId)])], getAvailability: () => availability };
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, lensIcon, foundIds: () => [...new Set([...foundHere, ...devState().claims.map(claim => claim.eggId)])], doneId, getAvailability: () => availability };
   if (dev() && window.parent === window) {
     const badge = document.createElement('div'); badge.className = 'hunt-dev-badge'; badge.setAttribute('role', 'status');
     badge.innerHTML = '<strong>Hunt dev mode</strong><span>Fake codes only</span><button type="button" data-dev="reset">Reset claims</button><button type="button" data-dev="off">Turn off</button>';

@@ -35,7 +35,7 @@
   }
   // Tell hosted iframes that this page will show their claim dialogs full-screen.
   function announce(target) {
-    target.postMessage({ type: 'rrhs-hunt-parent', dev: window.RRHS_HUNT_DEV === true, found: window.RRHS_EASTER_HUNT?.foundIds?.() || [] }, base.origin);
+    target.postMessage({ type: 'rrhs-hunt-parent', dev: window.RRHS_HUNT_DEV === true, found: window.RRHS_EASTER_HUNT?.foundIds?.() || [], done: window.RRHS_EASTER_HUNT?.doneId?.() || null }, base.origin);
   }
   function broadcast() {
     if (!topLevel || !window.RRHS_HUNT_ACTIVE) return;
@@ -48,9 +48,9 @@
     window.RRHS_HUNT_ACTIVE = enabled;
     if (!window.RRHS_HUNT_ACTIVE) return;
     const css = document.createElement('link'); css.rel = 'stylesheet';
-    css.href = new URL('hunt.css?v=28', base).href;
+    css.href = new URL('hunt.css?v=29', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=18')).then(() => topLevel ? load('experience.js?v=28') : undefined)
+    loading = styled.then(() => load('hunt.js?v=19')).then(() => topLevel ? load('experience.js?v=29') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }
@@ -58,6 +58,8 @@
     if (!event.data || typeof event.data !== 'object') return;
     if (!topLevel && event.source === parent && allowedParents.has(event.origin) && event.data.type === 'rrhs-hunt-parent') {
       window.RRHS_HUNT_PARENT = event.origin;
+      // Once this person has claimed, the parent page tells its sticker iframes to hide the rest.
+      if (typeof event.data.done === 'string') { window.RRHS_HUNT_DONE_ID = event.data.done; if (window.RRHS_HUNT_ACTIVE) window.RRHS_EASTER_HUNT?.refresh(true); }
       // A parent page in dev mode runs its sticker iframes in dev mode too.
       if (event.data.dev === true && !window.RRHS_HUNT_DEV) {
         window.RRHS_HUNT_DEV = true; window.RRHS_HUNT_DEV_FOUND = Array.isArray(event.data.found) ? event.data.found : [];

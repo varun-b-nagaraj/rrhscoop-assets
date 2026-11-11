@@ -248,3 +248,26 @@
 @media(max-height:650px) { .hunt-hero { --hero:112px; margin-bottom:12px; } .hunt-hero .hunt-intro-seal { width:112px; height:112px; } .hunt-step:nth-child(2) .hunt-hero { height:140px; } .hunt-step:nth-child(3) .hunt-hero { height:132px; } .hunt-step-art.hunt-art-found { width:132px; height:132px; } .hunt-step .hunt-header-hero { height:104px; } .hunt-header-hero .hunt-where { padding-bottom:26px; } .hunt-how li { height:140px; padding-top:6px; } .hunt-how-icon { height:50px; } .hunt-how-icon svg { height:48px; } .hunt-how-icon .hunt-sticker { height:52px; width:52px; } .hunt-step h2 { font-size:24px; } .hunt-step { font-size:13px; } .hunt-step .hunt-simple-title { margin-bottom:12px; } }
 @media(max-width:360px) { .hunt-step-nav .hunt-step-next.hunt-begin { font-size:12px; gap:4px; } .hunt-step-nav .hunt-arrow { width:16px; height:16px; } }
 @media(prefers-reduced-motion:reduce) { .hunt-egg,.hunt-dialog,.hunt-dialog *,.hunt-tour *,.hunt-counter * { animation:none!important; transition:none!important; } .hunt-confetti { display:none; } }
+/* One find per person: a heads-up before claiming, a closing card, and the other dragons poofing away. */
+.hunt-one-find-icon { width:24px; height:24px; flex:none; }
+.hunt-dialog .hunt-one-find { display:flex; align-items:flex-start; gap:10px; margin:14px 0 0; padding:10px 12px; border:1px solid #e3d6c3; border-radius:8px; background:#fbf6ee; color:var(--hunt-ink); font-size:13px; line-height:1.45; text-align:left; }
+.hunt-dialog .hunt-one-find .hunt-one-find-icon { width:20px; height:20px; margin-top:1px; }
+.hunt-dialog .hunt-one-find strong { color:var(--hunt-maroon); }
+.hunt-dialog .hunt-complete { display:flex; align-items:center; gap:12px; margin:4px 0 16px; padding:12px 14px; border-radius:10px; background:linear-gradient(135deg,#f6ebe0,#fbf6ee); box-shadow:inset 0 0 0 1px #ead9c4; text-align:left; animation:hunt-complete-in .5s .9s cubic-bezier(.22,1,.36,1) backwards; }
+.hunt-complete strong { display:block; color:var(--hunt-maroon); font:600 15px/1.3 Georgia,serif; }
+.hunt-complete span { display:block; margin-top:2px; color:var(--hunt-muted); font-size:13px; line-height:1.45; }
+.hunt-complete .hunt-one-find-icon { width:32px; height:32px; }
+@keyframes hunt-complete-in { from { opacity:0; transform:translateY(8px); } }
+.hunt-egg.hunt-vanish { pointer-events:none; animation:hunt-vanish .7s cubic-bezier(.5,0,.75,0) forwards; }
+.hunt-egg.hunt-vanish::before { content:""; position:absolute; inset:2px; border-radius:50%; border:2px solid #e8b98f; opacity:0; animation:hunt-puff .7s .1s ease-out forwards; }
+@keyframes hunt-vanish { 0% { transform:none; opacity:1; } 30% { transform:translateY(-6px) rotate(-10deg) scale(1.12); opacity:1; } 100% { transform:translateY(-14px) rotate(12deg) scale(.2); opacity:0; } }
+@keyframes hunt-puff { 0% { opacity:.9; transform:scale(.6); } 100% { opacity:0; transform:scale(1.8); } }
+@media (prefers-reduced-motion:reduce) { .hunt-egg.hunt-vanish, .hunt-egg.hunt-vanish::before, .hunt-dialog .hunt-complete { animation:none; } }
+/* Header counter: a small check on the dragon once this person has found theirs. */
+.hunt-counter-trigger { position:relative; }
+.hunt-counter-done-badge { position:absolute; left:24px; top:24px; width:14px; height:14px; pointer-events:none; filter:drop-shadow(0 0 0 #f1eee8) drop-shadow(0 1px 1px #0003); }
+.hunt-counter:not(.hunt-counter-done) .hunt-counter-done-badge { display:none; }
+.hunt-counter.hunt-counter-done .hunt-counter-done-badge { animation:hunt-badge-in .45s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes hunt-badge-in { from { transform:scale(0); } }
+@media(max-width:600px) { .hunt-counter-done-badge { left:16px; top:17px; width:12px; height:12px; } }
+@media (prefers-reduced-motion:reduce) { .hunt-counter.hunt-counter-done .hunt-counter-done-badge { animation:none; } }

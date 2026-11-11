@@ -43,7 +43,9 @@
     const value = `${found}/${TOTAL}`;
     if (count.textContent !== value) count.textContent = value;
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
-    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of ${TOTAL} dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
+    const mine = Boolean(window.RRHS_EASTER_HUNT?.doneId?.());
+    counter.classList.toggle('hunt-counter-done', mine);
+    counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${mine ? 'You found your dragon. ' : ''}${found} of ${TOTAL} dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
   }
   function mountCounter() {
     if (!enabled()) return;
@@ -52,7 +54,7 @@
     if (counter?.isConnected && (!search || counter.nextElementSibling === search)) return;
     if (!counter) {
       counter = document.createElement('div'); counter.className = 'hunt-counter';
-      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/${TOTAL}</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
+      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog">${stickerImage}<svg class="hunt-counter-done-badge" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#6e1f2a" stroke="#f1eee8" stroke-width="3"/><path d="m10 16.5 4 4 8-9" fill="none" stroke="#faf8f4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="hunt-counter-count" aria-live="polite">0/${TOTAL}</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
       // No hover tooltip: the button opens the guide, which has all the details.
       counter.querySelector('button').addEventListener('click', showInformation);
     }
