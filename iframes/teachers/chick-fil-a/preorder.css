@@ -176,11 +176,13 @@ html.preorder-overlay .page {
 .drawer-sauces h3 { color:var(--maroon); font-size:25px; }
 .drawer-sauces > p { font-size:14px; margin:2px 0 6px; }
 .drawer-sauces .stepper { background:var(--cream); }
+.drawer-footer { flex:0 0 auto; border-top:1px solid var(--line); background:var(--paper); padding:20px 30px max(24px, env(safe-area-inset-bottom)); }
 .drawer-total { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; font-weight:600; }
 .drawer-total strong { color:var(--maroon); font-family:var(--display); font-size:29px; font-variant-numeric:tabular-nums; }
 @media(max-width:520px) {
   .drawer-header { padding:14px 18px; }
   .drawer-scroll { padding:20px 18px 32px; }
+  .drawer-footer { padding-inline:18px; }
 }
 
 .verification-info { margin-top:12px; color:var(--muted); font-size:15px; }

@@ -80,6 +80,7 @@
     drawer.querySelectorAll('.view').forEach(section => { section.hidden = section.id !== `${view}-view`; });
     $('drawer-step').textContent = drawerSteps[view].label;
     $('drawer-label').textContent = drawerSteps[view].title;
+    $('selections-footer').hidden = view !== 'selections';
     updateDrawerBack();
     drawerScroll.scrollTop = 0;
     summary();
