@@ -77,7 +77,7 @@
   }
   function introduction() {
     if (!enabled()) return;
-    stopTour();
+    stopTour(); remember();
     const { found, remaining, preview } = counterState();
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
     intro.setAttribute('aria-labelledby', 'hunt-intro-title'); intro.setAttribute('aria-describedby', 'hunt-intro-copy');
@@ -107,7 +107,8 @@
   }
   function start() {
     if (!enabled() || tour || intro) return;
-    clearTimeout(timer); returnFocus = document.activeElement; remember();
+    // Marked as seen only once it finishes, so leaving or reloading mid-intro plays it again.
+    clearTimeout(timer); returnFocus = document.activeElement;
     if (motion.matches) { introduction(); return; }
     tour = document.createElement('dialog'); tour.className = 'hunt-tour';
     tour.setAttribute('aria-label', 'Follow the light to discover the CO-OP package hunt');
@@ -116,11 +117,12 @@
       <div class="hunt-lens" aria-hidden="true"><svg viewBox="0 0 380 380" fill="none"><path d="m229 229 109 109" stroke="#3c1720" stroke-width="36" stroke-linecap="round"/><path d="m239 239 92 92" stroke="#a88148" stroke-width="18" stroke-linecap="round"/><circle cx="140" cy="140" r="127" stroke="#4b1924" stroke-width="18"/><circle cx="140" cy="140" r="121" stroke="#c6a169" stroke-width="7"/><circle cx="140" cy="140" r="115" stroke="#f0dfbf" stroke-opacity=".65" stroke-width="2"/><path d="M63 112a82 82 0 0 1 46-48" stroke="#fff8e8" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/></svg></div>
       <button type="button" class="hunt-tour-package" aria-label="Inspect the hidden CO-OP dragon sticker" hidden>${stickerImage}</button>
       <p class="hunt-tour-caption" role="status">Something’s hiding in plain sight.<br><span>Follow the light.</span></p>
-      <button type="button" class="hunt-tour-skip">Skip introduction <span aria-hidden="true">×</span></button>`;
+`;
     document.body.append(tour); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    tour.showModal(); tour.querySelector('.hunt-tour-skip').focus({ preventScroll: true });
-    tour.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
-    tour.querySelector('.hunt-tour-skip').addEventListener('click', dismiss);
+    // Everyone watches the intro once: no skip button, Escape does nothing, and the modal
+    // blocks the page. The only way forward is clicking the dragon when it appears.
+    tour.tabIndex = -1; tour.showModal(); tour.focus({ preventScroll: true });
+    tour.addEventListener('cancel', event => event.preventDefault());
     let keyboardSearch = false;
     tour.addEventListener('keydown', event => { if (event.key === 'Tab') keyboardSearch = true; });
     const lens = tour.querySelector('.hunt-lens'), hole = tour.querySelector('.hunt-spotlight-hole'), clue = tour.querySelector('.hunt-tour-package'), veil = tour.querySelector('.hunt-tour-veil');
@@ -207,7 +209,7 @@
         return;
       }
       start();
-    }, 3000);
+    }, 1200);
   }
   function activate() { mountCounter(); schedule(); }
   document.addEventListener('rrhs-hunt-availability', event => { data = event.detail; updateCounter(); });
@@ -217,7 +219,14 @@
   });
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mountCounter);
   else new MutationObserver(mountCounter).observe(document.body, { childList: true, subtree: true });
-  addEventListener('resize', () => { placeTooltip(); if (tour) dismiss(); });
+  // Rotating a phone mid-intro restarts it at the new size instead of ending it.
+  let lastWidth = innerWidth, restart;
+  addEventListener('resize', () => {
+    placeTooltip();
+    if (!tour || innerWidth === lastWidth) return;
+    lastWidth = innerWidth; clearTimeout(restart);
+    restart = setTimeout(() => { if (tour && !tour.classList.contains('hunt-tour-transitioning')) { stopTour(); start(); } }, 250);
+  });
   addEventListener('scroll', placeTooltip, { passive: true });
   motion.addEventListener('change', () => { if (motion.matches && tour) introduction(); });
   window.RRHS_HUNT_INTRO = { replay: start, open: showInformation, dismiss };
