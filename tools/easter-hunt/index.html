@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Hunt dashboard · RRHS CO-OP</title>
-<link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/dashboard.css?v=3"></head>
+<link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/dashboard.css?v=4"></head>
 <body><main>
 <header class="top"><div><p class="eyebrow">RRHS CO-OP · Package hunt</p><h1>Hunt dashboard</h1></div>
   <img class="mascot" src="/easter-hunt/dragon-package-sticker.png?v=1" width="64" height="64" alt="CO-OP dragon holding a package"></header>
@@ -24,6 +24,7 @@
     <a id="sheet" class="button" href="#" target="_blank" rel="noopener" hidden>Open log in Google Sheets</a>
     <button id="refresh" type="button">Refresh</button><button id="pause" type="button">Pause hunt</button><button id="sign-out" class="link" type="button">Sign out</button></div>
   <p id="notice" class="status" role="status" aria-live="polite"></p>
+  <p id="outdated" class="warning" role="alert" hidden></p>
   <div class="tiles">
     <div class="tile"><span class="label">Status</span><strong id="status">–</strong></div>
     <div class="tile"><span class="label">Claimed</span><strong id="claimed">–</strong></div>
@@ -46,4 +47,4 @@
 </main>
 <dialog id="spot-dialog" class="spot-dialog" aria-labelledby="spot-title"><div class="spot-head"><h2 id="spot-title"></h2><button id="spot-close" type="button">Close</button></div>
   <p class="muted">Page: <a id="spot-link" href="#" target="_blank" rel="noopener"></a></p><p id="spot-status" class="status" role="status"></p><img id="spot-image" alt="" hidden></dialog>
-<script src="/easter-hunt/config.js?v=5"></script><script src="/tools/easter-hunt/dashboard.js?v=4"></script></body></html>
+<script src="/easter-hunt/config.js?v=5"></script><script src="/tools/easter-hunt/dashboard.js?v=5"></script></body></html>

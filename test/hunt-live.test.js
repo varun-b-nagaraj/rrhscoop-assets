@@ -263,6 +263,23 @@ test('a new promo deletes the hunt coupons, clears every claim and empties the l
   assert.equal(env.claim('s100010', 'shop-snacks').ok, true, 'students can claim again in the new promo');
 });
 
+test('data from an older promo never counts, and the reset still deletes its coupons and every hunt value', () => {
+  const env = runtime(), deletes = [];
+  const fetch = env.context.UrlFetchApp.fetch;
+  env.context.UrlFetchApp.fetch = (url, options) => options.method === 'delete' ? (deletes.push(url), { getResponseCode: () => 200 }) : fetch(url, options);
+  // What the old 12-sticker script left behind: one claim, a random pool, old preview keys.
+  env.values.set('hunt_live_state', JSON.stringify({ claims: [{ studentId: 's151579', eggId: 'inventory-intelligence', percentage: 25, couponId: 77 }], pool: [10, 15], paused: true }));
+  env.values.set('hunt_preview_rate', '{}'); env.values.set('hunt_rate', '{}'); env.values.set('hunt_session_abc', '{}');
+  const fresh = env.context.huntAvailability_(env.props);
+  assert.equal(fresh.status, 'active'); assert.equal(fresh.remaining, 20);
+  assert.equal(fresh.eggs.filter(egg => egg.found).length, 0);
+  env.context.SpreadsheetApp = { openById: () => ({ getSheets: () => [{ getLastRow: () => 1, deleteRows() {}, appendRow() {} }] }) };
+  env.values.set('HUNT_LOG_SHEET_ID', 'sheet');
+  env.context.resetHuntForNewPromo();
+  assert.equal(deletes.join(), 'https://app.ecwid.com/api/v3/123/discount_coupons/77');
+  assert.deepEqual([...env.values.keys()].filter(key => key.startsWith('hunt_')), ['hunt_session_abc']);
+});
+
 test('staff claim with their @roundrockisd.org email and get the code there, one reward each', () => {
   const env = runtime();
   const result = env.claim(' Jane.Doe@RoundRockISD.org ', 'teachers-top');

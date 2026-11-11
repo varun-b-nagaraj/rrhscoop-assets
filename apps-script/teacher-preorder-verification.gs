@@ -166,9 +166,13 @@ var HUNT_EGGS = Object.keys(HUNT_REWARDS);
 var HUNT_STATE_KEY = 'hunt_live_state';
 var HUNT_TAKEN = 'This package could not be claimed. You may already have a reward, or another Dragon got here first.';
 
+// Change HUNT_PROMO for each new promo. Data saved under any other promo is ignored, so an
+// old hunt can never leak into a new one even if resetHuntForNewPromo was not run.
+var HUNT_PROMO = '2026-11-twenty-stickers';
+function huntStoredState_(props) { return JSON.parse(props.getProperty(HUNT_STATE_KEY) || 'null'); }
 function huntState_(props) {
-  var state = JSON.parse(props.getProperty(HUNT_STATE_KEY) || 'null');
-  return state || { claims: [], paused: false };
+  var state = huntStoredState_(props);
+  return state && state.promo === HUNT_PROMO ? state : { promo: HUNT_PROMO, claims: [], paused: false };
 }
 
 function huntStatus_(state) {
@@ -292,15 +296,19 @@ function resetHuntForNewPromo() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Try again shortly.');
   try {
-    var props = PropertiesService.getScriptProperties(), state = huntState_(props), config = cfaEcwidConfig_(props), deleted = 0;
+    // Read the raw saved state so claims from older promos have their coupons deleted too.
+    var props = PropertiesService.getScriptProperties(), state = huntStoredState_(props) || { claims: [] }, config = cfaEcwidConfig_(props), deleted = 0;
+    state.claims = state.claims || [];
     state.claims.forEach(function (claim) {
       if (!claim.couponId) return;
       var response = UrlFetchApp.fetch('https://app.ecwid.com/api/v3/' + config.storeId + '/discount_coupons/' + claim.couponId,
         { method: 'delete', headers: { Authorization: 'Bearer ' + config.token }, muteHttpExceptions: true });
       if (response.getResponseCode() === 200) deleted++;
     });
-    props.deleteProperty(HUNT_STATE_KEY);
-    props.deleteProperty('hunt_rate');
+    // Sweep every saved hunt value (state, rate limits, old previews, sign-in codes). Dashboard sessions stay signed in.
+    Object.keys(props.getProperties()).forEach(function (key) {
+      if (key.indexOf('hunt_') === 0 && key.indexOf('hunt_session_') !== 0) props.deleteProperty(key);
+    });
     var sheet = huntLogSheet_(props, true);
     if (sheet.getLastRow() > 1) sheet.deleteRows(2, sheet.getLastRow() - 1);
     huntLog_(props, 'New promo started', {}, state.claims.length + ' old claims cleared, ' + deleted + ' coupons deleted');

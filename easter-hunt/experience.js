@@ -14,9 +14,12 @@
   function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-off') === 'true'; } catch (_) { return false; } }
   function counterState() {
     // Until the live count loads (or if it can't), show the full twenty rather than a guess.
-    const sample = !data || !Number.isFinite(data.remaining);
-    const remaining = sample ? TOTAL : Math.max(0, Math.min(TOTAL, data.remaining));
-    const found = TOTAL - remaining;
+    // Count only the stickers this website shows, as the server reports them.
+    const eggs = new Map((data?.eggs || []).map(egg => [egg.id, egg]));
+    const sample = !config.locations.every(spot => eggs.has(spot.id));
+    const found = sample ? 0 : config.locations.filter(spot => { const egg = eggs.get(spot.id);
+      return egg.found ?? (data.status === 'active' && !egg.available); }).length;
+    const remaining = TOTAL - found;
     const preview = data?.mode === 'preview';
     return { found, remaining, preview, sample };
   }
@@ -30,7 +33,7 @@
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of ${TOTAL} dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
       ? 'Look for the red dragon sticker holding a CO-OP package. Twenty are hidden around the website. The deeper you dig, the bigger the reward. Select this button to read the hunt details.'
-      : `${preview ? 'Local development preview. ' : ''}${found} of ${TOTAL} hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per student. Select to read the hunt details again.`;
+      : `${preview ? 'Local development preview. ' : ''}${found} of ${TOTAL} hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per person. Select to read the hunt details again.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -76,28 +79,97 @@
     if (intro) { intro.close(); intro.remove(); intro = null; restorePage(); }
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   }
-  function introduction() {
+  // A short four-screen guide. After the tour it must be finished once ("Let the hunt begin!");
+  // reopened from the header counter it can be closed at any time.
+  const tapIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.6" opacity=".55"/><circle cx="12" cy="12" r="10.5" stroke="currentColor" stroke-width="1.2" opacity=".25"/></svg>';
+  const mailIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+  const upIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const backIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function introduction(locked = false) {
     if (!enabled()) return;
     stopTour();
     const { found, remaining, preview } = counterState();
+    const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
+    const steps = [
+      `<div class="hunt-step-art hunt-intro-seal">${dragon}</div>
+       <p class="hunt-eyebrow">This is what you’re looking for</p>
+       <h2>Good things hide<br>in plain sight.</h2>
+       <p>${TOTAL} CO-OP dragons are hiding around this website. The deeper the page, the bigger the reward.</p>
+       <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden dragons</span><span><strong>10–35%</strong> off</span><span><strong>1</strong> per person</span></div>`,
+      `<p class="hunt-eyebrow">How to claim</p>
+       <h2>Spot it. Tap it.<br>Claim it.</h2>
+       <ol class="hunt-how">
+         <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>a dragon on any page</span></li>
+         <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>the sticker</span></li>
+         <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>with your S&#8209;number</span></li>
+       </ol>
+       <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
+      `<div class="hunt-step-art hunt-art-found" aria-hidden="true">${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div>
+       <p class="hunt-eyebrow">First come, first served</p>
+       <h2>Once it’s found,<br>it’s gone.</h2>
+       <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
+      `<div class="hunt-step-art hunt-art-counter" aria-hidden="true"><span class="hunt-art-up">${upIcon}</span><span class="hunt-art-pill">${stickerImage}<b>${found}/${TOTAL}</b> found</span></div>
+       <p class="hunt-eyebrow">Lost? Look up</p>
+       <h2>Come back<br>anytime.</h2>
+       <p>Tap the dragon counter next to search to reopen this guide and see how many are left.</p>
+       ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
+    ];
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
-    intro.setAttribute('aria-labelledby', 'hunt-intro-title'); intro.setAttribute('aria-describedby', 'hunt-intro-copy');
-    intro.innerHTML = `<button type="button" class="hunt-close" aria-label="Close introduction">×</button>
-      <div class="hunt-intro-seal">${stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"')}</div><p class="hunt-eyebrow">This is what you’re looking for</p>
-      <h2 id="hunt-intro-title">Good things hide<br>in plain sight.</h2>
-      <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twenty are tucked around the website, and the deeper you dig, the bigger the reward. Spot one and discover a mystery reward.</p>
-      <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
-      <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
-      ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${found}/${TOTAL} found · ${remaining} rewards remaining</p>`}
-      <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
-      <p class="hunt-terms">One reward per student. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
+    intro.setAttribute('aria-label', 'How the CO-OP package hunt works');
+    intro.innerHTML = `${locked ? '' : '<button type="button" class="hunt-close" aria-label="Close the guide">×</button>'}
+      <div class="hunt-steps">${steps.map((html, i) => `<section class="hunt-step" aria-label="Step ${i + 1} of ${steps.length}">${html}</section>`).join('')}</div>
+      <div class="hunt-confetti" aria-hidden="true"></div>
+      <div class="hunt-step-nav">
+        <button type="button" class="hunt-step-back">${backIcon}<span>Back</span></button>
+        <div class="hunt-dots" aria-hidden="true">${steps.map(() => '<i></i>').join('')}</div>
+        <button type="button" class="hunt-primary hunt-step-next"><span>Next</span>${arrowIcon}</button>
+      </div>
+      <p class="hunt-terms">Ends Friday, November 13 at 11:59 PM Central.</p>`;
+    const sections = [...intro.querySelectorAll('.hunt-step')], dots = [...intro.querySelectorAll('.hunt-dots i')];
+    const back = intro.querySelector('.hunt-step-back'), next = intro.querySelector('.hunt-step-next');
+    let step = -1, finishing = false;
+    function show(index) {
+      const direction = index > step ? 'next' : 'prev'; step = index;
+      sections.forEach((section, i) => {
+        const on = i === index; section.inert = !on; section.classList.toggle('is-active', on);
+        section.classList.remove('from-next', 'from-prev'); if (on) { void section.offsetWidth; section.classList.add('from-' + direction); }
+      });
+      dots.forEach((dot, i) => dot.classList.toggle('is-active', i === index));
+      back.style.visibility = index === 0 ? 'hidden' : 'visible';
+      const last = index === steps.length - 1;
+      next.classList.toggle('hunt-begin', last);
+      next.parentElement.classList.toggle('is-last', last);
+      next.querySelector('span').textContent = last ? 'Let the hunt begin!' : 'Next';
+      next.focus({ preventScroll: true });
+    }
+    function begin() {
+      if (finishing) return; finishing = true;
+      const burst = intro.querySelector('.hunt-confetti');
+      // Confetti bursts out of the button, mostly upward.
+      const button = next.getBoundingClientRect(), box = intro.getBoundingClientRect();
+      burst.style.setProperty('--ox', `${button.left - box.left + button.width / 2}px`);
+      burst.style.setProperty('--oy', `${button.top - box.top + intro.scrollTop + button.height / 2}px`);
+      burst.innerHTML = Array.from({ length: 34 }, (_, i) => { const angle = Math.PI * (1.05 + (i / 34) * 0.9) + Math.sin(i * 7.3) * 0.25, reach = 120 + ((i * 53) % 140);
+        return `<i style="--i:${i % 11};--x:${Math.round(Math.cos(angle) * reach)}px;--y:${Math.round(Math.sin(angle) * reach)}px"></i>`; }).join('');
+      intro.classList.add('hunt-intro-begin');
+      setTimeout(() => {
+        intro?.classList.add('hunt-intro-leave');
+        setTimeout(() => { dismiss(); counter?.classList.remove('hunt-counter-pulse'); void counter?.offsetWidth; counter?.classList.add('hunt-counter-pulse'); }, motion.matches ? 0 : 320);
+      }, motion.matches ? 0 : 1100);
+    }
+    back.addEventListener('click', () => { if (step > 0 && !finishing) show(step - 1); });
+    next.addEventListener('click', () => { if (step < steps.length - 1) show(step + 1); else begin(); });
+    intro.addEventListener('keydown', event => {
+      if (event.target.closest('input')) return;
+      if (event.key === 'ArrowRight' && step < steps.length - 1) show(step + 1);
+      if (event.key === 'ArrowLeft' && step > 0) show(step - 1);
+    });
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    intro.showModal(); intro.querySelector('.hunt-intro-start').focus({ preventScroll: true });
-    intro.querySelector('.hunt-close').addEventListener('click', dismiss);
-    intro.querySelector('.hunt-intro-start').addEventListener('click', dismiss);
-    intro.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
+    intro.showModal(); show(0);
+    intro.querySelector('.hunt-close')?.addEventListener('click', dismiss);
+    intro.addEventListener('cancel', event => { event.preventDefault(); if (!locked) dismiss(); });
     intro.addEventListener('click', event => {
-      if (event.target !== intro) return;
+      if (locked || event.target !== intro) return;
       const box = intro.getBoundingClientRect();
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dismiss();
     });
@@ -110,7 +182,7 @@
     if (!enabled() || tour || intro) return;
     // Marked as seen only once it finishes, so leaving or reloading mid-intro plays it again.
     clearTimeout(timer); returnFocus = document.activeElement;
-    if (motion.matches) { introduction(); return; }
+    if (motion.matches) { introduction(true); return; }
     tour = document.createElement('dialog'); tour.className = 'hunt-tour';
     tour.setAttribute('aria-label', 'Follow the light to discover the CO-OP package hunt');
     tour.innerHTML = `<svg class="hunt-spotlight" aria-hidden="true"><defs><mask id="rrhs-hunt-spotlight-mask" maskUnits="userSpaceOnUse"><rect width="100%" height="100%" fill="white"/><circle class="hunt-spotlight-hole" r="110" fill="black"/></mask></defs><rect width="100%" height="100%" fill="#180e14" fill-opacity=".84" mask="url(#rrhs-hunt-spotlight-mask)"/></svg>
@@ -193,7 +265,7 @@
           position(x, y, settledScale + (coverScale - settledScale) * ease);
           lens.style.opacity = String(1 - Math.max(0, (t - .55) / .45));
           veil.style.opacity = String(ease);
-          if (t === 1) { introduction(); return; }
+          if (t === 1) { introduction(true); return; }
         }
         frame = requestAnimationFrame(expand);
       }
@@ -229,7 +301,7 @@
     restart = setTimeout(() => { if (tour && !tour.classList.contains('hunt-tour-transitioning')) { stopTour(); start(); } }, 250);
   });
   addEventListener('scroll', placeTooltip, { passive: true });
-  motion.addEventListener('change', () => { if (motion.matches && tour) introduction(); });
+  motion.addEventListener('change', () => { if (motion.matches && tour) introduction(true); });
   window.RRHS_HUNT_INTRO = { replay: start, open: showInformation, dismiss };
   if (enabled()) activate();
 })();

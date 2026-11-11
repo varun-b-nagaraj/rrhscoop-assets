@@ -53,7 +53,11 @@
     $('sign-in').hidden = true; $('board').hidden = false;
     $('signed-in').textContent = `Signed in as ${result.email}`;
     $('status').textContent = STATUS[result.status] || result.status;
-    $('claimed').textContent = `${result.claims.length}/${TOTAL}`;
+    // The website and the Apps Script must list the same stickers. If not, the deployed script is out of date.
+    const known = new Set((result.eggs || []).map(egg => egg.id)), missing = SPOTS.filter(spot => !known.has(spot.id)).length;
+    $('outdated').hidden = !missing;
+    $('outdated').textContent = missing ? `The deployed Apps Script is out of date: it doesn’t know ${missing} of the ${TOTAL} stickers, so they can’t be claimed and the numbers below come from the old hunt. Paste the latest script, deploy a new web-app version, then run resetHuntForNewPromo.` : '';
+    $('claimed').textContent = `${result.claims.length}/${(result.eggs || []).length || TOTAL}`;
     $('left').textContent = result.remaining;
     $('pool').textContent = result.pool.length ? 'Left: ' + [...result.pool].sort((a, b) => a - b).map(p => p + '%').join(', ') : 'All rewards claimed';
     $('pause').textContent = result.paused ? 'Resume hunt' : 'Pause hunt';

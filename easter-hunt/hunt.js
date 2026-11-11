@@ -147,7 +147,7 @@
       <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Local previews send no email.' : 'Students: enter your S-number, including the s. Staff: enter your @roundrockisd.org email. We’ll email your one-time code to your school inbox.'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
-      <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
+      <p class="hunt-terms">One reward per person. Ends Friday, November 13 at 11:59 PM Central.</p>`;
     returnOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     dialog.showModal();
     const input = content.querySelector('input'), status = content.querySelector('#hunt-status'), submit = content.querySelector('[type=submit]');
@@ -221,7 +221,7 @@
       mounted.clear();
     }
   });
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, getAvailability: () => availability };
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, lensIcon, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
   else {
