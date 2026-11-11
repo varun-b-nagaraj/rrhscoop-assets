@@ -423,8 +423,11 @@
     field.dispatchEvent(new Event('change', { bubbles: true }));
   }
   function savePaymentNotes(notes) {
-    if (notes && notes.value !== checkout.comments) setCheckoutField(notes, checkout.comments);
-    notes?.closest('.ec-form__row')?.classList.add('preorder-saved-notes');
+    if (!notes) return;
+    notes.readOnly = true;
+    notes.setAttribute('aria-hidden', 'true');
+    if (notes.value !== checkout.comments) setCheckoutField(notes, checkout.comments);
+    notes.closest('.ec-form__row')?.classList.add('preorder-saved-notes');
   }
   const paymentNotes = () => $('ecwid-checkout').querySelector('textarea[aria-label="Leave us a note about your order"]');
   new MutationObserver(() => {

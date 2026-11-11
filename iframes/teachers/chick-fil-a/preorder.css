@@ -198,9 +198,9 @@ html.preorder-overlay .page {
 body:has(.ecwid-host.is-preparing) .ec-date-selector__menu,
 body:has(.ecwid-host.is-preparing) .ec-date-selector__menu * { pointer-events:none !important; }
 .ecwid-host .ec-form__row--pvhvhag { display:none !important; }
+.ecwid-host .preorder-saved-notes { display:none !important; }
 .ecwid-host.is-payment-ready .ec-cart .page-title,
-.ecwid-host.is-payment-ready .ec-cart-step:not(.ec-cart-step--payment),
-.ecwid-host.is-payment-ready .preorder-saved-notes { display:none !important; }
+.ecwid-host.is-payment-ready .ec-cart-step:not(.ec-cart-step--payment) { display:none !important; }
 .preorder-terms a { color:var(--maroon); text-underline-offset:3px; }
 #pickup-times { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
 #pickup-times button { min-height:44px; padding:6px 12px; border:1px solid var(--line); color:var(--maroon); background:var(--paper); font:inherit; }
