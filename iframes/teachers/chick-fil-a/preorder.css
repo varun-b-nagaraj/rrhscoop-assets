@@ -189,7 +189,8 @@ html.preorder-overlay .page {
 
 .ecwid-host.is-preparing { position:fixed; inset:0; opacity:0; overflow:auto; pointer-events:none; }
 .ecwid-host .ec-form__row--pvhvhag { display:none !important; }
-.ecwid-host.is-payment-ready .ec-cart-step--done { display:none; }
+.ecwid-host.is-payment-ready .ec-cart-step--done,
+.ecwid-host.is-payment-ready .preorder-saved-notes { display:none; }
 .preorder-terms a { color:var(--maroon); text-underline-offset:3px; }
 #pickup-times { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
 #pickup-times button { min-height:44px; padding:6px 12px; border:1px solid var(--line); color:var(--maroon); background:var(--paper); font:inherit; }

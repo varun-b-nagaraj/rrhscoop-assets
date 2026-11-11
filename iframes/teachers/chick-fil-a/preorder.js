@@ -513,6 +513,12 @@
     if (!matchingCart(prepared) || !matchingFulfillment(prepared)) {
       throw new Error('Ecwid could not confirm the selected items and fulfillment. Return to preorder review and try again.');
     }
+    // Ecwid mounts a fresh notes field when it opens payment.
+    const notes = await waitForCheckout(() => host.querySelector('textarea[aria-label="Leave us a note about your order"]'), 2000);
+    if (notes) {
+      setCheckoutField(notes, checkout.comments);
+      notes.closest('.ec-form__row')?.classList.add('preorder-saved-notes');
+    }
     return true;
   }
   async function prepareCheckout() {
