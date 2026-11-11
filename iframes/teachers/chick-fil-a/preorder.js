@@ -461,12 +461,17 @@
     const address = await waitForCheckout(() => stage('address') || stage('delivery'));
     if (!address) return false;
     if (address.matches('.ec-cart-step--address')) {
-      const tabs = [...address.querySelectorAll('.ec-tabs__tab')].filter(visible);
-      const tab = tabs.find(option => pickup ? /pick it up/i.test(option.textContent) : /deliver to address/i.test(option.textContent));
+      const addressTab = () => [...(stage('address') || address).querySelectorAll('.ec-tabs__tab')].find(option =>
+        visible(option) && (pickup ? /pick it up/i : /deliver to address/i).test(option.textContent));
+      const tab = pickup ? await waitForCheckout(addressTab, 1800) : addressTab();
       if (pickup && !tab) return false;
-      if (tab && !tab.classList.contains('ec-tabs__tab--active')) {
-        clickSetupControl(tab);
-        if (!await waitForCheckout(() => tab.classList.contains('ec-tabs__tab--active'))) return false;
+      if (tab) {
+        const active = () => addressTab()?.classList.contains('ec-tabs__tab--active');
+        for (let attempt = 0; attempt < 3 && !active(); attempt++) {
+          clickSetupControl(addressTab());
+          await waitForCheckout(active, 1000);
+        }
+        if (!active()) return false;
       }
       if (!pickup) {
         const state = await waitForCheckout(() => {
@@ -476,7 +481,7 @@
         setCheckoutField(state, 'TX');
         await new Promise(resolve => setTimeout(resolve, 160));
       }
-      const continueAddress = await waitForCheckout(() => next(address, 'Continue'));
+      const continueAddress = await waitForCheckout(() => next(stage('address') || address, 'Continue'));
       if (!clickSetupControl(continueAddress)) return false;
       if (!await waitForCheckout(() => !stage('address'), 2000)) {
         const stillOnAddress = stage('address');
