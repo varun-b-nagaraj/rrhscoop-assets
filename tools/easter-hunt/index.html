@@ -1,16 +1,45 @@
 <!doctype html>
-<html lang="en" data-hunt-presenter="true"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hunt dashboard · RRHS CO-OP</title><link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/preview.css?v=2"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Hunt dashboard · RRHS CO-OP</title>
+<link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/dashboard.css?v=1"></head>
 <body><main>
-<header><div><p class="eyebrow">RRHS CO-OP · Personal demo</p><h1>Hunt dashboard</h1></div><img class="mascot" src="/easter-hunt/dragon-package-sticker.png" width="72" height="72" alt="CO-OP dragon holding a package"></header>
-<p class="intro">Your browser’s presentation records. S-numbers are entered, not verified. Preview references are not checkout coupons. Real preview delivery is limited to the presenter mailbox.</p>
-<div class="toolbar"><label class="toggle"><input id="promo-toggle" type="checkbox" role="switch"> Show promo on this browser</label><button id="open-store" class="primary" type="button">Open storefront</button><button id="replay" type="button">Replay intro</button></div>
-<p id="connection" class="connection" role="status">Saved privately in this browser.</p>
-<div class="summary" aria-live="polite"><span><strong id="found">0</strong> found</span><span><strong id="remaining">12</strong> remaining</span><span id="promotion-status">Preview</span></div>
-<section aria-labelledby="claims-title"><div class="section-title"><h2 id="claims-title">Preview claims</h2><div><button id="export" type="button">Export</button><button id="reset" type="button">Reset demo</button></div></div>
-<p id="notice" role="status"></p>
-<table><caption class="sr-only">Student S-number, preview reward, reference and email preview</caption><thead><tr><th scope="col">Student</th><th scope="col">Reward</th><th scope="col">Preview reference</th><th scope="col">Email</th></tr></thead><tbody id="claims"></tbody></table>
-<p id="empty">No claims yet. Open the storefront from this dashboard, find the Inventory Intelligence sticker, and enter an S-number to try it.</p></section>
-<p class="footnote">The claim log stays on this browser profile. Preview delivery sends the presenter S-number and reward reference to the CO-OP email service. Other devices see an empty dashboard. Keep this dashboard open while presenting.</p>
-<dialog id="email-dialog" aria-labelledby="email-title"><div class="dialog-heading"><div><h2 id="email-title">Reward email preview</h2><p id="email-recipient"></p></div><button id="close-email" type="button" aria-label="Close email preview">Close</button></div><p class="email-note">Preview only. This reference cannot be redeemed. Delivery status is shown in the claim log.</p><iframe id="email-frame" title="Reward email preview" sandbox="" referrerpolicy="no-referrer"></iframe></dialog>
-<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Reset this demo?</h2><p>This clears the presentation claim log on this browser so you can claim the testing sticker again. It does not affect real orders or coupons.</p><div class="toolbar"><button id="cancel-reset" type="button">Keep records</button><button id="confirm-reset" class="primary" type="button">Clear preview records</button></div></dialog>
-</main><script src="/easter-hunt/config.js?v=3"></script><script src="/easter-hunt/demo-store.js?v=2"></script><script src="/easter-hunt/boot.js?v=14"></script><script src="/tools/easter-hunt/preview.js?v=5"></script></body></html>
+<header class="top"><div><p class="eyebrow">RRHS CO-OP · Package hunt</p><h1>Hunt dashboard</h1></div>
+  <img class="mascot" src="/easter-hunt/dragon-package-sticker.png?v=1" width="64" height="64" alt="CO-OP dragon holding a package"></header>
+
+<section id="sign-in" class="card sign-in" aria-labelledby="sign-in-title">
+  <h2 id="sign-in-title">Sign in</h2>
+  <p class="muted">We’ll email a 6-digit code to an approved CO-OP address.</p>
+  <form id="email-form" class="field-row"><label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" required placeholder="you@roundrockisd.org">
+    <button class="primary" type="submit">Email me a code</button></form>
+  <form id="code-form" class="field-row" hidden><label for="code">6-digit code</label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456">
+    <button class="primary" type="submit">Open dashboard</button>
+    <button id="restart" class="link" type="button">Use a different email</button></form>
+  <p id="sign-in-status" class="status" role="status" aria-live="polite"></p>
+</section>
+
+<section id="board" hidden>
+  <div class="toolbar"><p id="signed-in" class="muted"></p>
+    <a id="sheet" class="button" href="#" target="_blank" rel="noopener" hidden>Open log in Google Sheets</a>
+    <button id="refresh" type="button">Refresh</button><button id="pause" type="button">Pause hunt</button><button id="sign-out" class="link" type="button">Sign out</button></div>
+  <p id="notice" class="status" role="status" aria-live="polite"></p>
+  <div class="tiles">
+    <div class="tile"><span class="label">Status</span><strong id="status">–</strong></div>
+    <div class="tile"><span class="label">Claimed</span><strong id="claimed">–</strong></div>
+    <div class="tile"><span class="label">Rewards left</span><strong id="left">–</strong><small id="pool"></small></div>
+    <div class="tile"><span class="label">Ends</span><strong>Fri, Nov 13</strong><small>11:59 PM Central</small></div>
+  </div>
+
+  <section class="card" aria-labelledby="claims-title"><h2 id="claims-title">Claims</h2>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Time</th><th scope="col">S-number</th><th scope="col">Sticker</th><th scope="col">Reward</th><th scope="col">Coupon code</th><th scope="col">Email</th></tr></thead>
+    <tbody id="claims"></tbody></table></div><p id="claims-empty" class="muted" hidden>No rewards claimed yet.</p></section>
+
+  <section class="card" aria-labelledby="stickers-title"><h2 id="stickers-title">Stickers</h2><ul id="stickers" class="stickers"></ul></section>
+
+  <section class="card" aria-labelledby="log-title"><h2 id="log-title">Event log</h2>
+    <p class="muted">Every claim, refusal, email, sign-in and pause, newest first. The full history is kept in the Google Sheet.</p>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Time</th><th scope="col">Event</th><th scope="col">S-number</th><th scope="col">Sticker</th><th scope="col">Details</th></tr></thead>
+    <tbody id="events"></tbody></table></div><p id="events-empty" class="muted" hidden>No events yet. Run setupHuntLog in Apps Script if this stays empty after a claim.</p></section>
+</section>
+</main><script src="/tools/easter-hunt/dashboard.js?v=1"></script></body></html>

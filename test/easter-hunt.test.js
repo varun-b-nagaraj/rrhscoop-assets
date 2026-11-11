@@ -27,7 +27,7 @@ test('requires the s, normalizes once, and does not accept an email recipient', 
 test('12 distinct location identifiers and no client prize mapping', () => {
   assert.equal(config.locations.length, 12);
   assert.equal(new Set(config.locations.map(e => e.id)).size, 12);
-  assert.equal(typeof config.HUNT_ENABLED, 'boolean');
+  assert.equal('HUNT_ENABLED' in config, false, 'the switch lives in Vercel (RRHS_HUNT_ENABLED), not the public config');
   assert.equal(config.DEV_ALL_EGGS_ENABLED, false);
   assert.equal(JSON.stringify(config).includes('percentage'), false);
 });

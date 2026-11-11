@@ -1,174 +1,61 @@
 # Hidden package hunt
 
-## Live hunt (`HUNT_ENABLED: true`)
+Twelve dragon stickers hidden around the CO-OP website. A student who finds one enters their S-number and gets a mystery 10–35% off coupon, emailed to their school inbox.
 
-With `HUNT_ENABLED` on, every visitor sees all twelve stickers and the claims are real:
+## Turning it on and off
 
-- The Apps Script (`apps-script/teacher-preorder-verification.gs`) holds the one shared pool of twelve rewards (10% ×4, 15% ×3, 20% ×2, 25% ×2, 35% ×1) in Script properties, under its script lock.
-- One reward per student (S-number) and one per sticker.
-- Each claim creates a single-use, uncapped percent-off Ecwid coupon (`RRHSHUNT-…`) that expires Friday, November 13 at 11:59 PM Central.
-- The code is emailed only to `S-number@student.roundrockisd.org`. The website shows the percentage, never the code.
-- Failed reward emails are retried by the minute job (`runCoopJobs`).
-- Vercel caches availability at the edge for 10 seconds.
+The **only** switch is the Vercel environment variable `RRHS_HUNT_ENABLED`:
 
-Apps Script editor actions: `showHuntClaims()` lists every claim and code; `pauseHunt()` / `resumeHunt()` stop and restart new claims.
-After pasting a new version of the script, deploy a **new web-app version**, or the live claims fail closed.
+- `true` turns the hunt on for every visitor.
+- Any other value, or no value, turns it off for everyone. The API then reports `disabled` and refuses claims.
 
-The sections below describe the original presentation preview, which still runs locally.
+Vercel applies an environment variable change only to new deployments. After changing it, redeploy (Deployments → ⋯ → Redeploy). Pages pick up the change within about 30 seconds of the deploy.
 
-The current implementation is a **personal presentation preview**, hosted on Vercel and runnable locally. It is not a live promotion. No Ecwid coupons are created and no production database is changed. Real preview emails can be sent only to the explicitly allowed presenter mailbox. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
+To stop claims temporarily without redeploying, use **Pause hunt** on the dashboard.
 
-All hunt stickers use the supplied transparent dragon holding a CO-OP package,
-stored unchanged in `easter-hunt/dragon-package-sticker.png`. The introduction
-shows the same image with “This is what you’re looking for.” Hidden locations,
-the search counter, spotlight, claim/reward screens, and reward email use that
-asset. The location PDF also shows the dragon, with each placement highlighted.
+## How a claim works
 
-## Run the preview
+1. The website asks `/api/v1/easter-hunt` for availability. Vercel caches the answer for 10 seconds.
+2. The student enters their S-number. The API forwards the claim to the Apps Script web app (`RRHS_CFA_VERIFICATION_URL`).
+3. Under its script lock, the Apps Script:
+   - checks the hunt window (Nov 9 – Fri Nov 13, 11:59 PM Central);
+   - checks one reward per student and one per sticker;
+   - draws from the shared pool: 10% ×4, 15% ×3, 20% ×2, 25% ×2, 35% ×1;
+   - creates a single-use, uncapped percent-off Ecwid coupon (`RRHSHUNT-…`);
+   - records the claim, then emails the code to `S-number@student.roundrockisd.org`.
+4. The website sees only the percentage, never the code.
+5. If the email fails, the minute job (`runCoopJobs`) retries it, up to 5 attempts.
 
-With Node 18+:
+## Dashboard and logs
 
-```sh
-node tools/easter-hunt-preview.cjs
-```
+<https://rrhscoop-assets.vercel.app/easter-hunt/dashboard>
 
-Open <http://127.0.0.1:4173>. Select **Open storefront** to connect the dashboard and enable the promo, then find the small dragon sticker beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. For `s151579`, the preview requests real delivery to `s151579@student.roundrockisd.org`; other S-numbers cannot receive preview mail yet. It reveals the simulated percentage, never a discount code.
+- **Sign-in:** a 6-digit code is emailed to an approved address (`HUNT_ADMINS` in the Apps Script). The session lasts 12 hours.
+- **What it shows:** status, rewards left, every claim with its coupon code and email status, sticker status, and the event log.
+- **Pause / Resume** stops or restarts claims without losing records.
+- **Where logs are stored:** every claim, refusal, email, retry, sign-in and pause is appended to the Google Sheet **"RRHS CO-OP package hunt log"** in the script owner's Drive. Claims are also kept in Script properties (`hunt_live_state`), so the dashboard works even if the sheet is unavailable.
 
-## DevTools gate and introduction
+Apps Script editor actions:
+- `setupHuntLog()`: run once. It authorizes Google Sheets and creates the log.
+- `showHuntClaims()`: logs every claim.
+- `pauseHunt()` / `resumeHunt()`: same as the dashboard buttons.
 
-Normal visitors see no hunt UI while `HUNT_ENABLED` is false. Enable the presentation on your browser profile:
+After pasting a new version of the script, deploy a **new version of the existing web-app deployment** (Deploy → Manage deployments → edit → New version). Otherwise Vercel keeps talking to the old code.
 
-```js
-window.RRHSOVERIDE = true;
-```
+## Local development
 
-The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in localStorage across tabs and browser restarts, and is forwarded to the site's hosted content frames with origin/source checks. No console reload is required. It enables the presentation on the hosted storefront too, while the production claim API stays closed. The hosted override runs the personal browser demo, with a count from that browser’s saved preview records. It never creates a live claim or coupon. An old session-only true setting is migrated once. Storage is per browser profile and site, not shared between different browsers on the laptop.
-
-The header counter appears immediately before Ecwid's search control. It shows the total found across the hunt, with remaining rewards and an explanation on hover or keyboard focus. On local standalone pages without the storefront header, it appears at the top right for testing.
-
-Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page with a gentle size pulse and tilt. Its clear lens reveals the actual page beneath it, then the dragon sticker pops into view. Clicking or keyboard-activating the sticker brings the glass, light, and dragon to the viewport center together before they expand into the introduction modal. The demonstration sticker consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the raised counter button opens the information modal directly, without replaying the spotlight.
-
-```js
-window.RRHS_HUNT_INTRO.replay(); // Replay after the experience has loaded.
-window.RRHSOVERIDE = false;     // Remove the counter, packages, intro and spotlight.
-```
-
-Root-page claim dialogs handle discoveries from trusted hosted iframes so dialogs cover the full website rather than the iframe's tall document.
-
-## Personal Vercel dashboard
-
-Open <https://rrhscoop-assets.vercel.app/easter-hunt/dashboard> on your laptop.
-Choose **Open storefront** from that page and keep the dashboard open while
-presenting. The connected storefront tab saves the promo toggle automatically.
-It also supports `window.RRHSOVERIDE = true` once in DevTools; `false` saves the
-opposite preference. The intro still plays once per tab and can be replayed from
-the dashboard.
-
-The compact claim log shows the entered S-number, timestamp, preview percentage,
-`PREVIEW-…` reference, and a branded email preview. No student name is inferred,
-no directory match is claimed, and only the presenter mailbox can receive real preview mail. The storefront never receives
-the dashboard reference as a coupon code.
-
-**The page URL is public; the records are private to your browser profile.**
-Another person opening the URL sees an empty dashboard. There is no public
-student-data API, shared cloud claim log, or production admin login in this demo.
-The claim log stays in localStorage. An explicit preview delivery request sends the allowed presenter S-number, percentage, and reference through Vercel to the CO-OP Apps Script sender. A trusted opener/message-port connection moves records directly between
-your storefront and dashboard tabs. The hosted dashboard keeps a browser-only
-backup so records survive reopening the browser. This also avoids relying on
-third-party iframe storage, which browsers can partition between the school
-website and Vercel.
-
-Use **View preview** on a row to see that reward’s email. Viewing the preview sends only its percentage to the template endpoint. The separate send action sends the presenter recipient identifier and preview reference to the email service. The email frame is sandboxed without script access.
-Use **Export** for a local backup. **Reset demo** confirms before clearing the
-preview log and makes the testing sticker available again. An offline reset is
-applied to the storefront the next time you connect it. Clearing browser data
-removes the demo records and toggle preference.
-
-Only Inventory Intelligence is enabled. The twelve prize tickets are drawn with
-Web Crypto in the personal demo; Web Locks serialize changes across browser tabs.
-These are presentation mechanics, not server enforcement for a live promotion.
-The older loopback-only Node simulator remains available to backend tests. The
-normal hosted claim API still rejects all live issuance requests.
-
-## Plain boolean gates
-
-Edit `easter-hunt/config.js`:
-
-```js
-HUNT_ENABLED: false,
-DEV_PREVIEW_ENABLED: true,
-DEV_ALL_EGGS_ENABLED: false,
-```
-
-Keep `HUNT_ENABLED` false. The `RRHSOVERIDE` DevTools flag gates all preview UI, including local pages. `DEV_PREVIEW_ENABLED` permits the loopback preview server; set it false to close that server too. `DEV_ALL_EGGS_ENABLED` temporarily reveals all twelve placements locally for review; keep it false to leave only Inventory Intelligence available. These are plaintext code switches, not `.env` settings.
-
-The deployed `/api/v1/easter-hunt` returns disabled live availability and rejects all claim requests. Its `GET ?view=email-template&percentage=…` branch only renders a generic preview and accepts no student data. Changing the browser boolean cannot enable live issuance. There is deliberately no “flip this boolean to launch” instruction while checkout enforcement and identity ownership remain unresolved.
-
-The exclusive deadline is `2026-11-14T00:00:00-06:00`, which includes all of Friday, November 13's 11:59 PM minute in America/Chicago. UI/email copy says Friday, November 13, 2026, at 11:59 PM Central. The scheduled start is Monday, November 9 at midnight Central.
-
-## What was reused and inspected
-
-- This repository serves plain JavaScript, CSS, HTML, Ecwid storefront customizations, and Vercel CommonJS API handlers. No frontend framework or package dependency was added.
-- Existing maroon/paper/cream tokens, Spectral and Playfair Display typography, and the shared runtime observer are reused. A native dialog supplies top-layer modal behavior; keyboard trapping, focus return, Escape, reduced motion, and short package/confetti/count-up animations are included.
-- Existing `discount-url.js` calculates an optional surcharge. It is unchanged. Checkout, teacher preorders, dispatch, receipts, and order status sending are unchanged.
-- Existing email functions use MailApp/GmailApp from the district account. `buildEasterEggRewardEmail` reuses `cfaEmail_` rather than replacing receipt or preorder templates. It returns HTML and plain text and never sends by itself. Email uses a static layout because email clients commonly strip animation and scripts.
-- There is no database, schema migration mechanism, or admin authentication interface in this assets repository. The sibling `barcode-pass-verification` app has its own SQLite/Postgres adapter, schema and authenticated admin routes; those were inspected, not modified or connected to this promotion.
-- `easter-hunt/directory.js` implements the sibling app's existing timestamp/HMAC request protocol. It accepts an address only after the directory confirms an exact match. It has no public route and is **not called by the mock preview**.
-- A read-only check against the configured Ecwid store succeeded for profile and coupon metadata. `pricesIncludeTax` was false. No coupons, orders, settings, directory records or mailboxes were changed by that check.
-
-## Checkout blocker before live launch
-
-Ecwid's documented [create-coupon fields](https://docs.ecwid.com/api-reference/rest-api/discounts/discount-coupons/create-discount-coupon) include percentage/fixed amount, `SINGLE` use, expiration, and catalog restrictions. They do not expose a cap on the portion of subtotal eligible for a percentage discount. `totalLimit` is a **minimum**, not the requested cap. A regular 35% coupon or an $8.75 flat coupon would both violate the rules for some carts. Neither is issued here.
-
-The [server-calculated discount hook](https://docs.ecwid.com/discounts-and-tips/add-discounts-to-the-store/discounts-calculated-on-your-server) supports an absolute discount computed from eligible merchandise:
-
-```text
-round_to_cents(percentage × min(eligible merchandise subtotal, $25))
-```
-
-That hook is the candidate for exact checkout math. It needs Ecwid's `customize_cart_calculation` scope and must share the existing `discountUrl` endpoint with surcharges. Ecwid allows checkout without that discount if the hook misses its five-second deadline. Native [coupon behavior](https://support.ecwid.com/hc/en-us/articles/207806525-Setting-up-discount-coupons) allows only one coupon per order, but linking a custom discount to a native single-use coupon without double-discounting, replay races, or bypasses still requires sandbox validation. Do not use a browser-only cart adjustment or issue a zero-value marker coupon without confirming its behavior.
-
-Before live launch, implement and validate:
-
-1. A supported Ecwid single-use authorization/code mechanism for the dynamic capped amount, exact merchandise eligibility, expired/replayed carts, simultaneous checkout, and no coupon stacking. Confirm store timezone is America/Chicago. No live issuance code is enabled or supplied in this development iteration.
-2. An authorized student directory lookup followed by proof of access to that exact school mailbox (OTP or district SSO). A matching S-number and a directory name **do not prove that the person entering it owns the identity**. Never return a directory name or existence result to an unverified browser.
-3. Durable Postgres tables and an atomic transaction for configuration, eggs, prize units, verified claims, idempotency, coupon issuance, email jobs, redemption and audit. Use keyed hashes for student uniqueness, encrypted short-lived fulfillment data, database uniqueness constraints, cryptographic draws, and transactional outbox retries. No migration is included or applied to another app's database for this mock-only iteration.
-4. Distributed request/OTP limits, recovery for reserved claims, authenticated staff management in the actual admin application, minimal reports, and operational failure notifications. The local management page is a developer tool, not production admin authorization.
-5. Signature-validated/idempotent Ecwid webhook handling or authenticated order reconciliation for redemption, plus tested asynchronous delivery using the existing verified district sender. Never allocate a second reward on retry. No redemption or real delivery worker exists in this preview.
-6. Integration and database concurrency tests in a sandbox. Current tests cover the simulator and disabled production API, not live checkout, real mailbox verification, or distributed claims.
-
-## Apps Script setup
-
-For real presenter preview email, paste the latest combined Apps Script into the existing district project, run `setup`, then publish a **new version of the existing web-app deployment**. Keep the same `/exec` URL. Vercel reuses `RRHS_CFA_VERIFICATION_URL`; no new sender, secret, dependency or trigger is required.
-
-The `send-hunt-preview` action only permits `s151579@student.roundrockisd.org`, five messages per Central day and one per minute. Repeated requests for a sent preview reference return the original success without sending again. An unconfirmed provider result stays unconfirmed to avoid duplicate email; check the inbox before creating another preview. Other students require a verified identity flow before real sends can be expanded.
-
-The website saves the reward even if delivery fails. The dashboard displays delivery status and provides **Send preview** for retries. Publishing the Apps Script update is required; saving code or running setup alone does not update the deployed endpoint. The optional editor function `sendEasterEggPreview` sends one 35% preview to the presenter. `setup` itself still sends nothing. Automated tests mock all delivery calls.
-
-For the later live identity integration:
-
-- Reuse `/Downloads/barcode-pass-verification/public/integrations/student-directory.gs` and its existing deployed directory web app if authorized. Keep that project separate from the combined teacher email project: both define `doPost`, so pasting both entrypoints together would break routing.
-- Enable the **People API advanced service** in that directory project and the corresponding Google Cloud API if needed. Run as an authorized district account with access to student domain profiles/contacts; the district may need to allow directory visibility. A personal Gmail account cannot supply the school directory.
-- Set Script property `DIRECTORY_SECRET` to a random secret of at least 32 characters. Put the **same secret** in server-only `STUDENT_DIRECTORY_SECRET`, and the deployed `/exec` URL in `STUDENT_DIRECTORY_URL`. These variables are only for the optional future directory adapter, not feature flags. No directory secret is read by the browser or required by the preview.
-- Deploy an updated web app version after any directory code change. Keep its HMAC check and timestamp window. Avoid using the directory endpoint as a public student lookup interface. The copied directory script's first-match behavior also needs review for ambiguous profiles across pages before live use.
-- `buildEasterEggRewardEmail` is already added to the combined `apps-script/teacher-preorder-verification.gs`. When deploying future live fulfillment, keep that function with the existing `cfaEmail_` helper and verified sender configuration. Saving it alone adds no trigger and sends nothing. Existing minute jobs remain unchanged. Live reward fulfillment still needs a verified-student queue; the presenter-only preview route is not live coupon fulfillment.
+`node tools/easter-hunt-preview.cjs` serves the storefront pages at <http://127.0.0.1:4173> with a simulated backend (`easter-hunt/service.js`). No coupons or emails are created.
 
 ## Files
 
 | Files | Purpose |
 | --- | --- |
-| `easter-hunt/config.js` | Plain booleans, deadline, twelve unique location IDs |
-| `easter-hunt/service.js` | Loopback backend simulator and server-side logic tests |
-| `easter-hunt/demo-store.js`, `demo-client.js` | Browser-only persistent presentation claims and trusted dashboard connection |
-| `easter-hunt/boot.js`, `hunt.js`, `hunt.css`, `experience.js` | DevTools gate, iframe bridge, header counter, spotlight introduction, reusable egg, accessible modals, availability refresh |
-| `easter-hunt/directory.js` | Private signed directory adapter for later verified integration |
-| `easter-hunt/email-preview.js` | Render the existing Apps Script template without sending |
-| `api/v1/easter-hunt.js` | Closed live claim API and generic public email templates |
-| `tools/easter-hunt-preview.cjs`, `tools/easter-hunt/*` | Local preview server and Vercel-hosted personal dashboard |
-| `tools/check-easter-hunt-browser.cjs`, `test/easter-hunt.test.js` | Browser QA and critical logic/API tests |
-| `index.js`, projects/FAQ/why/category HTML | Load the gated feature in existing storefront surfaces |
-| `iframes/projects/projects.js` | Inventory Intelligence placement marker |
-| `apps-script/teacher-preorder-verification.gs` | Shared branded HTML/plain-text reward template |
+| `easter-hunt/config.js` | Deadline and the twelve sticker locations |
+| `easter-hunt/boot.js`, `hunt.js`, `hunt.css`, `experience.js` | Loader, stickers, claim dialogs, header counter, intro |
+| `api/v1/easter-hunt.js` | Availability, claims and dashboard API (`RRHS_HUNT_ENABLED` switch) |
+| `apps-script/teacher-preorder-verification.gs` | Reward pool, coupons, emails, log sheet, dashboard sign-in |
+| `tools/easter-hunt/` | Dashboard page |
+| `tools/easter-hunt-preview.cjs`, `easter-hunt/service.js` | Local simulator |
 
 ## Tests
 
@@ -176,13 +63,4 @@ For the later live identity integration:
 node --test
 ```
 
-Optional browser QA without adding project dependencies:
-
-```sh
-npm install --prefix /tmp/rrhs-hunt-qa --no-package-lock playwright
-node tools/check-easter-hunt-browser.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
-node tools/check-hunt-dashboard.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
-node tools/check-hunt-motion.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
-```
-
-If Chromium is not installed, run `/tmp/rrhs-hunt-qa/node_modules/.bin/playwright install chromium` first. Browser tests cover desktop, small/large mobile, tablet, landscape, reduced motion, enlarged text, keyboard focus/escape, non-consuming dismissal, simulated claims, lost availability, and mobile email width. They also verify the default-off gate, immediate on/off toggles, per-tab persistence, three-second introduction, spotlight click/skip, header counter tooltip, and trusted iframe discovery bridge. All tests use fictional or locally entered preview data, no live Ecwid writes and no real email.
+`test/hunt-live.test.js` covers the claim rules, coupons, email retries, the env switch and dashboard sign-in. All tests use fake Ecwid, mail and storage, so they make no live writes.

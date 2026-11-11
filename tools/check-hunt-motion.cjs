@@ -10,7 +10,7 @@ const server = createServer();
     for (const viewport of [{ width: 1440, height: 960 }, { width: 375, height: 812 }, { width: 844, height: 390 }]) {
       const page = await browser.newPage({ viewport, reducedMotion: 'no-preference' });
       const errors = []; page.on('pageerror', error => errors.push(error.message));
-      await page.addInitScript(() => { window.RRHSOVERIDE = true; sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); });
+      await page.addInitScript(() => { sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); });
       await page.goto('http://127.0.0.1:' + server.address().port + '/iframes/projects/index.html');
       await page.waitForFunction(() => window.RRHS_HUNT_INTRO);
       await page.evaluate(() => window.RRHS_HUNT_INTRO.replay());

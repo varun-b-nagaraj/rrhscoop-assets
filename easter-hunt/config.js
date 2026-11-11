@@ -1,8 +1,7 @@
-/* Plain development switches. These never enable live reward issuance. */
+/* Hunt settings. Turn the hunt on or off with RRHS_HUNT_ENABLED in Vercel, not here. */
 (function (root) {
   'use strict';
   const config = Object.freeze({
-    HUNT_ENABLED: true,
     DEV_PREVIEW_ENABLED: true,
     DEV_ALL_EGGS_ENABLED: false,
     stickerPath: 'dragon-package-sticker.png?v=1',

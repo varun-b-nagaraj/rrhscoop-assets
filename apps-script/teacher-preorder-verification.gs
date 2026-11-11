@@ -18,8 +18,8 @@ function doPost(e) {
   try {
     var input = JSON.parse(e.postData.contents || '{}');
     var props = PropertiesService.getScriptProperties();
-    if (input.action === 'send-hunt-preview') return cfaJson_(cfaSendHuntPreview_(input, props));
     if (input.action === 'hunt-claim') return cfaJson_(huntClaim_(input, props));
+    if (/^hunt-admin-/.test(input.action)) return cfaJson_(huntAdmin_(input, props));
     if (input.action !== 'send-code' && input.action !== 'verify-code') {
       return cfaJson_({ ok: false, status: 400, error: 'Unknown action.' });
     }
@@ -110,7 +110,7 @@ function cfaEmail_(label, title, content) {
     content + '</td></tr></table></td></tr></table></body></html>';
 }
 
-/** Pure template. Preview delivery is handled separately; no coupons are issued. */
+/** Pure template. huntClaim_ creates the coupon and passes its code here. */
 function buildEasterEggRewardEmail(reward) {
   // The Apps Script editor's Run button supplies no arguments. Never mint a live reward.
   if (arguments.length === 0) reward = { percentage: 35, name: 'Dragon', preview: true };
@@ -141,34 +141,6 @@ function buildEasterEggRewardEmail(reward) {
     '<p style="margin-top:24px;">Thanks for participating in our E-Commerce Opening Week!</p>' +
     '<p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #d4c9bd;color:#655b55;font-size:13px;">RRHS CO-OP · Built by students. Made for Dragons.<br><a href="mailto:rrhs_coop_store@roundrockisd.org" style="color:#6e1f2a;">Questions? Contact the CO-OP.</a></p>');
   return { subject: subject, text: text, html: html };
-}
-
-/** Caller holds the script lock. Preview mail is restricted to the presenter's mailbox. */
-function cfaSendHuntPreview_(input, props) {
-  if (input.studentId !== 's151579' || [10, 15, 20, 25, 35].indexOf(input.percentage) === -1 || !/^PREVIEW-[A-F0-9]{12}$/.test(input.reference || '')) {
-    return { ok: false, status: 400, error: 'Real preview delivery is currently limited to the presenter mailbox.' };
-  }
-  var key = 'hunt_preview_' + input.reference;
-  var previous = JSON.parse(props.getProperty(key) || '{}');
-  if (previous.percentage && previous.percentage !== input.percentage) return { ok: false, status: 409, error: 'This preview reference already belongs to another reward.' };
-  if (previous.status === 'sent') return { ok: true, emailStatus: 'sent' };
-  if (previous.status === 'sending') return { ok: false, status: 503, error: 'Delivery is unconfirmed. Check your inbox before sending another preview.' };
-  var day = Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd');
-  var rate = JSON.parse(props.getProperty('hunt_preview_rate') || '{}');
-  if ((rate.last && Date.now() - rate.last < 60000) || (rate.day === day && rate.count >= 5) || MailApp.getRemainingDailyQuota() < 1) return { ok: false, status: 429, error: 'Preview email limit reached. Wait before trying again; at most five previews are sent per day.' };
-  props.setProperty('hunt_preview_rate', JSON.stringify({ day: day, count: (rate.day === day ? rate.count || 0 : 0) + 1, last: Date.now() }));
-  props.setProperty(key, JSON.stringify({ status: 'sending', percentage: input.percentage }));
-  var email = buildEasterEggRewardEmail({ percentage: input.percentage, name: 'Dragon', preview: true, reference: input.reference });
-  try {
-    var options = { htmlBody: email.html, name: SENDER_NAME, replyTo: REPLY_TO };
-    if (FROM_ALIAS) options.from = FROM_ALIAS;
-    GmailApp.sendEmail('s151579@student.roundrockisd.org', email.subject, email.text, options);
-    props.setProperty(key, JSON.stringify({ status: 'sent', percentage: input.percentage }));
-    return { ok: true, emailStatus: 'sent' };
-  } catch (_) {
-    // A provider error may occur after acceptance. Do not automatically duplicate mail.
-    return { ok: false, status: 503, error: 'Delivery is unconfirmed. Check your inbox before sending another preview.' };
-  }
 }
 
 /* ---------------------------------------------------------------------------------------
@@ -251,20 +223,25 @@ function huntClaim_(input, props) {
   if (rate.minute === minute && rate.count >= 30) return { ok: false, status: 429, error: 'Lots of Dragons are hunting. Please try again in a minute.' };
   props.setProperty('hunt_rate', JSON.stringify({ minute: minute, count: (rate.minute === minute ? rate.count : 0) + 1 }));
   var status = huntStatus_(state);
-  if (status !== 'active') return { ok: false, status: 409, error: status === 'expired' ? 'The hunt has ended. Thanks for exploring!' : status === 'sold_out' ? 'All twelve rewards have been found. Thanks for exploring!' : 'The packages are resting right now. Please try again later.' };
+  if (status !== 'active') { huntLog_(props, 'Refused: hunt ' + status, { studentId: studentId, eggId: input.eggId }); return { ok: false, status: 409, error: status === 'expired' ? 'The hunt has ended. Thanks for exploring!' : status === 'sold_out' ? 'All twelve rewards have been found. Thanks for exploring!' : 'The packages are resting right now. Please try again later.' }; }
   // One public message for both cases, so the API does not reveal who has claimed.
-  if (state.claims.some(function (claim) { return claim.studentId === studentId || claim.eggId === input.eggId; })) return { ok: false, status: 409, error: HUNT_TAKEN };
+  var mine = state.claims.some(function (claim) { return claim.studentId === studentId; });
+  if (mine || state.claims.some(function (claim) { return claim.eggId === input.eggId; })) {
+    huntLog_(props, mine ? 'Refused: student already has a reward' : 'Refused: sticker already claimed', { studentId: studentId, eggId: input.eggId });
+    return { ok: false, status: 409, error: HUNT_TAKEN };
+  }
   var index = Math.floor(Math.random() * state.pool.length), percentage = state.pool[index], code = huntCode_();
   try { var couponId = huntCreateCoupon_(props, studentId, input.eggId, percentage, code); }
-  catch (error) { console.error(error.message); return { ok: false, status: 503, error: 'We couldn’t wrap your reward just now. Please try again in a minute.' }; }
+  catch (error) { console.error(error.message); huntLog_(props, 'Coupon failed', { studentId: studentId, eggId: input.eggId, percentage: percentage }, error.message); return { ok: false, status: 503, error: 'We couldn’t wrap your reward just now. Please try again in a minute.' }; }
   state.pool.splice(index, 1);
   var claim = { key: input.idempotencyKey, studentId: studentId, eggId: input.eggId, percentage: percentage, code: code,
     couponId: couponId, at: new Date().toISOString(), emailStatus: 'sending', attempts: 1 };
   state.claims.push(claim);
   // Record the claim before mailing, so a mail failure can never hand out a second reward.
   props.setProperty(HUNT_STATE_KEY, JSON.stringify(state));
-  try { huntSendReward_(claim); claim.emailStatus = 'sent'; }
-  catch (error) { console.error('Hunt reward email failed: ' + error.message); claim.emailStatus = 'failed'; }
+  huntLog_(props, 'Claimed', claim, 'Ecwid coupon ' + couponId);
+  try { huntSendReward_(claim); claim.emailStatus = 'sent'; huntLog_(props, 'Email sent', claim); }
+  catch (error) { console.error('Hunt reward email failed: ' + error.message); claim.emailStatus = 'failed'; huntLog_(props, 'Email failed', claim, error.message); }
   props.setProperty(HUNT_STATE_KEY, JSON.stringify(state));
   return huntResult_(claim);
 }
@@ -278,7 +255,8 @@ function retryHuntEmails() {
     state.claims.forEach(function (claim) {
       if (claim.emailStatus !== 'failed' || claim.attempts >= 5) return;
       claim.attempts++; changed = true;
-      try { huntSendReward_(claim); claim.emailStatus = 'sent'; } catch (error) { console.error('Hunt reward retry failed: ' + error.message); }
+      try { huntSendReward_(claim); claim.emailStatus = 'sent'; huntLog_(props, 'Email sent (retry ' + (claim.attempts - 1) + ')', claim); }
+      catch (error) { console.error('Hunt reward retry failed: ' + error.message); huntLog_(props, 'Email retry failed', claim, error.message); }
     });
     if (changed) props.setProperty(HUNT_STATE_KEY, JSON.stringify(state));
   } finally { lock.releaseLock(); }
@@ -299,21 +277,109 @@ function huntSetPaused_(paused) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Try again shortly.');
   try {
-    var props = PropertiesService.getScriptProperties(), state = huntState_(props);
-    state.paused = paused; props.setProperty(HUNT_STATE_KEY, JSON.stringify(state));
+    var props = PropertiesService.getScriptProperties();
+    huntPause_(props, paused, 'Apps Script editor');
     Logger.log(paused ? 'Hunt paused. No new claims until resumeHunt().' : 'Hunt resumed.');
   } finally { lock.releaseLock(); }
 }
 
-/** Optional editor action; setup itself never sends preview messages. */
-function sendEasterEggPreview() {
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Try again shortly.');
+function huntPause_(props, paused, by) {
+  var state = huntState_(props);
+  state.paused = paused; props.setProperty(HUNT_STATE_KEY, JSON.stringify(state));
+  huntLog_(props, paused ? 'Hunt paused' : 'Hunt resumed', {}, 'by ' + by);
+}
+
+/* Durable log: every claim, refusal, email and pause goes to a Google Sheet you own. */
+var HUNT_LOG_HEADERS = ['Time', 'Event', 'S-number', 'Sticker', 'Reward', 'Coupon code', 'Email', 'Details'];
+function huntLogSheet_(props, create) {
+  var id = props.getProperty('HUNT_LOG_SHEET_ID');
+  if (id) return SpreadsheetApp.openById(id).getSheets()[0];
+  if (!create) return null;
+  var book = SpreadsheetApp.create('RRHS CO-OP package hunt log');
+  var sheet = book.getSheets()[0];
+  sheet.appendRow(HUNT_LOG_HEADERS); sheet.setFrozenRows(1);
+  props.setProperty('HUNT_LOG_SHEET_ID', book.getId());
+  return sheet;
+}
+function huntLog_(props, event, claim, detail) {
+  // Logging never blocks a claim; Script properties still hold every reward.
   try {
-    var result = cfaSendHuntPreview_({ studentId: 's151579', percentage: 35, reference: 'PREVIEW-' + Utilities.getUuid().replace(/-/g, '').slice(0, 12).toUpperCase() }, PropertiesService.getScriptProperties());
-    if (!result.ok) throw new Error(result.error);
-    Logger.log('Preview email sent to the presenter school mailbox. No coupon was created.');
-  } finally { lock.releaseLock(); }
+    huntLogSheet_(props, true).appendRow([new Date(), event, claim.studentId || '', claim.eggId || '',
+      claim.percentage ? claim.percentage + '%' : '', claim.code || '', claim.emailStatus || '', String(detail || '').slice(0, 300)]);
+  } catch (error) { console.error('Hunt log unavailable: ' + error.message); }
+}
+/** Run once from the editor: authorizes Google Sheets and creates the hunt log. */
+function setupHuntLog() {
+  var props = PropertiesService.getScriptProperties(), sheet = huntLogSheet_(props, true);
+  Logger.log('Hunt log: ' + sheet.getParent().getUrl());
+}
+
+/* Dashboard access: a sign-in code is emailed to an admin address, then a 12-hour session. */
+var HUNT_ADMINS = ['varunnagaraj2009@gmail.com', 'rrhs_coop_store@roundrockisd.org', 's151579@student.roundrockisd.org'];
+var HUNT_SESSION_HOURS = 12;
+function huntSecret_(props) {
+  var secret = props.getProperty('cfa_internal_otp_key');
+  if (!secret) { secret = Utilities.getUuid() + Utilities.getUuid(); props.setProperty('cfa_internal_otp_key', secret); }
+  return secret;
+}
+function huntSession_(props, token) {
+  if (typeof token !== 'string' || token.length < 40) return null;
+  var session = JSON.parse(props.getProperty('hunt_session_' + cfaDigest_(token, huntSecret_(props))) || 'null');
+  return session && session.expires > Date.now() ? session : null;
+}
+function huntAdmin_(input, props) {
+  var now = Date.now(), secret = huntSecret_(props);
+  if (input.action === 'hunt-admin-code' || input.action === 'hunt-admin-verify') {
+    var email = String(input.email || '').trim().toLowerCase();
+    if (HUNT_ADMINS.indexOf(email) === -1) return { ok: false, status: 401, error: 'That email cannot open the hunt dashboard.' };
+    var key = 'hunt_admin_' + cfaDigest_(email, secret), record = JSON.parse(props.getProperty(key) || '{}');
+    if (input.action === 'hunt-admin-code') {
+      if (record.sentAt && now - record.sentAt < 60000) return { ok: false, status: 429, error: 'Wait one minute before requesting another code.' };
+      var bytes = Utilities.computeHmacSha256Signature(Utilities.getUuid() + now, secret);
+      var code = ('000000' + (((bytes[0] & 255) * 65536 + (bytes[1] & 255) * 256 + (bytes[2] & 255)) % 1000000)).slice(-6);
+      props.setProperty(key, JSON.stringify({ hash: cfaDigest_(email + ':' + code, secret), expires: now + 10 * 60000, attempts: 0, sentAt: now }));
+      MailApp.sendEmail({ to: email, name: 'RRHS CO-OP', subject: code + ' is your hunt dashboard code',
+        body: 'Your package hunt dashboard code is ' + code + '. It expires in 10 minutes.',
+        htmlBody: cfaEmail_('Package hunt', 'Your dashboard code', '<p>Enter this code on the hunt dashboard. It expires in 10 minutes.</p>' +
+          '<p style="background:#f1eee8;border-left:3px solid #6e1f2a;padding:16px 20px;color:#6e1f2a;font:400 34px/1.2 Georgia,serif;letter-spacing:6px;">' + code + '</p>' +
+          '<p>If you did not request this, ignore this email.</p>') });
+      return { ok: true };
+    }
+    if (!record.hash || record.expires <= now || record.attempts >= 5) return { ok: false, status: 401, error: 'This code expired. Request a new one.' };
+    record.attempts++;
+    if (!cfaEqual_(cfaDigest_(email + ':' + String(input.code || '').trim(), secret), record.hash)) {
+      props.setProperty(key, JSON.stringify(record));
+      return { ok: false, status: 401, error: 'That code does not match. Check your email and try again.' };
+    }
+    props.deleteProperty(key);
+    var all = props.getProperties();
+    Object.keys(all).forEach(function (name) {
+      if (name.indexOf('hunt_session_') === 0 && JSON.parse(all[name]).expires < now) props.deleteProperty(name);
+    });
+    var token = Utilities.getUuid() + Utilities.getUuid(), expires = now + HUNT_SESSION_HOURS * 3600000;
+    props.setProperty('hunt_session_' + cfaDigest_(token, secret), JSON.stringify({ email: email, expires: expires }));
+    huntLog_(props, 'Dashboard sign-in', {}, email);
+    return { ok: true, token: token, expiresAt: expires };
+  }
+  var session = huntSession_(props, input.token);
+  if (!session) return { ok: false, status: 401, error: 'Sign in again to view the dashboard.' };
+  if (input.action === 'hunt-admin-pause' || input.action === 'hunt-admin-resume') huntPause_(props, input.action === 'hunt-admin-pause', session.email);
+  else if (input.action !== 'hunt-admin-log') return { ok: false, status: 400, error: 'Unknown action.' };
+  var state = huntState_(props), events = [], sheetUrl = '';
+  try {
+    var sheet = huntLogSheet_(props, false);
+    if (sheet) {
+      sheetUrl = sheet.getParent().getUrl();
+      var rows = sheet.getLastRow() - 1, count = Math.min(rows, 300);
+      if (count > 0) events = sheet.getRange(rows - count + 2, 1, count, HUNT_LOG_HEADERS.length).getValues().reverse().map(function (row) {
+        return { at: row[0] instanceof Date ? row[0].toISOString() : String(row[0]), event: row[1], studentId: row[2], eggId: row[3], reward: row[4], code: row[5], email: row[6], detail: row[7] };
+      });
+    }
+  } catch (error) { console.error('Hunt log read failed: ' + error.message); }
+  var availability = huntAvailability_(props);
+  return { ok: true, email: session.email, status: availability.status, remaining: availability.remaining, pool: state.pool,
+    paused: state.paused === true, expiresAt: HUNT_EXPIRES_AT, eggs: availability.eggs, sheetUrl: sheetUrl, events: events,
+    claims: state.claims.map(function (claim) { return { at: claim.at, studentId: claim.studentId, eggId: claim.eggId, percentage: claim.percentage, code: claim.code, emailStatus: claim.emailStatus, attempts: claim.attempts }; }) };
 }
 
 function cfaDispatchMessage_(data) {
@@ -541,7 +607,7 @@ function coopLogSetup_(report) {
 }
 
 function coopSetupChecks_(props) {
-  const report = { checkedAt: new Date().toISOString(), checks: [], warnings: [], rewardMode: 'preview-mail-only' };
+  const report = { checkedAt: new Date().toISOString(), checks: [], warnings: [], rewardMode: 'live-hunt' };
   const config = cfaEcwidConfig_(props);
   for (const key of ['START_AT', 'STATUS_START_AT', 'STATUS_CHECKED_AT']) {
     const value = props.getProperty(key);
@@ -575,7 +641,7 @@ function coopSetupChecks_(props) {
     report.checks.push('Receipt PDF download and PDF content type');
   } else report.warnings.push('No order is available for a receipt PDF download check. Email rendering was checked with fictional orders.');
   if (!ScriptApp.getService().getUrl()) report.warnings.push('No verification web-app deployment was found. Deploy this project as a web app before using website email verification.');
-  report.checks.push('Live coupons remain disabled; real preview mail is limited to the presenter mailbox');
+  report.checks.push('Package hunt: ' + huntState_(props).pool.length + ' of 12 rewards remaining' + (props.getProperty('HUNT_LOG_SHEET_ID') ? '' : ' (run setupHuntLog to create the log sheet)'));
   return report;
 }
 

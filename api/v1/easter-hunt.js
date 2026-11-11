@@ -1,5 +1,6 @@
 'use strict';
-// Public deployment stays closed even if a browser changes its feature flags.
+// The hunt runs only while RRHS_HUNT_ENABLED is 'true' in Vercel. Browsers cannot override it.
+const huntEnabled = () => String(process.env.RRHS_HUNT_ENABLED || '').trim().toLowerCase() === 'true';
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -7,7 +8,7 @@ module.exports = async function handler(req, res) {
   const allowedOrigin = !origin || ['https://rrhscoop-assets.vercel.app', 'https://rrhscoop.roundrockisd.org'].includes(origin) ||
     (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
   res.setHeader('Vary', 'Origin');
-  if (!allowedOrigin) { res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the CO-OP preview to continue.' })); }
+  if (!allowedOrigin) { res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the CO-OP website to continue.' })); }
   if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,9 +20,9 @@ module.exports = async function handler(req, res) {
     try {
       if (body == null) { let raw = ''; for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > 2048) throw new Error(); } body = JSON.parse(raw || '{}'); }
       else if (typeof body === 'string') { if (Buffer.byteLength(body) > 2048) throw new Error(); body = JSON.parse(body); }
-    } catch (_) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Invalid preview request.' })); }
+    } catch (_) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Invalid request.' })); }
     if (body?.action === 'claim') {
-      if (!require('../../easter-hunt/config').HUNT_ENABLED) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'The hidden package hunt is not open yet.' })); }
+      if (!huntEnabled()) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'The hidden package hunt is not open yet.' })); }
       if (typeof body.studentId !== 'string' || typeof body.eggId !== 'string' || typeof body.idempotencyKey !== 'string') { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Please reopen the package and try again.' })); }
       try {
         const result = await require('../../teacher-preorders/service').mailAction('hunt-claim', { studentId: body.studentId, eggId: body.eggId, idempotencyKey: body.idempotencyKey });
@@ -32,17 +33,18 @@ module.exports = async function handler(req, res) {
         return res.end(JSON.stringify({ error: res.statusCode === 503 ? 'We couldn’t open this package just now. Please try again in a minute.' : error.message }));
       }
     }
-    if (body?.action === 'send-preview') {
-      if (body.studentId !== 's151579' || ![10,15,20,25,35].includes(body.percentage) || !/^PREVIEW-[A-F0-9]{12}$/.test(body.reference || '')) {
-        res.statusCode = 400; return res.end(JSON.stringify({ error: 'Real preview delivery is currently limited to the presenter mailbox.' }));
-      }
+    // Dashboard: sign in with an emailed code, then read the log or pause the hunt.
+    const admin = { 'admin-code': ['hunt-admin-code', ['email']], 'admin-verify': ['hunt-admin-verify', ['email', 'code']],
+      'admin-log': ['hunt-admin-log', ['token']], 'admin-pause': ['hunt-admin-pause', ['token']], 'admin-resume': ['hunt-admin-resume', ['token']] }[body?.action];
+    if (admin) {
+      if (origin && origin !== 'https://rrhscoop-assets.vercel.app' && !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) { res.statusCode = 403; return res.end(JSON.stringify({ error: 'Open the hunt dashboard to continue.' })); }
+      const payload = Object.fromEntries(admin[1].map(key => [key, typeof body[key] === 'string' ? body[key].slice(0, 200) : '']));
       try {
-        await require('../../teacher-preorders/service').mailAction('send-hunt-preview', { studentId: body.studentId, percentage: body.percentage, reference: body.reference });
-        res.statusCode = 200; return res.end(JSON.stringify({ ok: true, emailStatus: 'sent' }));
+        const { ok, ...result } = await require('../../teacher-preorders/service').mailAction(admin[0], payload);
+        res.statusCode = 200; return res.end(JSON.stringify(result));
       } catch (error) {
-        res.statusCode = error.status === 429 ? 429 : 503;
-        const message = /Unknown action/i.test(error.message || '') ? 'Update the CO-OP Apps Script web-app deployment to enable preview emails. Your preview is saved.' : 'Preview email could not be confirmed. Check your inbox; your saved reward is available in the dashboard.';
-        return res.end(JSON.stringify({ error: message }));
+        res.statusCode = [400, 401, 429].includes(error.status) && !/Unknown action/i.test(error.message || '') ? error.status : 503;
+        return res.end(JSON.stringify({ error: res.statusCode === 503 ? 'The CO-OP Apps Script is unavailable. Update its web-app deployment to the newest version.' : error.message }));
       }
     }
   }
@@ -52,7 +54,7 @@ module.exports = async function handler(req, res) {
     const email = require('../../easter-hunt/email-preview')(percentage);
     res.statusCode = 200; return res.end(JSON.stringify(email));
   }
-  if (req.method === 'GET' && require('../../easter-hunt/config').HUNT_ENABLED) {
+  if (req.method === 'GET' && huntEnabled()) {
     // Every open tab polls; let Vercel's edge answer most of them.
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=30');
     try {
@@ -63,6 +65,7 @@ module.exports = async function handler(req, res) {
       res.statusCode = 200; return res.end(JSON.stringify({ mode: 'live', status: 'unavailable', remaining: null, eggs: [] }));
     }
   }
+  if (req.method === 'GET') res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=60');
   res.statusCode = req.method === 'GET' ? 200 : 503;
   res.end(JSON.stringify(req.method === 'GET'
     ? { mode: 'disabled', status: 'disabled', remaining: 0, eggs: [] }

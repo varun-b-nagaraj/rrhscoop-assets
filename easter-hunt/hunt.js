@@ -4,7 +4,7 @@
   const config = window.RRHS_HUNT_CONFIG;
   const assetOrigin = new URL(document.currentScript.src).origin;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  const preview = !config.HUNT_ENABLED || (config.DEV_PREVIEW_ENABLED && local);
+  const preview = config.DEV_PREVIEW_ENABLED && local;
   // Live mode remains closed at the API, regardless of the client switch.
   const endpoint = assetOrigin + '/api/v1/easter-hunt';
   const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
@@ -13,7 +13,6 @@
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
   async function request(data) {
-    if (!config.HUNT_ENABLED && window.RRHS_HUNT_DEMO) return window.RRHS_HUNT_DEMO.request(data ? 'claim' : 'availability', data);
     const response = await fetch(endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
       headers: data ? { 'Content-Type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined,
       signal: AbortSignal.timeout(10000) });
@@ -104,10 +103,10 @@
     content.innerHTML = `<div class="hunt-package hunt-discovered">${stickerImage}</div><p class="hunt-eyebrow">A little CO-OP luck</p>
       <h2 id="hunt-title">You found a<br>hidden package!</h2>
       <p>You spotted our CO-OP dragon sticker! One of twelve little discoveries, with a mystery reward just for you.</p>
-      ${preview ? '<p class="hunt-preview">Dev preview · no real reward or coupon is created.<br>Real preview email delivery is enabled only for the presenter mailbox.</p>' : ''}
+      ${preview ? '<p class="hunt-preview">Local development preview · no real reward or coupon is created.</p>' : ''}
       <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
-      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Presenter preview emails go to the school mailbox.' : 'We’ll email your one-time code to your school inbox (S-number@student.roundrockisd.org).'}</p>
+      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Local previews send no email.' : 'We’ll email your one-time code to your school inbox (S-number@student.roundrockisd.org).'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
@@ -148,7 +147,7 @@
       ${preview ? `<p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>`
         : `<p class="hunt-delivery">Your one-time code ${result.emailStatus === 'sent' ? 'is on its way to' : 'will be emailed to'} <strong>${escape(result.email)}</strong>.</p>`}
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
-      <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : escape(result.emailError || 'Open your dashboard to view the email or retry delivery.')}`
+      <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : 'No email is sent from a local preview.'}`
         : result.emailStatus === 'sent' ? 'Reward saved. Check your school inbox for the code.' : 'Reward saved. Your email is being retried; check your school inbox in a few minutes.'}</p>
       <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
     content.querySelector('button').addEventListener('click', close);
@@ -180,7 +179,6 @@
       mounted.clear();
     }
   });
-  document.addEventListener('rrhs-hunt-demo-changed', refresh);
   window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);

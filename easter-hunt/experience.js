@@ -12,10 +12,11 @@
   function seen() { try { return sessionStorage.getItem('rrhs-hunt-intro-seen') === 'true'; } catch (_) { return false; } }
   function remember() { try { sessionStorage.setItem('rrhs-hunt-intro-seen', 'true'); } catch (_) {} }
   function counterState() {
-    const sample = !data || data.mode === 'disabled';
-    const remaining = sample ? 12 : Math.max(0, Math.min(12, Number.isFinite(data.remaining) ? data.remaining : 12));
+    // Until the live count loads (or if it can't), show the full twelve rather than a guess.
+    const sample = !data || !Number.isFinite(data.remaining);
+    const remaining = sample ? 12 : Math.max(0, Math.min(12, data.remaining));
     const found = 12 - remaining;
-    const preview = !config.HUNT_ENABLED || data?.mode === 'preview' || sample;
+    const preview = data?.mode === 'preview';
     return { found, remaining, preview, sample };
   }
   function updateCounter() {
@@ -27,8 +28,8 @@
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
-      ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this button to read the hunt details.'
-      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons are created; preview delivery is limited to the presenter mailbox. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to read the hunt details again.`;
+      ? 'Look for the red dragon sticker holding a CO-OP package. Twelve are hidden around the website. Select this button to read the hunt details.'
+      : `${preview ? 'Local development preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per student. Select to read the hunt details again.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -86,15 +87,13 @@
       <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twelve are tucked around the website. Spot one and discover a mystery reward.</p>
       <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
       <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
-      ${preview ? '<p class="hunt-preview">Development preview. Only the Inventory Intelligence test sticker is enabled. No real coupon is issued; preview emails can be sent to the presenter mailbox.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
+      ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
-      ${preview ? '<button type="button" class="hunt-presenter-link">Open presenter dashboard</button>' : ''}
       <p class="hunt-terms">One reward per student. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     intro.showModal(); intro.querySelector('.hunt-intro-start').focus({ preventScroll: true });
     intro.querySelector('.hunt-close').addEventListener('click', dismiss);
     intro.querySelector('.hunt-intro-start').addEventListener('click', dismiss);
-    intro.querySelector('.hunt-presenter-link')?.addEventListener('click', () => window.RRHS_HUNT_DEMO?.openDashboard());
     intro.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
     intro.addEventListener('click', event => {
       if (event.target !== intro) return;

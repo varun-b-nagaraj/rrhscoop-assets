@@ -10,12 +10,12 @@ const { DISTRIBUTION } = require('../easter-hunt/service');
 function runtime({ now = '2026-11-11T12:00:00-06:00' } = {}) {
   const values = new Map([['RRHS_ECWID_STORE_ID', '123'], ['RRHS_ECWID_API_TOKEN', 'token']]);
   const coupons = [], sent = [], state = { now: Date.parse(now), mailFails: false, ecwidStatus: 200, random: 0 };
-  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, String(value)) };
+  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, String(value)), deleteProperty: key => values.delete(key), getProperties: () => Object.fromEntries(values) };
   const context = {
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : [state.now])); } static now() { return state.now; } },
     Math: Object.assign(Object.create(Math), { random: () => state.random }),
     console: { error() {} }, Logger: { log() {} },
-    Utilities: { formatDate: () => '2026-11-11 12:00:00 -0600', getUuid: () => String(Math.random()), computeDigest: () => Array.from({ length: 32 }, (_, i) => i * 7), DigestAlgorithm: {} },
+    Utilities: { formatDate: () => '2026-11-11 12:00:00 -0600', getUuid: () => require('node:crypto').randomUUID(), computeDigest: () => Array.from({ length: 32 }, (_, i) => i * 7), DigestAlgorithm: {} },
     PropertiesService: { getScriptProperties: () => props },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     UrlFetchApp: { fetch(url, options) {
@@ -152,6 +152,7 @@ test('doPost answers availability without the lock and claims through it', () =>
 });
 
 test('the API forwards live claims and caches availability at the edge', async () => {
+  const before = process.env.RRHS_HUNT_ENABLED; process.env.RRHS_HUNT_ENABLED = 'true';
   const service = require('../teacher-preorders/service'), original = service.mailAction;
   const handler = require('../api/v1/easter-hunt');
   const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
@@ -180,5 +181,60 @@ test('the API forwards live claims and caches availability at the edge', async (
     const down = res();
     await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, down);
     assert.equal(down.body.status, 'unavailable'); assert.equal(down.headers['Cache-Control'], 'no-store');
-  } finally { service.mailAction = original; }
+  } finally { service.mailAction = original; if (before === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = before; }
+});
+
+test('RRHS_HUNT_ENABLED is the only switch: anything but "true" closes the hunt', async () => {
+  const service = require('../teacher-preorders/service'), original = service.mailAction;
+  const handler = require('../api/v1/easter-hunt');
+  const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
+  const before = process.env.RRHS_HUNT_ENABLED; let calls = 0;
+  service.mailAction = async () => { calls++; return { ok: true, mode: 'live', status: 'active', remaining: 12, eggs: [] }; };
+  try {
+    for (const value of [undefined, '', 'false', '1', 'yes']) {
+      if (value === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = value;
+      const get = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, get);
+      assert.equal(get.body.mode, 'disabled');
+      const post = res(); await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's1', eggId: 'why-gear', idempotencyKey: 'x' } }, post);
+      assert.equal(post.statusCode, 503);
+    }
+    assert.equal(calls, 0);
+    process.env.RRHS_HUNT_ENABLED = ' TRUE ';
+    const on = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, on);
+    assert.equal(on.body.mode, 'live'); assert.equal(calls, 1);
+  } finally { service.mailAction = original; if (before === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = before; }
+});
+
+test('dashboard sign-in: emailed code for approved addresses only, then a session that reads the log and pauses', () => {
+  const env = runtime(), mails = [];
+  env.context.MailApp = { sendEmail: message => mails.push(message) };
+  env.context.Utilities.computeHmacSha256Signature = (text, key) => [...require('node:crypto').createHmac('sha256', key).update(text).digest()];
+  env.context.Utilities.base64EncodeWebSafe = bytes => Buffer.from(bytes).toString('base64url');
+  const admin = input => env.context.huntAdmin_(input, env.props);
+  assert.equal(admin({ action: 'hunt-admin-code', email: 'someone@roundrockisd.org' }).status, 401);
+  assert.equal(mails.length, 0);
+  assert.equal(admin({ action: 'hunt-admin-code', email: 'RRHS_COOP_STORE@roundrockisd.org' }).ok, true);
+  assert.equal(mails[0].to, 'rrhs_coop_store@roundrockisd.org');
+  const code = mails[0].subject.match(/^(\d{6}) /)[1];
+  assert.equal(admin({ action: 'hunt-admin-code', email: 'rrhs_coop_store@roundrockisd.org' }).status, 429);
+  assert.equal(admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code: code === '000000' ? '111111' : '000000' }).status, 401);
+  const signedIn = admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code });
+  assert.equal(signedIn.ok, true, JSON.stringify(signedIn)); assert.ok(signedIn.token.length >= 40);
+  assert.equal(admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code }).status, 401, 'a code works once');
+  assert.equal(admin({ action: 'hunt-admin-log', token: 'forged-token-forged-token-forged-token-forged' }).status, 401);
+  env.claim('s151579', 'why-gear');
+  const log = admin({ action: 'hunt-admin-log', token: signedIn.token });
+  assert.equal(log.claims.length, 1); assert.match(log.claims[0].code, /^RRHSHUNT-/); assert.equal(log.remaining, 11);
+  assert.equal(admin({ action: 'hunt-admin-pause', token: signedIn.token }).paused, true);
+  assert.equal(env.claim('s151580', 'why-return').status, 409);
+  assert.equal(admin({ action: 'hunt-admin-resume', token: signedIn.token }).status, 'active');
+  env.state.now += 13 * 3600000;
+  assert.equal(admin({ action: 'hunt-admin-log', token: signedIn.token }).status, 401, 'sessions expire after 12 hours');
+});
+
+test('dashboard actions are only accepted from the dashboard origin', async () => {
+  const handler = require('../api/v1/easter-hunt');
+  const res = { headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } };
+  await handler({ method: 'POST', headers: { origin: 'https://rrhscoop.roundrockisd.org' }, body: { action: 'admin-log', token: 'x' } }, res);
+  assert.equal(res.statusCode, 403);
 });

@@ -2,18 +2,11 @@
 
 Static assets + client-side scripts used by the RRHS COOP Ecwid storefront embed.
 
-## Hidden package hunt (development preview)
+## Hidden package hunt
 
-Run `node tools/easter-hunt-preview.cjs` and open `http://127.0.0.1:4173`.
-Enable the preview from DevTools with `window.RRHSOVERIDE = true`; set it to
-`false` to hide it again. The override stays in localStorage across tabs and browser restarts on that browser profile.
-The [personal dashboard](https://rrhscoop-assets.vercel.app/easter-hunt/dashboard)
-keeps demo claims private in your browser. Open the storefront from that dashboard
-for a connected presentation, student/reference log, and email previews.
-One package beside Inventory Intelligence supports the full simulated discovery
-flow. No coupons are created; presenter-only preview emails can be sent after the Apps Script update is deployed. Live claims remain disabled by a plain
-boolean and a closed server endpoint. See [the hunt setup notes](easter-hunt/README.md)
-for preview controls, Apps Script instructions, tests, and live-launch blockers.
+Turn it on for everyone with the Vercel environment variable `RRHS_HUNT_ENABLED=true`, then redeploy. Any other value turns it off.
+Claims, coupons and logs are on the [hunt dashboard](https://rrhscoop-assets.vercel.app/easter-hunt/dashboard).
+See [the hunt notes](easter-hunt/README.md).
 
 ## Runtime (Performance)
 
