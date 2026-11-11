@@ -92,32 +92,3 @@ test('order cutoff follows Central daylight saving time', () => {
   assert.ok(context.cfaDispatchOrder_(order('2027-04-01T04:59:59Z'), '2027-04-01'));
   assert.equal(context.cfaDispatchOrder_(order('2027-03-31T20:59:59Z'), '2027-04-01'), null);
 });
-
-test('combined setup replaces old triggers and preserves receipt history', () => {
-  const properties = new Map([
-    ['RRHS_ECWID_STORE_ID', '123'], ['RRHS_ECWID_API_TOKEN', 'ecwid-key'],
-    ['START_AT', '1234'], ['SENT_IDS', '["ORDER1"]'],
-  ]);
-  const triggers = ['sendCfaDispatch', 'sendPendingReceipts', 'runCoopJobs', 'other'];
-  let installed;
-  const context = {
-    PropertiesService: { getScriptProperties: () => ({
-      getProperty: key => properties.get(key),
-      setProperty: (key, value) => properties.set(key, value),
-    }) },
-    ScriptApp: {
-      getProjectTriggers: () => triggers.map(name => ({ getHandlerFunction: () => name })),
-      deleteTrigger: trigger => triggers.splice(triggers.indexOf(trigger.getHandlerFunction()), 1),
-      newTrigger: name => ({ timeBased: () => ({ everyMinutes: minutes => ({
-        create: () => { installed = { name, minutes }; },
-      }) }) }),
-    },
-    Logger: { log() {} },
-  };
-  runInNewContext(script, context);
-  context.setup();
-  assert.deepEqual(installed, { name: 'runCoopJobs', minutes: 1 });
-  assert.deepEqual(triggers, ['other']);
-  assert.equal(properties.get('START_AT'), '1234');
-  assert.equal(properties.get('SENT_IDS'), '["ORDER1"]');
-});

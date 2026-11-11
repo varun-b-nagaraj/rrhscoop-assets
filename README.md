@@ -319,9 +319,35 @@ The status job records existing orders on its first run without emailing anyone.
 the latest order. The store has no downloadable products, so Ecwid's "Download
 e-goods" email has no replacement.
 
-Run `checkCoopSetup` to verify Ecwid access without sending mail. Existing
-combined triggers continue with the saved script. For a new install, remove
-any separate receipt trigger, then run `setup` in the combined project.
+After copying the updated combined script into Apps Script, select **setup** and
+click **Run**. Approve Google's permissions when prompted. Keep the existing
+`RRHS_ECWID_STORE_ID` and `RRHS_ECWID_API_TOKEN` in Script properties. Use the
+district account that owns the existing automation and sends CO-OP emails.
+
+`setup` initializes missing verification/checkpoint settings, checks Ecwid order
+access and receipt PDF downloads when an order exists, checks MailApp quota and
+Gmail sender access, and renders 21 email variants with fictional data. It creates
+the replacement minute trigger before removing this account's older CO-OP job
+triggers. Existing sent references, dispatch dates, status history and verification
+keys are preserved. Repeating setup leaves one minute trigger and does not resend
+test emails or reset customer history.
+
+Look for **SETUP COMPLETE** and review any **WARNING** messages in the execution
+log. The minute job handles dispatch, receipts and status updates, then repeats
+the connection/render checks once per Central day. Failed daily checks retry
+after 15 minutes without stopping the other jobs. You do not need to run setup
+again for the next day. `COOP_HEALTH_REPORT` in Script properties holds the latest
+check summary. Run `checkCoopSetup` for a fresh read-only diagnostic if needed.
+
+Setup does not send test messages or prove delivery to a real mailbox. It does
+not create reward coupons or enable the live hunt. Running
+`buildEasterEggRewardEmail` directly from the editor now returns a safe preview;
+it does not need arguments and sends nothing.
+
+After changing web-app code, update the existing deployment under **Deploy →
+Manage deployments → Edit → New version → Deploy** to publish the website's
+verification endpoint. Setup updates triggers and properties but cannot publish
+a new web-app version. Keep the same deployment URL in Vercel.
 
 The dispatch goes to the two student dispatchers on the first run at or after
 4:05 p.m. Central. It includes faculty preorders placed from the previous day's

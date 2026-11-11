@@ -3,9 +3,10 @@
  *
  * Paste this file into the existing district web app project. Keep the same deployment
  * URL. Keep RRHS_ECWID_STORE_ID and RRHS_ECWID_API_TOKEN in Script properties.
- * Apps Script creates its own verification key on the first code request.
+ * setup() creates the verification key if missing; existing keys and send history are retained.
  *
- * Run checkCoopSetup() to check connections, then setup() to install the minute trigger.
+ * Run setup() once to initialize, test connections/templates, and install the minute job.
+ * The job checks health daily. Running setup() again preserves existing send history.
  */
 function doPost(e) {
   if (!e || !e.postData) return cfaJson_({ ok: false, status: 400, error: 'Use the preorder page to request or verify a code.' });
@@ -106,6 +107,8 @@ function cfaEmail_(label, title, content) {
 
 /** Template only. The development hunt does not call GmailApp or issue coupons. */
 function buildEasterEggRewardEmail(reward) {
+  // The Apps Script editor's Run button supplies no arguments. Never mint a live reward.
+  if (arguments.length === 0) reward = { percentage: 35, name: 'Dragon', preview: true };
   if (!reward || [10, 15, 20, 25, 35].indexOf(reward.percentage) === -1) throw new Error('Invalid reward percentage');
   var preview = reward.preview === true;
   if (!preview && !/^[A-Z0-9-]{16,80}$/.test(reward.code || '')) throw new Error('A fulfilled reward code is required');
@@ -309,26 +312,144 @@ const REPLY_TO = 'rrhs_coop_store@roundrockisd.org';
 const FROM_ALIAS = '';
 const MAX_SENT_IDS = 400;
 
-/** Checks Ecwid order access without sending mail. */
+const COOP_SETUP_VERSION = '2';
+
+/** Read-only connection and template checks. No customer mail or coupon creation. */
 function checkCoopSetup() {
-  const config = cfaEcwidConfig_(PropertiesService.getScriptProperties());
-  const result = JSON.parse(coopEcwidFetch_(config, '/orders?limit=1&responseFields=total').getContentText());
-  if (!Number.isFinite(result.total)) throw new Error('Ecwid did not return an order count.');
-  Logger.log('Ecwid order access is connected. Test email verification from the preorder page.');
+  const report = coopSetupChecks_(PropertiesService.getScriptProperties());
+  coopLogSetup_(report);
+  return report;
 }
 
-/** Installs a single trigger and preserves this project's receipt history. */
+/** One editor action: validate first, initialize missing state, then install automation. */
 function setup() {
-  const props = PropertiesService.getScriptProperties();
-  cfaEcwidConfig_(props);
-  if (!props.getProperty('START_AT')) {
-    props.setProperty('START_AT', String(Math.floor(Date.now() / 1000)));
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Run setup again in a moment.');
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const report = coopSetupChecks_(props);
+    // Retain the same key so setup never invalidates verification codes already sent.
+    if (!props.getProperty('cfa_internal_otp_key')) {
+      props.setProperty('cfa_internal_otp_key', Utilities.getUuid() + Utilities.getUuid());
+    }
+    const now = String(Math.floor(Date.now() / 1000));
+    if (!props.getProperty('START_AT')) {
+      props.setProperty('START_AT', now);
+    }
+    if (!props.getProperty('SENT_IDS')) props.setProperty('SENT_IDS', '[]');
+    if (!props.getProperty('STATUS_START_AT')) props.setProperty('STATUS_START_AT', now);
+    if (!props.getProperty('STATUS_CHECKED_AT')) props.setProperty('STATUS_CHECKED_AT', props.getProperty('STATUS_START_AT'));
+    const handlers = ['sendPendingReceipts', 'sendCfaDispatch', 'sendOrderStatusUpdates', 'runCoopJobs'];
+    const oldTriggers = ScriptApp.getProjectTriggers().filter(trigger => handlers.includes(trigger.getHandlerFunction()));
+    // Keep the old automation if Google cannot create its replacement.
+    ScriptApp.newTrigger('runCoopJobs').timeBased().everyMinutes(1).create();
+    oldTriggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
+    props.setProperty('COOP_SETUP_VERSION', COOP_SETUP_VERSION);
+    props.setProperty('COOP_HEALTH_CHECKED_DAY', Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd'));
+    props.setProperty('COOP_HEALTH_REPORT', JSON.stringify(report));
+    coopLogSetup_(report);
+    Logger.log('SETUP COMPLETE: one minute trigger installed for receipts, faculty dispatch, status emails, and daily health checks.');
+    Logger.log('No test emails were sent. No coupons were created. You do not need to run setup each day.');
+    Logger.log('After changing web-app code, update the existing web-app deployment to a new version. setup cannot publish it for you.');
+    return report;
+  } finally { lock.releaseLock(); }
+}
+
+function coopLogSetup_(report) {
+  report.checks.forEach(check => Logger.log('PASS: ' + check));
+  report.warnings.forEach(warning => Logger.log('WARNING: ' + warning));
+  Logger.log(report.warnings.length ? 'Checks completed with warnings; review the messages above.' : 'All configured checks passed.');
+}
+
+function coopSetupChecks_(props) {
+  const report = { checkedAt: new Date().toISOString(), checks: [], warnings: [], rewardMode: 'preview-only' };
+  const config = cfaEcwidConfig_(props);
+  for (const key of ['START_AT', 'STATUS_START_AT', 'STATUS_CHECKED_AT']) {
+    const value = props.getProperty(key);
+    if (value && (!/^\d+$/.test(value) || Number(value) <= 0 || !Number.isSafeInteger(Number(value)))) throw new Error(key + ' is invalid. Restore its saved value before running setup; send history was not reset.');
   }
-  const handlers = ['sendPendingReceipts', 'sendCfaDispatch', 'runCoopJobs'];
-  const oldTriggers = ScriptApp.getProjectTriggers().filter(trigger => handlers.includes(trigger.getHandlerFunction()));
-  ScriptApp.newTrigger('runCoopJobs').timeBased().everyMinutes(1).create();
-  oldTriggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
-  Logger.log('Receipt and faculty dispatch automation is on.');
+  const sentIds = props.getProperty('SENT_IDS');
+  if (sentIds) {
+    let parsed;
+    try { parsed = JSON.parse(sentIds); } catch (_) { throw new Error('SENT_IDS is not valid JSON. Restore send history before running setup; it was not reset.'); }
+    if (!Array.isArray(parsed) || parsed.some(id => typeof id !== 'string')) throw new Error('SENT_IDS must be an array of sent references. Restore send history before running setup.');
+  }
+  const secret = props.getProperty('cfa_internal_otp_key');
+  if (secret && secret.length < 32) throw new Error('The saved verification key is too short. Check cfa_internal_otp_key; setup will not rotate an existing key.');
+  report.checks.push('Saved send history and verification settings');
+  const templates = coopTestTemplates_();
+  report.checks.push(templates + ' email render checks, including all reward percentages and order statuses');
+  const quota = MailApp.getRemainingDailyQuota();
+  if (!Number.isInteger(quota) || quota < 0) throw new Error('Google did not return a valid mail quota. Check mail permissions and run setup again.');
+  report.mailQuotaRemaining = quota;
+  report.checks.push('MailApp authorization and quota access');
+  if (quota === 0) report.warnings.push('Mail quota is exhausted. Jobs can send again when Google restores the quota.');
+  const aliases = GmailApp.getAliases();
+  if (FROM_ALIAS && !aliases.some(alias => alias.toLowerCase() === FROM_ALIAS.toLowerCase())) throw new Error('FROM_ALIAS is not configured as a Gmail send-as alias for this account.');
+  report.checks.push('Gmail authorization and configured sender alias');
+  const result = JSON.parse(coopEcwidFetch_(config, '/orders?limit=1&responseFields=total,items(id)').getContentText());
+  if (!Number.isSafeInteger(result.total) || result.total < 0) throw new Error('Ecwid did not return an order count. Check the store token and order-read access.');
+  report.checks.push('Ecwid order-read access');
+  const sample = Array.isArray(result.items) && result.items[0];
+  if (sample && sample.id != null) {
+    receiptPdf_(coopEcwidPdf_(config, '/orders/' + encodeURIComponent(String(sample.id)) + '/invoice-pdf'), 'setup-receipt-check.pdf');
+    report.checks.push('Receipt PDF download and PDF content type');
+  } else report.warnings.push('No order is available for a receipt PDF download check. Email rendering was checked with fictional orders.');
+  if (!ScriptApp.getService().getUrl()) report.warnings.push('No verification web-app deployment was found. Deploy this project as a web app before using website email verification.');
+  report.checks.push('Reward emails remain template-only; no coupon or delivery worker is enabled');
+  return report;
+}
+
+/** Pure render tests with fictional data. Never calls a send function. */
+function coopTestTemplates_() {
+  let count = 0;
+  function verify(email) {
+    const plain = email && (email.text || email.body);
+    const html = email && (email.html || email.htmlBody);
+    if (!email || !email.subject || !plain || !html || !html.includes('RRHS CO-OP') || /\b(?:undefined|NaN)\b/.test(plain + html)) throw new Error('An email template failed its setup render check.');
+    count++;
+  }
+  const sample = { id: 'SETUP-PREVIEW', email: 'preview@example.invalid',
+    paymentStatus: 'PAID', fulfillmentStatus: 'AWAITING_PROCESSING', paymentMethod: 'Credit or debit card',
+    subtotal: 10, total: 10, billingPerson: { name: 'Example Dragon', firstName: 'Example' },
+    items: [{ name: 'Example item', quantity: 1, price: 10 }], shippingOption: { shippingMethodName: 'Classroom delivery' } };
+  verify(buildReceiptEmail(sample));
+  verify(buildReceiptEmail({ ...sample, paymentStatus: 'AWAITING_PAYMENT' }));
+  verify(buildReceiptEmail({ ...sample, paymentStatus: 'AWAITING_PAYMENT', paymentMethod: 'Pay at pickup', shippingOption: { isPickup: true } }));
+  const before = orderStatusState_(sample);
+  [...STATUS_EVENTS, 'REFUNDED', 'CANCELLED'].forEach(event => verify(buildStatusEmail(sample, event, before)));
+  [10, 15, 20, 25, 35].forEach(percentage => verify(buildEasterEggRewardEmail({ percentage: percentage, name: 'Example Dragon', preview: true })));
+  verify(buildEasterEggRewardEmail());
+  verify(cfaDispatchMessage_({ date: '2026-11-11', orders: [] }));
+  verify(cfaDispatchMessage_({ date: '2026-11-11', orders: [{ number: 'SETUP-PREVIEW', name: 'Example Teacher', paymentStatus: 'PAID', pickup: false, room: 'Example room', delivery: 'Example school day', time: '12:45 PM Central', sauces: 'None', items: [{ quantity: 1, name: 'Example item' }] }] }));
+  const verification = cfaEmail_('Faculty lunch', 'Your verification code', '<p>Example verification code. Not valid for sign-in.</p>');
+  if (!verification.includes('RRHS CO-OP') || !verification.includes('Not valid for sign-in')) throw new Error('The verification email template failed its setup render check.');
+  return count + 1;
+}
+
+/** The existing minute trigger runs this daily, retrying failed checks after 15 minutes. */
+function coopDailyHealthCheck_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('COOP_SETUP_VERSION') !== COOP_SETUP_VERSION) return;
+  const day = Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd');
+  const now = Date.now();
+  if (props.getProperty('COOP_HEALTH_CHECKED_DAY') === day || now - Number(props.getProperty('COOP_HEALTH_ATTEMPT_AT') || 0) < 15 * 60000) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+  try {
+    if (props.getProperty('COOP_HEALTH_CHECKED_DAY') === day || now - Number(props.getProperty('COOP_HEALTH_ATTEMPT_AT') || 0) < 15 * 60000) return;
+    props.setProperty('COOP_HEALTH_ATTEMPT_AT', String(now));
+    try {
+      const report = coopSetupChecks_(props);
+      props.setProperty('COOP_HEALTH_REPORT', JSON.stringify(report));
+      props.setProperty('COOP_HEALTH_CHECKED_DAY', day);
+      coopLogSetup_(report);
+    } catch (error) {
+      // Store no raw service errors, credentials, order data or student identifiers.
+      props.setProperty('COOP_HEALTH_REPORT', JSON.stringify({ checkedAt: new Date().toISOString(), status: 'failed' }));
+      throw new Error('Daily CO-OP health check failed. Run checkCoopSetup in the editor for the specific check. Automatic checks retry in 15 minutes.');
+    }
+  } finally { lock.releaseLock(); }
 }
 
 /** Run every job even if one service is temporarily unavailable. Receipts go before status updates. */
@@ -341,6 +462,7 @@ function runCoopJobs() {
       failures.push(job.name + ': ' + error.message);
     }
   }
+  try { coopDailyHealthCheck_(); } catch (error) { failures.push(error.message); }
   if (failures.length) throw new Error(failures.join(' | '));
 }
 
