@@ -4,7 +4,7 @@
   const config = window.RRHS_HUNT_CONFIG;
   const assetOrigin = new URL(document.currentScript.src).origin;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  const preview = config.DEV_PREVIEW_ENABLED && local;
+  const preview = !config.HUNT_ENABLED || (config.DEV_PREVIEW_ENABLED && local);
   // Live mode remains closed at the API, regardless of the client switch.
   const endpoint = assetOrigin + '/api/v1/easter-hunt';
   const packageSvg = '<svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path class="hunt-box" d="m10 23 22 11 22-11v25L32 59 10 48Z"/><path class="hunt-lid" d="M10 23 32 12l22 11-22 11Z"/><path class="hunt-ribbon" d="m22 17 22 11v15M32 34v25M10 23l22 11 22-11"/></svg>';
@@ -21,6 +21,7 @@
   function escape(value) { const span = document.createElement('span'); span.textContent = value; return span.innerHTML; }
   function available(id) { return availability?.eggs?.some(egg => egg.id === id && egg.available); }
   function mount() {
+    if (!window.RRHS_HUNT_ACTIVE) return;
     for (const location of config.locations) {
       if (preview && !config.DEV_ALL_EGGS_ENABLED && location.id !== 'inventory-intelligence') continue;
       const target = document.querySelector(location.selector);
@@ -55,7 +56,11 @@
     button.className = 'hunt-egg'; button.dataset.eggId = id;
     button.setAttribute('aria-label', 'Open hidden package');
     button.innerHTML = packageSvg;
-    button.addEventListener('click', event => { event.stopPropagation(); open(id, button); });
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (window.RRHS_HUNT_PARENT && window.parent !== window) parent.postMessage({ type: 'rrhs-hunt-open', id }, window.RRHS_HUNT_PARENT);
+      else open(id, button);
+    });
     return button;
   }
   function close() {
@@ -88,6 +93,7 @@
     });
   }
   function open(id, button) {
+    if (!window.RRHS_HUNT_ACTIVE) return;
     ensureDialog(); if (dialog.open) return;
     trigger = button; const version = ++generation;
     active = { id, key: crypto.randomUUID(), submitting: false };
@@ -154,13 +160,22 @@
     requestAnimationFrame(tick);
   }
   async function refresh() {
-    if (refreshPending || document.hidden) return;
+    if (!window.RRHS_HUNT_ACTIVE || refreshPending || document.hidden) return;
     refreshPending = true;
-    try { availability = await request(); mount(); if (active && !available(active.id)) unavailable(); }
-    catch (_) { availability = null; mount(); }
+    try { availability = await request(); if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable(); }
+    catch (_) { availability = null; if (window.RRHS_HUNT_ACTIVE) mount(); }
     finally { refreshPending = false; }
+    document.dispatchEvent(new CustomEvent('rrhs-hunt-availability', { detail: availability }));
   }
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh };
+  document.addEventListener('rrhs-hunt-toggle', event => {
+    if (event.detail.enabled) { mount(); refresh(); }
+    else {
+      if (dialog?.open) close();
+      for (const { target, button, observer } of mounted.values()) { observer?.disconnect(); button.remove(); target.classList.remove('hunt-has-package'); }
+      mounted.clear();
+    }
+  });
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
   else {

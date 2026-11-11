@@ -3,11 +3,12 @@
 <link rel="stylesheet" href="/custom-visuals/theme-tokens.css"><link rel="stylesheet" href="/tools/easter-hunt/preview.css"></head>
 <body><main>
 <p class="eyebrow">RRHS CO-OP · Developer tools</p><h1>A little package of possibility.</h1>
-<p>This local simulator sends no email and creates no coupon. Its in-memory state resets when the server restarts. All 12 locations are registered; only the Inventory Intelligence package is visible in the storefront preview.</p>
+<p>This local simulator sends no email and creates no coupon. Its in-memory state resets when the server restarts. All 12 locations are registered; only the Inventory Intelligence test package can appear.</p>
+<p>Enable the preview from DevTools: <code>window.RRHSOVERIDE = true</code>. Set it to <code>false</code> to close the preview. The setting stays in this tab across navigation.</p>
 <nav><a href="/iframes/projects/index.html#library">Find the package ↗</a><a href="/easter-hunt/email-preview" target="_blank" rel="noopener">Preview reward email ↗</a><a href="/easter-hunt/email-preview?text" target="_blank" rel="noopener">Plain-text email ↗</a></nav>
 <section aria-labelledby="stats-title"><h2 id="stats-title">Preview management</h2><p id="notice" role="status"></p><div id="stats" aria-live="polite"></div>
 <div class="actions"><button data-action="pause">Pause</button><button data-action="resume">Resume</button><button id="export">Export minimal preview report</button><button data-action="reset">Reset preview</button></div></section>
 <section><h2>Package availability</h2><div id="eggs"></div></section>
 <section><h2>Claims &amp; simulated email failures</h2><p>Only claim references are shown. No student identifiers are stored in these records.</p><div id="claims"></div></section>
 <section><h2>Preview audit</h2><pre id="audit"></pre></section>
-</main><script src="/tools/easter-hunt/preview.js"></script></body></html>
+</main><script src="/tools/easter-hunt/preview.js"></script><script src="/easter-hunt/boot.js?v=3"></script></body></html>

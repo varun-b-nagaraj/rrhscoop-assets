@@ -10,7 +10,28 @@ With Node 18+:
 node tools/easter-hunt-preview.cjs
 ```
 
-Open <http://127.0.0.1:4173>. Follow **Find the package**, then find the small package beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. The preview simulates delivery to `s151579@student.roundrockisd.org`. It reveals the simulated percentage, never a discount code.
+Open <http://127.0.0.1:4173>. In DevTools, run `window.RRHSOVERIDE = true`. Follow **Find the package**, then find the small package beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. The preview simulates delivery to `s151579@student.roundrockisd.org`. It reveals the simulated percentage, never a discount code.
+
+## DevTools gate and introduction
+
+Normal visitors see no hunt UI while `HUNT_ENABLED` is false. Enable the development presentation in your current tab:
+
+```js
+window.RRHSOVERIDE = true;
+```
+
+The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in session storage for that tab, and is forwarded to the site's hosted content frames with origin/source checks. No console reload is required. It enables the presentation on the hosted storefront too, while the production claim API stays closed. A hosted override shows an explicitly labeled example count until a live backend is available; it never manufactures a successful live claim.
+
+The header counter appears immediately before Ecwid's search control. It shows the total found across the hunt, with remaining rewards and an explanation on hover or keyboard focus. On local standalone pages without the storefront header, it appears at the top right for testing.
+
+Three seconds after enabling the presentation, a large SVG magnifying glass scans across the dimmed page. Its clear lens reveals the actual page beneath it, then settles on a package. Clicking or keyboard-activating that package expands the light into an introduction modal. The demonstration package consumes no reward. Skip and Escape dismiss it; reduced motion uses a static introduction. Existing open dialogs defer the automatic introduction. It plays once per tab; selecting the counter replays it.
+
+```js
+window.RRHS_HUNT_INTRO.replay(); // Replay after the experience has loaded.
+window.RRHSOVERIDE = false;     // Remove the counter, packages, intro and spotlight.
+```
+
+Root-page claim dialogs handle discoveries from trusted hosted iframes so dialogs cover the full website rather than the iframe's tall document.
 
 The local management page has all twelve egg records, remaining prize quantities, claims, a redacted audit, pause/resume, egg enable/disable, simulated email failures/retries, reset, and a minimal JSON export. The email links render the same HTML/plain-text template added to the district Apps Script. Preview email contains no usable code.
 
@@ -26,7 +47,7 @@ DEV_PREVIEW_ENABLED: true,
 DEV_ALL_EGGS_ENABLED: false,
 ```
 
-Keep `HUNT_ENABLED` false. `DEV_PREVIEW_ENABLED` works only on loopback hosts through the local preview server. Set it false to close the preview too. `DEV_ALL_EGGS_ENABLED` temporarily reveals all twelve placements locally for review; keep it false to leave only Inventory Intelligence visible. These are plaintext code switches, not `.env` settings.
+Keep `HUNT_ENABLED` false. The `RRHSOVERIDE` DevTools flag gates all preview UI, including local pages. `DEV_PREVIEW_ENABLED` permits the loopback preview server; set it false to close that server too. `DEV_ALL_EGGS_ENABLED` temporarily reveals all twelve placements locally for review; keep it false to leave only Inventory Intelligence available. These are plaintext code switches, not `.env` settings.
 
 The deployed `/api/v1/easter-hunt` returns disabled availability and rejects all claim requests. Changing the browser boolean cannot enable live issuance. There is deliberately no “flip this boolean to launch” instruction while checkout enforcement and identity ownership remain unresolved.
 
@@ -81,7 +102,7 @@ For the later live identity integration:
 | --- | --- |
 | `easter-hunt/config.js` | Plain booleans, deadline, twelve unique location IDs |
 | `easter-hunt/service.js` | Isolated mock claim engine, prize draw, rates, idempotency, management |
-| `easter-hunt/boot.js`, `hunt.js`, `hunt.css` | Reusable egg, animated accessible modal, availability refresh |
+| `easter-hunt/boot.js`, `hunt.js`, `hunt.css`, `experience.js` | DevTools gate, iframe bridge, header counter, spotlight introduction, reusable egg, accessible modals, availability refresh |
 | `easter-hunt/directory.js` | Private signed directory adapter for later verified integration |
 | `easter-hunt/email-preview.js` | Render the existing Apps Script template without sending |
 | `api/v1/easter-hunt.js` | Closed production API |
@@ -104,4 +125,4 @@ npm install --prefix /tmp/rrhs-hunt-qa --no-package-lock playwright
 node tools/check-easter-hunt-browser.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
 ```
 
-If Chromium is not installed, run `/tmp/rrhs-hunt-qa/node_modules/.bin/playwright install chromium` first. Browser tests cover desktop, small/large mobile, tablet, landscape, reduced motion, enlarged text, keyboard focus/escape, non-consuming dismissal, simulated claims, lost availability, and mobile email width. All tests use fictional or locally entered preview data, no live Ecwid writes and no real email.
+If Chromium is not installed, run `/tmp/rrhs-hunt-qa/node_modules/.bin/playwright install chromium` first. Browser tests cover desktop, small/large mobile, tablet, landscape, reduced motion, enlarged text, keyboard focus/escape, non-consuming dismissal, simulated claims, lost availability, and mobile email width. They also verify the default-off gate, immediate on/off toggles, per-tab persistence, three-second introduction, spotlight click/skip, header counter tooltip, and trusted iframe discovery bridge. All tests use fictional or locally entered preview data, no live Ecwid writes and no real email.
