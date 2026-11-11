@@ -15,6 +15,7 @@ function doPost(e) {
   try {
     var input = JSON.parse(e.postData.contents || '{}');
     var props = PropertiesService.getScriptProperties();
+    if (input.action === 'send-hunt-preview') return cfaJson_(cfaSendHuntPreview_(input, props));
     if (input.action !== 'send-code' && input.action !== 'verify-code') {
       return cfaJson_({ ok: false, status: 400, error: 'Unknown action.' });
     }
@@ -105,7 +106,7 @@ function cfaEmail_(label, title, content) {
     content + '</td></tr></table></td></tr></table></body></html>';
 }
 
-/** Template only. The development hunt does not call GmailApp or issue coupons. */
+/** Pure template. Preview delivery is handled separately; no coupons are issued. */
 function buildEasterEggRewardEmail(reward) {
   // The Apps Script editor's Run button supplies no arguments. Never mint a live reward.
   if (arguments.length === 0) reward = { percentage: 35, name: 'Dragon', preview: true };
@@ -113,22 +114,22 @@ function buildEasterEggRewardEmail(reward) {
   var preview = reward.preview === true;
   if (!preview && !/^[A-Z0-9-]{16,80}$/.test(reward.code || '')) throw new Error('A fulfilled reward code is required');
   var name = String(reward.name || 'Dragon').trim().slice(0, 150);
-  var code = preview ? 'NO CODE · DEVELOPMENT PREVIEW' : reward.code;
+  var code = preview ? (/^PREVIEW-[A-F0-9]{12}$/.test(reward.reference || '') ? reward.reference : 'NO CODE · DEVELOPMENT PREVIEW') : reward.code;
   var subject = (preview ? '[Preview] ' : '') + 'You Found a Hidden CO-OP Reward! 🎁';
   var terms = 'Valid on the first $25 of your eligible merchandise subtotal. One use only. Excludes taxes, delivery fees, and other noneligible charges. Cannot be combined with other promotional codes. Expires Friday, November 13, 2026, at 11:59 PM Central.';
-  var text = (preview ? 'DEVELOPMENT PREVIEW. No coupon was created and no email was sent.\n\n' : '') +
+  var text = (preview ? 'DEVELOPMENT PREVIEW. No coupon was created. Preview references cannot be redeemed.\n\n' : '') +
     'Hi ' + name + ',\n\nCongratulations! You spotted the red CO-OP dragon sticker holding a package in the RRHS CO-OP E-Commerce Easter Egg Hunt!\n\n' +
     "You've unlocked " + reward.percentage + '% OFF your next eligible CO-OP online order.\n\n' +
     (preview ? code : 'Your exclusive discount code: ' + code) + '\n\n' + terms + '\n\n' +
     'Shop now at https://rrhscoop.roundrockisd.org\n\nThanks for participating in our E-Commerce Opening Week!\nRRHS CO-OP';
   var html = cfaEmail_('E-Commerce Opening Week', 'A little luck. A lovely reward.',
-    (preview ? '<p style="padding:12px;border:1px dashed #6e1f2a;background:#f1eee8;">Development preview. No coupon was created and no email was sent.</p>' : '') +
+    (preview ? '<p style="padding:12px;border:1px dashed #6e1f2a;background:#f1eee8;">Development preview. No coupon was created. Preview references cannot be redeemed.</p>' : '') +
     '<p style="margin:16px 0;text-align:center;"><img src="https://rrhscoop-assets.vercel.app/easter-hunt/dragon-package-sticker.png?v=1" width="128" height="128" alt="Red CO-OP dragon holding a package" style="display:block;width:128px;height:128px;margin:0 auto;object-fit:contain;"></p>' +
     '<p>Hi ' + cfaEscape_(name) + ',</p><p>You found one of our twelve hidden CO-OP dragon stickers. Consider this a little thank-you for exploring the student-run CO-OP.</p>' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px;background:#f1eee8;border-top:3px solid #6e1f2a;border-bottom:1px solid #cbb991;">' +
     '<p style="margin:0;color:#6e1f2a;font:400 56px/1.1 Georgia,serif;">' + reward.percentage + '% OFF</p>' +
     '<p style="margin:12px 0 0;">On the first $25 of your eligible cart subtotal.</p></td></tr></table>' +
-    '<p style="margin:24px 0 8px;font-weight:bold;">' + (preview ? 'Simulated delivery only' : 'Your exclusive code') + '</p>' +
+    '<p style="margin:24px 0 8px;font-weight:bold;">' + (preview ? 'Preview reference · not redeemable' : 'Your exclusive code') + '</p>' +
     '<p style="padding:16px 12px;background:#fff;border:1px dashed #6e1f2a;color:#6e1f2a;font:600 18px/1.5 monospace;text-align:center;overflow-wrap:anywhere;word-break:break-word;">' + cfaEscape_(code) + '</p>' +
     '<p>' + cfaEscape_(terms) + '</p>' +
     '<table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="#6e1f2a" style="border-radius:4px;">' +
@@ -136,6 +137,45 @@ function buildEasterEggRewardEmail(reward) {
     '<p style="margin-top:24px;">Thanks for participating in our E-Commerce Opening Week!</p>' +
     '<p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #d4c9bd;color:#655b55;font-size:13px;">RRHS CO-OP · Built by students. Made for Dragons.<br><a href="mailto:rrhs_coop_store@roundrockisd.org" style="color:#6e1f2a;">Questions? Contact the CO-OP.</a></p>');
   return { subject: subject, text: text, html: html };
+}
+
+/** Caller holds the script lock. Preview mail is restricted to the presenter's mailbox. */
+function cfaSendHuntPreview_(input, props) {
+  if (input.studentId !== 's151579' || [10, 15, 20, 25, 35].indexOf(input.percentage) === -1 || !/^PREVIEW-[A-F0-9]{12}$/.test(input.reference || '')) {
+    return { ok: false, status: 400, error: 'Real preview delivery is currently limited to the presenter mailbox.' };
+  }
+  var key = 'hunt_preview_' + input.reference;
+  var previous = JSON.parse(props.getProperty(key) || '{}');
+  if (previous.percentage && previous.percentage !== input.percentage) return { ok: false, status: 409, error: 'This preview reference already belongs to another reward.' };
+  if (previous.status === 'sent') return { ok: true, emailStatus: 'sent' };
+  if (previous.status === 'sending') return { ok: false, status: 503, error: 'Delivery is unconfirmed. Check your inbox before sending another preview.' };
+  var day = Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd');
+  var rate = JSON.parse(props.getProperty('hunt_preview_rate') || '{}');
+  if ((rate.last && Date.now() - rate.last < 60000) || (rate.day === day && rate.count >= 5) || MailApp.getRemainingDailyQuota() < 1) return { ok: false, status: 429, error: 'Preview email limit reached. Wait before trying again; at most five previews are sent per day.' };
+  props.setProperty('hunt_preview_rate', JSON.stringify({ day: day, count: (rate.day === day ? rate.count || 0 : 0) + 1, last: Date.now() }));
+  props.setProperty(key, JSON.stringify({ status: 'sending', percentage: input.percentage }));
+  var email = buildEasterEggRewardEmail({ percentage: input.percentage, name: 'Dragon', preview: true, reference: input.reference });
+  try {
+    var options = { htmlBody: email.html, name: SENDER_NAME, replyTo: REPLY_TO };
+    if (FROM_ALIAS) options.from = FROM_ALIAS;
+    GmailApp.sendEmail('s151579@student.roundrockisd.org', email.subject, email.text, options);
+    props.setProperty(key, JSON.stringify({ status: 'sent', percentage: input.percentage }));
+    return { ok: true, emailStatus: 'sent' };
+  } catch (_) {
+    // A provider error may occur after acceptance. Do not automatically duplicate mail.
+    return { ok: false, status: 503, error: 'Delivery is unconfirmed. Check your inbox before sending another preview.' };
+  }
+}
+
+/** Optional editor action; setup itself never sends preview messages. */
+function sendEasterEggPreview() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Another CO-OP job is running. Try again shortly.');
+  try {
+    var result = cfaSendHuntPreview_({ studentId: 's151579', percentage: 35, reference: 'PREVIEW-' + Utilities.getUuid().replace(/-/g, '').slice(0, 12).toUpperCase() }, PropertiesService.getScriptProperties());
+    if (!result.ok) throw new Error(result.error);
+    Logger.log('Preview email sent to the presenter school mailbox. No coupon was created.');
+  } finally { lock.releaseLock(); }
 }
 
 function cfaDispatchMessage_(data) {
@@ -363,7 +403,7 @@ function coopLogSetup_(report) {
 }
 
 function coopSetupChecks_(props) {
-  const report = { checkedAt: new Date().toISOString(), checks: [], warnings: [], rewardMode: 'preview-only' };
+  const report = { checkedAt: new Date().toISOString(), checks: [], warnings: [], rewardMode: 'preview-mail-only' };
   const config = cfaEcwidConfig_(props);
   for (const key of ['START_AT', 'STATUS_START_AT', 'STATUS_CHECKED_AT']) {
     const value = props.getProperty(key);
@@ -397,7 +437,7 @@ function coopSetupChecks_(props) {
     report.checks.push('Receipt PDF download and PDF content type');
   } else report.warnings.push('No order is available for a receipt PDF download check. Email rendering was checked with fictional orders.');
   if (!ScriptApp.getService().getUrl()) report.warnings.push('No verification web-app deployment was found. Deploy this project as a web app before using website email verification.');
-  report.checks.push('Reward emails remain template-only; no coupon or delivery worker is enabled');
+  report.checks.push('Live coupons remain disabled; real preview mail is limited to the presenter mailbox');
   return report;
 }
 

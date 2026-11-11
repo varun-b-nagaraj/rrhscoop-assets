@@ -1,6 +1,7 @@
 .hunt-egg,.hunt-dialog { --hunt-maroon:var(--rrhs-maroon,#6e1f2a); --hunt-paper:var(--rrhs-paper,#faf8f4); --hunt-cream:var(--rrhs-cream,#f1eee8); --hunt-ink:var(--rrhs-ink,#141414); --hunt-gold:#b28a48; --hunt-muted:#655b55; }
 .hunt-egg { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; width:44px; height:44px; flex:none; padding:5px; border:0; background:transparent; color:var(--hunt-maroon); cursor:pointer; touch-action:manipulation; transition:transform .22s ease; }
-.hunt-egg-overlay { position:absolute; z-index:2; }
+.hunt-egg { position:relative; }
+.hunt-egg.hunt-egg-overlay { position:absolute; z-index:2; }
 .hunt-has-package { padding-inline-end:44px; }
 .hunt-egg:hover { transform:rotate(-8deg) translateY(-2px); }
 .hunt-egg:active { transform:scale(.94); }
@@ -61,8 +62,10 @@
 .hunt-tour-caption { position:absolute; bottom:max(48px,env(safe-area-inset-bottom)); left:24px; right:24px; margin:0; text-align:center; font:400 clamp(24px,4vw,38px)/1.2 var(--rrhs-font-title,Georgia),serif; letter-spacing:-.02em; pointer-events:none; }
 .hunt-tour-caption span { display:inline-block; margin-top:10px; font:400 15px/1.5 var(--rrhs-font-body,Georgia),serif; letter-spacing:0; color:#ebdaca; }
 .hunt-tour-package { position:absolute; top:0; left:0; width:80px; height:80px; padding:0; border:0; border-radius:8px; background:transparent; cursor:pointer; }
-.hunt-tour-package .hunt-sticker { width:100%; height:100%; filter:drop-shadow(0 4px 5px #25101740); transition:transform .2s; }
+.hunt-tour-package .hunt-sticker { width:100%; height:100%; filter:none; transition:transform .2s; }
 .hunt-tour-package:hover .hunt-sticker { transform:rotate(-6deg) scale(1.06); }
+.hunt-egg:focus,.hunt-tour .hunt-tour-package:focus { outline:none; box-shadow:none; }
+.hunt-egg:focus-visible::after,.hunt-tour-package:focus-visible::after { content:""; position:absolute; left:25%; right:25%; bottom:0; height:3px; border-radius:2px; background:#c6a169; }
 .hunt-tour-found .hunt-tour-package .hunt-sticker { animation:hunt-clue-pop .48s cubic-bezier(.22,1,.36,1) backwards; }
 .hunt-tour-transitioning .hunt-tour-caption { opacity:0; transition:opacity .15s ease; }
 .hunt-intro-dialog { width:min(500px,calc(100% - 32px)); }

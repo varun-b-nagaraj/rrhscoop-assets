@@ -32,6 +32,11 @@ const server = createServer();
       }
       await page.locator('.hunt-tour-package').waitFor({ state: 'visible' });
       await page.waitForTimeout(500);
+      assert.equal(await page.locator('.hunt-tour-package').evaluate(el => el === document.activeElement), false, 'Dragon must not receive automatic focus/highlight');
+      await page.keyboard.press('Tab');
+      await page.locator('.hunt-tour-package').focus();
+      assert.equal(await page.locator('.hunt-tour-package').evaluate(el => getComputedStyle(el).outlineStyle), 'none', 'Keyboard focus must not draw a box around the dragon');
+      assert.equal(await page.locator('.hunt-tour-package').evaluate(el => getComputedStyle(el, '::after').height), '3px', 'Keyboard users retain a small focus underline');
       if (process.argv[3] && viewport.width === 375) await page.screenshot({ path: process.argv[3] + '/hunt-found.png' });
       await page.locator('.hunt-tour-package').click();
       await page.waitForFunction(() => document.querySelector('.hunt-tour')?.dataset.phase === 'expanding');

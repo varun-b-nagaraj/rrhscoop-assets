@@ -45,7 +45,7 @@
     function publicResult(record) {
       // The website never receives the dashboard's preview reference as a coupon code.
       return { mode: 'preview', claimId: record.id, percentage: record.percentage, name: 'Dragon',
-        email: record.studentId + '@student.roundrockisd.org', emailStatus: 'simulated', couponStatus: 'not_created', expiresAt: config.expiresAt };
+        email: record.studentId + '@student.roundrockisd.org', emailStatus: record.emailStatus || 'not_sent', emailError: record.emailError || '', couponStatus: 'not_created', expiresAt: config.expiresAt };
     }
     function claim(input) {
       const studentId = typeof input.studentId === 'string' ? input.studentId.trim().toLowerCase() : '';
@@ -67,6 +67,11 @@
       state.records.push(record); write(state); return publicResult(record);
     }
     return { snapshot, availability, claim,
+      emailStatus(input) {
+        const state = snapshot(), record = state.records.find(r => r.id === input.claimId);
+        if (!record || !['pending', 'sent', 'failed'].includes(input.status)) fail('Preview claim not found.');
+        record.emailStatus = input.status; record.emailError = String(input.error || '').slice(0, 200); write(state); return publicResult(record);
+      },
       reset: () => write(empty()),
       restoreIfEmpty(state) { const current = snapshot(); return current.updatedAt === 0 ? write(validate(state)) : current; },
     };

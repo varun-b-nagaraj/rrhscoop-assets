@@ -13,7 +13,7 @@ function make({ all = false } = {}) {
 const input = (i = 0, extra = {}) => ({ studentId: 's' + (151579 + i), eggId: baseConfig.locations[i].id, idempotencyKey: crypto.randomUUID(), ...extra });
 test('personal claims persist in provided browser storage; site results contain no code or preview reference', () => {
   const { store, options } = make(); const value = input(); const result = store.claim(value);
-  assert.equal(result.couponStatus, 'not_created'); assert.equal(result.emailStatus, 'simulated');
+  assert.equal(result.couponStatus, 'not_created'); assert.equal(result.emailStatus, 'not_sent');
   assert.equal(result.email, 's151579@student.roundrockisd.org');
   assert.equal('code' in result, false); assert.equal('reference' in result, false);
   const reopened = createDemoStore(options); assert.equal(reopened.snapshot().records[0].studentId, 's151579');

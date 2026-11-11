@@ -11,7 +11,7 @@ The [personal dashboard](https://rrhscoop-assets.vercel.app/easter-hunt/dashboar
 keeps demo claims private in your browser. Open the storefront from that dashboard
 for a connected presentation, student/reference log, and email previews.
 One package beside Inventory Intelligence supports the full simulated discovery
-flow. No coupons or emails are created. Live claims remain disabled by a plain
+flow. No coupons are created; presenter-only preview emails can be sent after the Apps Script update is deployed. Live claims remain disabled by a plain
 boolean and a closed server endpoint. See [the hunt setup notes](easter-hunt/README.md)
 for preview controls, Apps Script instructions, tests, and live-launch blockers.
 

@@ -104,10 +104,10 @@
     content.innerHTML = `<div class="hunt-package hunt-discovered">${stickerImage}</div><p class="hunt-eyebrow">A little CO-OP luck</p>
       <h2 id="hunt-title">You found a<br>hidden package!</h2>
       <p>You spotted our CO-OP dragon sticker! One of twelve little discoveries, with a mystery reward just for you.</p>
-      ${preview ? '<p class="hunt-preview">Dev preview · verification and email are simulated.<br>No real reward, coupon, or email is created.</p>' : ''}
+      ${preview ? '<p class="hunt-preview">Dev preview · no real reward or coupon is created.<br>Real preview email delivery is enabled only for the presenter mailbox.</p>' : ''}
       <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
-      <p id="hunt-helper" class="hunt-helper">${preview ? 'We’ll simulate delivery to your S-number@student.roundrockisd.org address.' : 'Your reward goes only to your verified school email.'}</p>
+      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Presenter preview emails go to the school mailbox.' : 'Your reward goes only to your verified school email.'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
@@ -145,9 +145,9 @@
     content.innerHTML = `<div class="hunt-package hunt-unwrapped">${stickerImage}<div class="hunt-confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${Math.round(Math.cos(i * 2.4) * 140)}px;--y:${Math.round(Math.sin(i * 2.4) * 110)}px"></i>`).join('')}</div></div>
       <p class="hunt-eyebrow">A lovely little find</p><h2 id="hunt-title">You unlocked<br><span class="hunt-percentage" aria-hidden="true">0</span><span aria-hidden="true">% OFF!</span><span class="hunt-sr-only">${result.percentage}% OFF!</span></h2>
       <p>Valid on the first $25 of your eligible cart subtotal.</p>
-      <p class="hunt-preview">Dev preview · no discount code was created.<br>${escape(result.name)}, delivery to <strong>${escape(result.email)}</strong> was simulated. No email was sent.</p>
+      <p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
-      <p class="hunt-status" role="status">Preview reward reserved. Your simulated email is ready to view.</p>
+      <p class="hunt-status" role="status">Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : escape(result.emailError || 'Open your dashboard to view the email or retry delivery.')}</p>
       <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
     content.querySelector('button').addEventListener('click', close);
     content.querySelector('button').focus({ preventScroll: true });

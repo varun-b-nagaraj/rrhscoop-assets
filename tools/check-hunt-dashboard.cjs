@@ -16,6 +16,7 @@ const server = createServer();
     context.on('request', request => outbound.push(request.url() + (request.postData() || '')));
     const route = async request => {
       const url = new URL(request.request().url());
+      if (request.request().method() === 'POST' && url.pathname === '/api/v1/easter-hunt') return request.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,emailStatus:'sent'})});
       if (url.origin === shop) {
         return request.fulfill({ contentType: 'text/html', body: `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="${asset}/custom-visuals/theme-tokens.css"></head><body><header class="ins-header"><a class="ins-header__icon--search" href="#">Search</a></header><main><h1>CO-OP presentation</h1><h2 data-egg-location="inventory-intelligence">Inventory Intelligence</h2></main><script src="${asset}/easter-hunt/boot.js?v=6"></script></body></html>` });
       }
@@ -39,7 +40,7 @@ const server = createServer();
     await dashboard.getByRole('button', { name: 'View preview' }).click();
     await dashboard.frameLocator('#email-frame').getByText(reference, { exact: false }).waitFor();
     assert.match(await dashboard.locator('#email-recipient').innerText(), /s151579@student.roundrockisd.org/);
-    assert.ok(outbound.every(value => !value.includes('s151579')), 'Entered student data must not be sent to a server');
+    assert.ok(outbound.filter(value => value.includes('s151579')).every(value => value.includes('send-preview') && value.includes('/api/v1/easter-hunt')), 'Only the explicit preview-delivery request may contain recipient details');
     await dashboard.locator('#close-email').click();
     if (process.argv[3]) await dashboard.screenshot({ path: process.argv[3] + '/dashboard-desktop.png', fullPage: true });
     assert.deepEqual(errors, []);
@@ -61,6 +62,6 @@ const server = createServer();
     await storefront.locator('.hunt-egg').waitFor({ state: 'visible' });
     assert.deepEqual(errors, []);
     await context.close(); await reopened.close(); await stranger.close();
-    console.log('Passed hosted cross-origin claim logging, private browser persistence, email preview, mobile layout, no student-data uploads, and reset checks.');
+    console.log('Passed hosted cross-origin claim logging, private browser persistence, email preview, mobile layout, restricted preview-delivery requests, and reset checks.');
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });

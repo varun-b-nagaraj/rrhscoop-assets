@@ -28,7 +28,7 @@
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
       ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this button to read the hunt details.'
-      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to read the hunt details again.`;
+      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons are created; preview delivery is limited to the presenter mailbox. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to read the hunt details again.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -86,7 +86,7 @@
       <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twelve are tucked around the website. Spot one and discover a mystery reward.</p>
       <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
       <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
-      ${preview ? '<p class="hunt-preview">You’re viewing the development preview. Only the Inventory Intelligence test sticker is enabled in this browser. No real discounts, codes, or emails are issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
+      ${preview ? '<p class="hunt-preview">Development preview. Only the Inventory Intelligence test sticker is enabled. No real coupon is issued; preview emails can be sent to the presenter mailbox.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
       ${preview ? '<button type="button" class="hunt-presenter-link">Open presenter dashboard</button>' : ''}
       <p class="hunt-terms">Valid on the first $25 of eligible merchandise. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
@@ -122,6 +122,8 @@
     tour.showModal(); tour.querySelector('.hunt-tour-skip').focus({ preventScroll: true });
     tour.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
     tour.querySelector('.hunt-tour-skip').addEventListener('click', dismiss);
+    let keyboardSearch = false;
+    tour.addEventListener('keydown', event => { if (event.key === 'Tab') keyboardSearch = true; });
     const lens = tour.querySelector('.hunt-lens'), hole = tour.querySelector('.hunt-spotlight-hole'), clue = tour.querySelector('.hunt-tour-package'), veil = tour.querySelector('.hunt-tour-veil');
     const radius = Math.min(118, innerWidth * .21, innerHeight * .24);
     const destination = [innerWidth * (innerWidth < 600 ? .5 : .62), innerHeight * .43];
@@ -149,7 +151,7 @@
         clue.hidden = false;
         tour.classList.add('hunt-tour-found');
         tour.querySelector('.hunt-tour-caption').innerHTML = 'A little discovery.<br><span>Click the dragon sticker to take a closer look.</span>';
-        clue.focus({ preventScroll: true });
+        if (keyboardSearch) clue.focus({ preventScroll: true });
       }
     }
     frame = requestAnimationFrame(scan);

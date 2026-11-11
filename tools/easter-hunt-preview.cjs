@@ -30,6 +30,7 @@ function createServer({ preview = createPreview({ singleEggOnly: !config.DEV_ALL
         if (req.method === 'GET') return send(200, preview.availability());
         if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
         const input = await body(req);
+        if (input.action === 'send-preview') { req.body = input; return require('../api/v1/easter-hunt')(req, res); }
         if (input.action !== 'claim') fail(400, 'Unknown preview action.');
         return send(200, preview.claim(input, req.socket.remoteAddress));
       }

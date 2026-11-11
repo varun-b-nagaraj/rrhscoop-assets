@@ -16,7 +16,7 @@
     $('empty').hidden = value.records.length > 0;
     $('claims').innerHTML = [...value.records].reverse().map(record => {
       const date = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(record.createdAt));
-      return `<tr><td data-label="Student"><strong>${escape(record.studentId)}</strong><small>${escape(date)} Central</small></td><td data-label="Reward">${record.percentage}%</td><td data-label="Preview ref"><code>${escape(record.reference)}</code></td><td data-label="Email"><button type="button" data-email="${record.id}">View preview</button></td></tr>`;
+      return `<tr><td data-label="Student"><strong>${escape(record.studentId)}</strong><small>${escape(date)} Central</small></td><td data-label="Reward">${record.percentage}%</td><td data-label="Preview ref"><code>${escape(record.reference)}</code></td><td data-label="Email"><button type="button" data-email="${record.id}">View preview</button> ${record.emailStatus === 'sent' ? '<small>Sent</small>' : `<button type="button" data-send="${record.id}">${record.emailStatus === 'pending' ? 'Check / retry' : 'Send preview'}</button>`}</td></tr>`;
     }).join('');
   }
   function mirror(value) {
@@ -102,6 +102,14 @@
     const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'coop-hunt-personal-demo.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   $('claims').addEventListener('click', async event => {
+    const send = event.target.closest('[data-send]');
+    if (send) {
+      send.disabled = true;
+      try { const result = await rpc('send-preview', { claimId: send.dataset.send }); mirror(result); const record = result.records.find(r => r.id === send.dataset.send); $('notice').textContent = record?.emailStatus === 'sent' ? 'Preview email sent to the presenter school mailbox.' : record?.emailError || 'Preview email could not be confirmed.'; }
+      catch (error) { $('notice').textContent = error.message; }
+      finally { send.disabled = false; }
+      return;
+    }
     const button = event.target.closest('[data-email]'); if (!button) return;
     const record = state.records.find(r => r.id === button.dataset.email); if (!record) return;
     button.disabled = true;

@@ -1,6 +1,6 @@
 # Hidden package hunt
 
-The current implementation is a **personal presentation preview**, hosted on Vercel and runnable locally. It is not a live promotion. No Ecwid coupons are created, no student emails are sent, and no production database is changed. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
+The current implementation is a **personal presentation preview**, hosted on Vercel and runnable locally. It is not a live promotion. No Ecwid coupons are created and no production database is changed. Real preview emails can be sent only to the explicitly allowed presenter mailbox. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
 
 All hunt stickers use the supplied transparent dragon holding a CO-OP package,
 stored unchanged in `easter-hunt/dragon-package-sticker.png`. The introduction
@@ -16,7 +16,7 @@ With Node 18+:
 node tools/easter-hunt-preview.cjs
 ```
 
-Open <http://127.0.0.1:4173>. Select **Open storefront** to connect the dashboard and enable the promo, then find the small dragon sticker beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. The preview simulates delivery to `s151579@student.roundrockisd.org`. It reveals the simulated percentage, never a discount code.
+Open <http://127.0.0.1:4173>. Select **Open storefront** to connect the dashboard and enable the promo, then find the small dragon sticker beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. For `s151579`, the preview requests real delivery to `s151579@student.roundrockisd.org`; other S-numbers cannot receive preview mail yet. It reveals the simulated percentage, never a discount code.
 
 ## DevTools gate and introduction
 
@@ -50,22 +50,19 @@ the dashboard.
 
 The compact claim log shows the entered S-number, timestamp, preview percentage,
 `PREVIEW-…` reference, and a branded email preview. No student name is inferred,
-no directory match is claimed, and no email is sent. The storefront never receives
+no directory match is claimed, and only the presenter mailbox can receive real preview mail. The storefront never receives
 the dashboard reference as a coupon code.
 
 **The page URL is public; the records are private to your browser profile.**
 Another person opening the URL sees an empty dashboard. There is no public
 student-data API, shared cloud claim log, or production admin login in this demo.
-Entered S-numbers and references stay in localStorage and are not uploaded to
-Vercel. A trusted opener/message-port connection moves records directly between
+The claim log stays in localStorage. An explicit preview delivery request sends the allowed presenter S-number, percentage, and reference through Vercel to the CO-OP Apps Script sender. A trusted opener/message-port connection moves records directly between
 your storefront and dashboard tabs. The hosted dashboard keeps a browser-only
 backup so records survive reopening the browser. This also avoids relying on
 third-party iframe storage, which browsers can partition between the school
 website and Vercel.
 
-Use **View preview** on a row to see that reward’s email. Only its percentage is
-sent to the public template endpoint; the recipient and preview reference are
-inserted inside your browser. The email frame is sandboxed without script access.
+Use **View preview** on a row to see that reward’s email. Viewing the preview sends only its percentage to the template endpoint. The separate send action sends the presenter recipient identifier and preview reference to the email service. The email frame is sandboxed without script access.
 Use **Export** for a local backup. **Reset demo** confirms before clearing the
 preview log and makes the testing sticker available again. An offline reset is
 applied to the storefront the next time you connect it. Clearing browser data
@@ -126,7 +123,11 @@ Before live launch, implement and validate:
 
 ## Apps Script setup
 
-**Nothing special is required for this local preview.** Do not create a new trigger or send test student emails. The preview renderer reads the Apps Script template locally without Gmail/MailApp bindings.
+For real presenter preview email, paste the latest combined Apps Script into the existing district project, run `setup`, then publish a **new version of the existing web-app deployment**. Keep the same `/exec` URL. Vercel reuses `RRHS_CFA_VERIFICATION_URL`; no new sender, secret, dependency or trigger is required.
+
+The `send-hunt-preview` action only permits `s151579@student.roundrockisd.org`, five messages per Central day and one per minute. Repeated requests for a sent preview reference return the original success without sending again. An unconfirmed provider result stays unconfirmed to avoid duplicate email; check the inbox before creating another preview. Other students require a verified identity flow before real sends can be expanded.
+
+The website saves the reward even if delivery fails. The dashboard displays delivery status and provides **Send preview** for retries. Publishing the Apps Script update is required; saving code or running setup alone does not update the deployed endpoint. The optional editor function `sendEasterEggPreview` sends one 35% preview to the presenter. `setup` itself still sends nothing. Automated tests mock all delivery calls.
 
 For the later live identity integration:
 
@@ -134,7 +135,7 @@ For the later live identity integration:
 - Enable the **People API advanced service** in that directory project and the corresponding Google Cloud API if needed. Run as an authorized district account with access to student domain profiles/contacts; the district may need to allow directory visibility. A personal Gmail account cannot supply the school directory.
 - Set Script property `DIRECTORY_SECRET` to a random secret of at least 32 characters. Put the **same secret** in server-only `STUDENT_DIRECTORY_SECRET`, and the deployed `/exec` URL in `STUDENT_DIRECTORY_URL`. These variables are only for the optional future directory adapter, not feature flags. No directory secret is read by the browser or required by the preview.
 - Deploy an updated web app version after any directory code change. Keep its HMAC check and timestamp window. Avoid using the directory endpoint as a public student lookup interface. The copied directory script's first-match behavior also needs review for ambiguous profiles across pages before live use.
-- `buildEasterEggRewardEmail` is already added to the combined `apps-script/teacher-preorder-verification.gs`. When deploying future live fulfillment, keep that function with the existing `cfaEmail_` helper and verified sender configuration. Saving it alone adds no trigger and sends nothing. Existing minute jobs remain unchanged. A signed, idempotent queue/send route still needs implementation; do not expose a public arbitrary-recipient sending action.
+- `buildEasterEggRewardEmail` is already added to the combined `apps-script/teacher-preorder-verification.gs`. When deploying future live fulfillment, keep that function with the existing `cfaEmail_` helper and verified sender configuration. Saving it alone adds no trigger and sends nothing. Existing minute jobs remain unchanged. Live reward fulfillment still needs a verified-student queue; the presenter-only preview route is not live coupon fulfillment.
 
 ## Files
 
