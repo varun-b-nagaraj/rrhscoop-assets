@@ -401,6 +401,16 @@
     field.dispatchEvent(new Event('input', { bubbles: true }));
     field.dispatchEvent(new Event('change', { bubbles: true }));
   }
+  function savePaymentNotes(notes) {
+    if (notes && notes.value !== checkout.comments) setCheckoutField(notes, checkout.comments);
+    notes?.closest('.ec-form__row')?.classList.add('preorder-saved-notes');
+  }
+  const paymentNotes = () => $('ecwid-checkout').querySelector('textarea[aria-label="Leave us a note about your order"]');
+  new MutationObserver(() => {
+    if (checkoutValid && currentView === 'payment' && $('ecwid-checkout').classList.contains('is-payment-ready')) {
+      savePaymentNotes(paymentNotes());
+    }
+  }).observe($('ecwid-checkout'), { childList: true, subtree: true });
   async function setPickupSchedule() {
     const pickupInput = () => $('ecwid-checkout').querySelector('input[aria-label="Please choose a date"]');
     const calendar = () => document.querySelector('.ec-date-selector__menu');
@@ -519,11 +529,7 @@
       throw new Error('Ecwid could not confirm the selected items and fulfillment. Return to preorder review and try again.');
     }
     // Ecwid mounts a fresh notes field when it opens payment.
-    const notes = await waitForCheckout(() => host.querySelector('textarea[aria-label="Leave us a note about your order"]'), 2000);
-    if (notes) {
-      setCheckoutField(notes, checkout.comments);
-      notes.closest('.ec-form__row')?.classList.add('preorder-saved-notes');
-    }
+    savePaymentNotes(await waitForCheckout(paymentNotes));
     return true;
   }
   async function prepareCheckout() {
@@ -555,6 +561,7 @@
       const fields = {
         cfa_preorder: ['Order type', 'Faculty Chick-fil-A preorder'],
         cfa_verified_email: ['Verified district email', checkout.email],
+        cfa_sauces: ['Sauces', checkout.comments.split('\n').at(-1).replace(/^Sauces: /, '')],
       };
       const deliveryFields = {
         cfa_delivery_date: ['Preorder delivery date', checkout.delivery.date],

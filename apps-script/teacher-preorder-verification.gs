@@ -267,7 +267,7 @@ function cfaDispatchOrder_(order, date) {
     delivery: pickup ? '' : extra('cfa_delivery_date') || comment('Delivery'),
     time: pickup ? pickupTime || 'See pickup time in Ecwid' :
       extra('cfa_delivery_time') || comment('Requested time') || 'Around 12:45 p.m.',
-    sauces: comment('Sauces') || 'None',
+    sauces: comment('Sauces') || extra('cfa_sauces') || 'None',
     items: items
   };
 }
