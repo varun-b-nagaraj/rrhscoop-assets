@@ -268,19 +268,18 @@
   });
   function review() {
     const pickup = details.fulfillment === 'pickup';
-    const data = [['For', details.name], ['Email', details.email]];
-    if (pickup) {
-      data.push(['Fulfillment', 'Pick up at the RRHS CO-OP'], ['Pickup time', `${delivery.label} · ${displayTime(details.time)} Central`],
-        ['Payment', 'Pay online or at pickup']);
-    } else {
-      data.push(['Room', details.room], ['Delivery', delivery.label], ['Time', details.time ? displayTime(details.time) : 'Around 12:45 p.m.'],
-        ['Payment', 'Pay online']);
-    }
+    const rows = data => data.map(([label, value, extra = '']) =>
+      `<div><dt>${label}</dt><dd>${escape(value)}${extra}</dd></div>`).join('');
+    $('review-fulfillment-title').textContent = pickup ? 'Pickup' : 'Delivery';
+    $('review-edit').setAttribute('aria-label', pickup ? 'Edit pickup details' : 'Edit delivery details');
+    $('delivery-review').innerHTML = rows(pickup
+      ? [['Where', 'RRHS CO-OP'], ['Date', delivery.label], ['Time', `${displayTime(details.time)} Central`], ['Payment', 'Online or at pickup']]
+      : [['Room', details.room], ['Date', delivery.label], ['Time', details.time ? displayTime(details.time) : 'Around 12:45 p.m.'], ['Payment', 'Online']]);
+    $('contact-review').innerHTML = rows([['Name', details.name],
+      ['Email', details.email, '<span class="tag-verified"><span aria-hidden="true">✓</span> Verified</span>']]);
     $('review-fulfillment-note').textContent = pickup
-      ? 'Your pickup time is saved. Choose online payment or Pay at pickup on the next screen.'
-      : 'Your delivery details are saved. Choose how to pay on the next screen.';
-    $('delivery-review').innerHTML = data.map(([label, value]) =>
-      `<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('');
+      ? 'Choose online payment or Pay at pickup on the next screen.'
+      : 'You’ll choose how to pay on the next screen.';
     show('review');
   }
   $('delivery-form').addEventListener('submit', event => {
@@ -315,6 +314,7 @@
     if (Date.now() < resendUntil) { message('verify-error', `Please wait ${Math.ceil((resendUntil-Date.now())/1000)} seconds before requesting another code.`); return; }
     busy($('resend-code'), 'Sending…', sendCode, 'verify-error');
   });
+  $('review-edit').addEventListener('click', () => show('details'));
   $('forget-email').addEventListener('click',()=> { forget(); show('details'); message('details-error','Saved verification removed. Verify your email again to continue.'); });
 
   function ecwidCall(method, ...args) {
@@ -479,6 +479,35 @@
       throw new Error('Ecwid could not save that pickup time. Go back and try again.');
     }
   }
+  const promoCode = () => $('promo-code').value.trim().toUpperCase();
+  async function applyPromoCode(cart) {
+    const code = promoCode();
+    if (!code) return;
+    const current = await getCart();
+    if (String(current.couponName || '').toUpperCase() === code) return;
+    const group = () => cart.querySelector('.ec-cart-discount-group__coupon');
+    const redeem = [...cart.querySelectorAll('.ec-cart-coupon__text a.ec-link')].find(link => /redeem/i.test(link.textContent));
+    if (redeem) clickSetupControl(redeem);
+    const input = await waitForCheckout(() => group()?.querySelector('input'), 3000);
+    if (!input) throw new Error('The promo code box did not load. Go back and try again, or clear the promo code.');
+    setCheckoutField(input, code);
+    await new Promise(resolve => setTimeout(resolve, 120));
+    if (!clickSetupControl(group().querySelector('.ec-cart-coupon__button--apply button'))) {
+      throw new Error('We could not apply your promo code. Go back and try again, or clear the promo code.');
+    }
+    let applied = false;
+    const end = Date.now() + 8000;
+    while (Date.now() < end) {
+      if (group()?.querySelector('.form__msg--error')) break;
+      const latest = await getCart();
+      if (latest.couponName) { applied = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+    if (!applied) {
+      const reason = group()?.querySelector('.form__msg--error')?.textContent.trim();
+      throw new Error(`Promo code ${code} wasn’t accepted${reason ? ` (${reason.replace(/\.$/, '')})` : ''}. Go back to change or clear it.`);
+    }
+  }
   async function advanceToPayment() {
     const host = $('ecwid-checkout');
     const pickup = checkout.fulfillment === 'pickup';
@@ -492,6 +521,7 @@
     // field once it knows the customer, so wait for the cart's own Checkout button instead.
     const cart = await waitForCheckout(() => !onPayment() && next(host, 'Checkout') && host, 8000);
     if (!cart) return false;
+    await applyPromoCode(cart);
     const terms = cart.querySelector('.ec-cart__agreement input[type="checkbox"]');
     if (terms && !terms.checked) clickSetupControl(terms);
     if (!clickSetupControl(next(cart, 'Checkout'))) return false;

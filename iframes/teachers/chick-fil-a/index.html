@@ -84,7 +84,28 @@
       </div><aside class="receipt" data-summary></aside></div>
     </section>
     <section id="review-view" class="view" hidden>
-      <div class="checkout-layout"><div><p class="verified"><span aria-hidden="true">✓</span> District email verified</p><dl id="delivery-review" class="delivery-review"></dl><p class="helper" id="review-fulfillment-note"></p><label class="remember preorder-terms"><input type="checkbox" id="preorder-terms" required><span>I agree to the CO-OP’s <a href="https://rrhscoop.roundrockisd.org/products/pages/terms" target="_blank" rel="noopener">terms and conditions</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/returns" target="_blank" rel="noopener">shipping and returns</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/shipping-payment" target="_blank" rel="noopener">payment policies</a>, and <a href="https://rrhscoop.roundrockisd.org/products/pages/privacy-policy" target="_blank" rel="noopener">privacy policy</a>.</span></label><button class="button primary full" id="pay-now" type="button">Continue to payment <span aria-hidden="true">→</span></button><p id="payment-error" class="inline-error" role="alert" hidden></p><button class="text-button" id="forget-email" type="button">Forget my verified email on this device</button></div><aside class="receipt" data-summary></aside></div>
+      <div class="review-stack">
+        <aside class="receipt review-receipt" data-summary></aside>
+        <section class="review-card" aria-labelledby="review-fulfillment-title">
+          <div class="review-card-head"><h3 id="review-fulfillment-title">Delivery</h3><button class="text-button review-edit" id="review-edit" type="button" aria-label="Edit delivery details">Edit</button></div>
+          <dl id="delivery-review" class="delivery-review"></dl>
+        </section>
+        <section class="review-card" aria-labelledby="review-contact-title">
+          <div class="review-card-head"><h3 id="review-contact-title">Contact</h3></div>
+          <dl id="contact-review" class="delivery-review"></dl>
+        </section>
+        <section class="review-card review-promo">
+          <div class="field"><label for="promo-code">Promo code <span>(optional)</span></label><input id="promo-code" name="promo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" aria-describedby="promo-help"></div>
+          <p class="helper" id="promo-help">We’ll apply it to your total on the payment screen.</p>
+        </section>
+        <div class="review-confirm">
+          <p class="helper" id="review-fulfillment-note"></p>
+          <label class="remember preorder-terms"><input type="checkbox" id="preorder-terms" required><span>I agree to the CO-OP’s <a href="https://rrhscoop.roundrockisd.org/products/pages/terms" target="_blank" rel="noopener">terms and conditions</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/returns" target="_blank" rel="noopener">shipping and returns</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/shipping-payment" target="_blank" rel="noopener">payment policies</a>, and <a href="https://rrhscoop.roundrockisd.org/products/pages/privacy-policy" target="_blank" rel="noopener">privacy policy</a>.</span></label>
+          <button class="button primary full" id="pay-now" type="button">Continue to payment <span aria-hidden="true">→</span></button>
+          <p id="payment-error" class="inline-error" role="alert" hidden></p>
+        </div>
+        <button class="text-button review-forget" id="forget-email" type="button">Forget my verified email on this device</button>
+      </div>
     </section>
     <section id="payment-view" class="view" hidden>
       <div id="checkout-status" class="checkout-loading" role="status" hidden>
