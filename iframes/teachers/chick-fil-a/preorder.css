@@ -232,7 +232,7 @@ body:has(.ecwid-host.is-preparing) .ec-date-selector__menu { opacity:0; }
 .review-receipt .receipt-total span:last-child { font-variant-numeric:lining-nums tabular-nums; }
 #review-view .receipt-date { display:none; }
 .review-card { border:1px solid var(--line); padding:18px 22px 10px; background:var(--paper); }
-.review-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:6px; }
+.review-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; margin-top:-6px; }
 .review-card-head h3 { font:600 11px/1.6 Arial,sans-serif; color:var(--maroon); text-transform:uppercase; letter-spacing:.16em; }
 .review-edit { min-height:44px; min-width:44px; padding:0; font-size:15px; }
 .review-card .delivery-review { border:0; margin:0; padding:0; }
