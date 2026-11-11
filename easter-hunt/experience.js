@@ -28,7 +28,7 @@
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of 12 dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
     tooltip.textContent = sample
       ? 'Development preview: this is an example count. The live hunt is closed. Look for the red dragon sticker holding a CO-OP package. Twelve will be hidden around the website. Select this counter to replay the introduction.'
-      : `${preview ? 'Local development preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to replay the introduction.`;
+      : `${preview ? 'Personal presentation preview. ' : ''}${found} of 12 hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. ${preview ? 'Only the Inventory Intelligence test sticker is enabled; no real coupons or emails are created. ' : 'Find the dragon holding a CO-OP package for a mystery reward. One reward per verified student. '}Select to replay the introduction.`;
   }
   function placeTooltip() {
     if (!counter || !tooltip || tooltip.hidden) return;
@@ -86,13 +86,15 @@
       <p id="hunt-intro-copy">Look for this dragon sticker holding a CO-OP package. Twelve are tucked around the website. Spot one and discover a mystery reward.</p>
       <div class="hunt-intro-rules"><span><strong>12</strong> hidden stickers</span><span><strong>10–35%</strong> mystery rewards</span><span><strong>1</strong> per student</span></div>
       <p class="hunt-intro-hint">Find this sticker, then tap or click it. The counter beside search tracks discoveries across the hunt.</p>
-      ${preview ? '<p class="hunt-preview">You’re viewing the development preview. Only the Inventory Intelligence test package is enabled locally. No real discounts, codes, or emails are issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
+      ${preview ? '<p class="hunt-preview">You’re viewing the development preview. Only the Inventory Intelligence test sticker is enabled in this browser. No real discounts, codes, or emails are issued.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
+      ${preview ? '<button type="button" class="hunt-presenter-link">Open presenter dashboard</button>' : ''}
       <p class="hunt-terms">Valid on the first $25 of eligible merchandise. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     intro.showModal(); intro.querySelector('.hunt-intro-start').focus({ preventScroll: true });
     intro.querySelector('.hunt-close').addEventListener('click', dismiss);
     intro.querySelector('.hunt-intro-start').addEventListener('click', dismiss);
+    intro.querySelector('.hunt-presenter-link')?.addEventListener('click', () => window.RRHS_HUNT_DEMO?.openDashboard());
     intro.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
     intro.addEventListener('click', event => {
       if (event.target !== intro) return;

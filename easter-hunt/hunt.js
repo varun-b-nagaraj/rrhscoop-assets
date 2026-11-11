@@ -13,6 +13,7 @@
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
   async function request(data) {
+    if (!config.HUNT_ENABLED && window.RRHS_HUNT_DEMO) return window.RRHS_HUNT_DEMO.request(data ? 'claim' : 'availability', data);
     const response = await fetch(endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
       headers: data ? { 'Content-Type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined,
       signal: AbortSignal.timeout(10000) });
@@ -177,6 +178,7 @@
       mounted.clear();
     }
   });
+  document.addEventListener('rrhs-hunt-demo-changed', refresh);
   window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);

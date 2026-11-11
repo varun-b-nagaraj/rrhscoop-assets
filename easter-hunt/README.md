@@ -1,6 +1,6 @@
 # Hidden package hunt
 
-The current implementation is a **local development preview**, as requested. It is not a live promotion. No Ecwid coupons are created, no student emails are sent, and no production database is changed. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
+The current implementation is a **personal presentation preview**, hosted on Vercel and runnable locally. It is not a live promotion. No Ecwid coupons are created, no student emails are sent, and no production database is changed. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
 
 All hunt stickers use the supplied transparent dragon holding a CO-OP package,
 stored unchanged in `easter-hunt/dragon-package-sticker.png`. The introduction
@@ -16,17 +16,17 @@ With Node 18+:
 node tools/easter-hunt-preview.cjs
 ```
 
-Open <http://127.0.0.1:4173>. In DevTools, run `window.RRHSOVERIDE = true`. Follow **Find the package**, then find the small package beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. The preview simulates delivery to `s151579@student.roundrockisd.org`. It reveals the simulated percentage, never a discount code.
+Open <http://127.0.0.1:4173>. Select **Open storefront** to connect the dashboard and enable the promo, then find the small dragon sticker beside **Inventory Intelligence**. Enter your S-number **including the s**, such as `s151579`. The preview simulates delivery to `s151579@student.roundrockisd.org`. It reveals the simulated percentage, never a discount code.
 
 ## DevTools gate and introduction
 
-Normal visitors see no hunt UI while `HUNT_ENABLED` is false. Enable the development presentation in your current tab:
+Normal visitors see no hunt UI while `HUNT_ENABLED` is false. Enable the presentation on your browser profile:
 
 ```js
 window.RRHSOVERIDE = true;
 ```
 
-The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in session storage for that tab, and is forwarded to the site's hosted content frames with origin/source checks. No console reload is required. It enables the presentation on the hosted storefront too, while the production claim API stays closed. A hosted override shows an explicitly labeled example count until a live backend is available; it never manufactures a successful live claim.
+The exact flag spelling is `RRHSOVERIDE`. It applies immediately, persists in localStorage across tabs and browser restarts, and is forwarded to the site's hosted content frames with origin/source checks. No console reload is required. It enables the presentation on the hosted storefront too, while the production claim API stays closed. The hosted override runs the personal browser demo, with a count from that browser’s saved preview records. It never creates a live claim or coupon. An old session-only true setting is migrated once. Storage is per browser profile and site, not shared between different browsers on the laptop.
 
 The header counter appears immediately before Ecwid's search control. It shows the total found across the hunt, with remaining rewards and an explanation on hover or keyboard focus. On local standalone pages without the storefront header, it appears at the top right for testing.
 
@@ -39,9 +39,43 @@ window.RRHSOVERIDE = false;     // Remove the counter, packages, intro and spotl
 
 Root-page claim dialogs handle discoveries from trusted hosted iframes so dialogs cover the full website rather than the iframe's tall document.
 
-The local management page has all twelve egg records, remaining prize quantities, claims, a redacted audit, pause/resume, egg enable/disable, simulated email failures/retries, reset, and a minimal JSON export. The email links render the same HTML/plain-text template added to the district Apps Script. Preview email contains no usable code.
+## Personal Vercel dashboard
 
-Only one egg is interactive in the storefront preview. With `DEV_ALL_EGGS_ENABLED` false, the local server also starts and resets with the other eleven eggs disabled. Other locations are registered for future integration. Availability polls every 15 seconds and refreshes on window focus. Closing before submission consumes nothing. All simulator state lives in one Node process and resets on restart; its atomicity and rate limits are **not suitable for multiple production instances**. Reset also clears idempotency records, claims, and rate limits.
+Open <https://rrhscoop-assets.vercel.app/easter-hunt/dashboard> on your laptop.
+Choose **Open storefront** from that page and keep the dashboard open while
+presenting. The connected storefront tab saves the promo toggle automatically.
+It also supports `window.RRHSOVERIDE = true` once in DevTools; `false` saves the
+opposite preference. The intro still plays once per tab and can be replayed from
+the dashboard.
+
+The compact claim log shows the entered S-number, timestamp, preview percentage,
+`PREVIEW-…` reference, and a branded email preview. No student name is inferred,
+no directory match is claimed, and no email is sent. The storefront never receives
+the dashboard reference as a coupon code.
+
+**The page URL is public; the records are private to your browser profile.**
+Another person opening the URL sees an empty dashboard. There is no public
+student-data API, shared cloud claim log, or production admin login in this demo.
+Entered S-numbers and references stay in localStorage and are not uploaded to
+Vercel. A trusted opener/message-port connection moves records directly between
+your storefront and dashboard tabs. The hosted dashboard keeps a browser-only
+backup so records survive reopening the browser. This also avoids relying on
+third-party iframe storage, which browsers can partition between the school
+website and Vercel.
+
+Use **View preview** on a row to see that reward’s email. Only its percentage is
+sent to the public template endpoint; the recipient and preview reference are
+inserted inside your browser. The email frame is sandboxed without script access.
+Use **Export** for a local backup. **Reset demo** confirms before clearing the
+preview log and makes the testing sticker available again. An offline reset is
+applied to the storefront the next time you connect it. Clearing browser data
+removes the demo records and toggle preference.
+
+Only Inventory Intelligence is enabled. The twelve prize tickets are drawn with
+Web Crypto in the personal demo; Web Locks serialize changes across browser tabs.
+These are presentation mechanics, not server enforcement for a live promotion.
+The older loopback-only Node simulator remains available to backend tests. The
+normal hosted claim API still rejects all live issuance requests.
 
 ## Plain boolean gates
 
@@ -55,7 +89,7 @@ DEV_ALL_EGGS_ENABLED: false,
 
 Keep `HUNT_ENABLED` false. The `RRHSOVERIDE` DevTools flag gates all preview UI, including local pages. `DEV_PREVIEW_ENABLED` permits the loopback preview server; set it false to close that server too. `DEV_ALL_EGGS_ENABLED` temporarily reveals all twelve placements locally for review; keep it false to leave only Inventory Intelligence available. These are plaintext code switches, not `.env` settings.
 
-The deployed `/api/v1/easter-hunt` returns disabled availability and rejects all claim requests. Changing the browser boolean cannot enable live issuance. There is deliberately no “flip this boolean to launch” instruction while checkout enforcement and identity ownership remain unresolved.
+The deployed `/api/v1/easter-hunt` returns disabled live availability and rejects all claim requests. Its `GET ?view=email-template&percentage=…` branch only renders a generic preview and accepts no student data. Changing the browser boolean cannot enable live issuance. There is deliberately no “flip this boolean to launch” instruction while checkout enforcement and identity ownership remain unresolved.
 
 The exclusive deadline is `2026-11-14T00:00:00-06:00`, which includes all of Friday, November 13's 11:59 PM minute in America/Chicago. UI/email copy says Friday, November 13, 2026, at 11:59 PM Central. The scheduled start is Monday, November 9 at midnight Central.
 
@@ -107,12 +141,13 @@ For the later live identity integration:
 | Files | Purpose |
 | --- | --- |
 | `easter-hunt/config.js` | Plain booleans, deadline, twelve unique location IDs |
-| `easter-hunt/service.js` | Isolated mock claim engine, prize draw, rates, idempotency, management |
+| `easter-hunt/service.js` | Loopback backend simulator and server-side logic tests |
+| `easter-hunt/demo-store.js`, `demo-client.js` | Browser-only persistent presentation claims and trusted dashboard connection |
 | `easter-hunt/boot.js`, `hunt.js`, `hunt.css`, `experience.js` | DevTools gate, iframe bridge, header counter, spotlight introduction, reusable egg, accessible modals, availability refresh |
 | `easter-hunt/directory.js` | Private signed directory adapter for later verified integration |
 | `easter-hunt/email-preview.js` | Render the existing Apps Script template without sending |
-| `api/v1/easter-hunt.js` | Closed production API |
-| `tools/easter-hunt-preview.cjs`, `tools/easter-hunt/*` | Loopback-only local preview and management tools |
+| `api/v1/easter-hunt.js` | Closed live claim API and generic public email templates |
+| `tools/easter-hunt-preview.cjs`, `tools/easter-hunt/*` | Local preview server and Vercel-hosted personal dashboard |
 | `tools/check-easter-hunt-browser.cjs`, `test/easter-hunt.test.js` | Browser QA and critical logic/API tests |
 | `index.js`, projects/FAQ/why/category HTML | Load the gated feature in existing storefront surfaces |
 | `iframes/projects/projects.js` | Inventory Intelligence placement marker |
@@ -129,6 +164,7 @@ Optional browser QA without adding project dependencies:
 ```sh
 npm install --prefix /tmp/rrhs-hunt-qa --no-package-lock playwright
 node tools/check-easter-hunt-browser.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
+node tools/check-hunt-dashboard.cjs /tmp/rrhs-hunt-qa/node_modules/playwright
 ```
 
 If Chromium is not installed, run `/tmp/rrhs-hunt-qa/node_modules/.bin/playwright install chromium` first. Browser tests cover desktop, small/large mobile, tablet, landscape, reduced motion, enlarged text, keyboard focus/escape, non-consuming dismissal, simulated claims, lost availability, and mobile email width. They also verify the default-off gate, immediate on/off toggles, per-tab persistence, three-second introduction, spotlight click/skip, header counter tooltip, and trusted iframe discovery bridge. All tests use fictional or locally entered preview data, no live Ecwid writes and no real email.

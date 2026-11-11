@@ -26,6 +26,7 @@ function createServer({ preview = createPreview({ singleEggOnly: !config.DEV_ALL
       if (req.headers.origin && req.headers.origin !== host.origin) fail(403, 'Open the local preview to continue.');
       if (req.headers['sec-fetch-site'] === 'cross-site') fail(403, 'Open the local preview to continue.');
       if (url.pathname === '/api/v1/easter-hunt') {
+        if (req.method === 'GET' && url.searchParams.get('view') === 'email-template') return require('../api/v1/easter-hunt')(req, res);
         if (req.method === 'GET') return send(200, preview.availability());
         if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
         const input = await body(req);
@@ -44,7 +45,7 @@ function createServer({ preview = createPreview({ singleEggOnly: !config.DEV_ALL
         return res.end(url.searchParams.has('text') ? email.text : email.html);
       }
       if (!['GET', 'HEAD'].includes(req.method)) return send(405, { error: 'Method not allowed' });
-      const pathname = url.pathname === '/' ? '/tools/easter-hunt/index.html' : decodeURIComponent(url.pathname);
+      const pathname = ['/', '/easter-hunt/dashboard'].includes(url.pathname) ? '/tools/easter-hunt/index.html' : decodeURIComponent(url.pathname);
       // Serve only the storefront assets needed by the preview. Never serve source,
       // .env, Apps Script, tests, or the rest of the developer's filesystem.
       const allowed = /^(?:\/iframes\/|\/custom-visuals\/|\/easter-hunt\/|\/tools\/easter-hunt\/)/.test(pathname);
@@ -52,7 +53,7 @@ function createServer({ preview = createPreview({ singleEggOnly: !config.DEV_ALL
       const ext = path.extname(file);
       const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json' };
       if (!allowed || !file.startsWith(root + path.sep) || pathname.split('/').some(part => part.startsWith('.')) || !types[ext]) fail(404, 'Not found');
-      if (pathname.startsWith('/easter-hunt/') && !['boot.js', 'config.js', 'hunt.js', 'hunt.css', 'experience.js', 'dragon-package-sticker.png'].includes(path.basename(file))) fail(404, 'Not found');
+      if (pathname.startsWith('/easter-hunt/') && !['boot.js', 'config.js', 'hunt.js', 'hunt.css', 'experience.js', 'dragon-package-sticker.png', 'demo-store.js', 'demo-client.js'].includes(path.basename(file))) fail(404, 'Not found');
       const content = await fs.readFile(file);
       res.setHeader('Content-Type', types[ext] + (['.html', '.js', '.css'].includes(ext) ? '; charset=utf-8' : ''));
       res.end(req.method === 'HEAD' ? undefined : content);

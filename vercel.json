@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/easter-hunt/dashboard",
+      "destination": "/tools/easter-hunt/index.html"
+    },
+    {
       "source": "/iframes/leadership.html",
       "destination": "/iframes/leadership/index.html"
     },

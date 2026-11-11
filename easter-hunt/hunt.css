@@ -68,6 +68,7 @@
 .hunt-intro-rules span { color:var(--hunt-muted); font:400 12px/1.4 Georgia,serif; }
 .hunt-intro-rules strong { display:block; margin-bottom:6px; color:var(--hunt-maroon); font:400 24px/1.2 Georgia,serif; }
 .hunt-dialog .hunt-intro-hint { font-size:14px; color:var(--hunt-muted); }
+.hunt-presenter-link { min-height:44px; margin-top:8px; padding:8px; border:0; background:transparent; color:var(--hunt-maroon); font:400 13px/1.4 Georgia,serif; text-decoration:underline; cursor:pointer; }
 @keyframes hunt-scrim-in { from { opacity:0; } to { opacity:1; } }
 @keyframes hunt-lens-in { from { opacity:0; scale:.55; } to { opacity:1; scale:1; } }
 @media(max-width:600px) { .hunt-counter-trigger { position:relative; gap:4px; padding:5px 7px 12px; } .hunt-counter-trigger>.hunt-sticker { width:18px; height:18px; } .hunt-counter-label { display:none; } .hunt-counter-preview { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:7px; } .hunt-counter { margin-inline-end:4px; } .hunt-tour-caption { bottom:32px; } }
