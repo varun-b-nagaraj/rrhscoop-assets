@@ -2,7 +2,8 @@
   'use strict';
   if (window.RRHS_HUNT_DEMO) return;
   const assetOrigin = new URL(document.currentScript.src).origin;
-  const store = window.RRHS_HUNT_DEMO_STORE.createDemoStore({ storage: localStorage, crypto, config: window.RRHS_HUNT_CONFIG });
+  let store;
+  const ownStore = () => store || (store = window.RRHS_HUNT_DEMO_STORE.createDemoStore({ storage: localStorage, crypto, config: window.RRHS_HUNT_CONFIG }));
   const allowed = new Set([assetOrigin, 'https://rrhscoop.roundrockisd.org']);
   if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) allowed.add(location.origin);
   let dashboardWindow;
@@ -25,7 +26,7 @@
       });
     }
     if (!['availability', 'snapshot', 'claim', 'reset', 'restoreIfEmpty'].includes(action)) throw new Error('Unknown demo action.');
-    const run = () => { const result = store[action](input); if (['claim', 'reset', 'restoreIfEmpty'].includes(action)) notify(); return result; };
+    const run = () => { const result = ownStore()[action](input); if (['claim', 'reset', 'restoreIfEmpty'].includes(action)) notify(); return result; };
     if (['claim', 'reset', 'restoreIfEmpty'].includes(action)) {
       if (!navigator.locks) throw new Error('Use a current Chrome, Edge, Firefox, or Safari browser for the presentation demo.');
       return navigator.locks.request('rrhs-hunt-personal-demo', run);

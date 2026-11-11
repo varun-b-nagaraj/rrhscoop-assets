@@ -147,6 +147,9 @@ const server = createServer({ preview });
     const host = await browser.newPage();
     await host.goto(base + '/iframes/projects/index.html');
     await host.addScriptTag({ url: base + '/easter-hunt/boot.js' });
+    await host.addInitScript(() => {
+      if (window.parent !== window) Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('Third-party storage blocked', 'SecurityError'); } });
+    });
     await host.evaluate(base => {
       sessionStorage.setItem('rrhs-hunt-intro-seen', 'true');
       const frame = document.createElement('iframe'); frame.src = base + '/iframes/projects/index.html'; frame.id = 'hunt-frame'; document.body.append(frame);
