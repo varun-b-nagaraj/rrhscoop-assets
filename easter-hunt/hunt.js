@@ -27,7 +27,22 @@
     const matches = document.querySelectorAll(spot.selector);
     return spot.text ? [...matches].find(element => element.textContent.includes(spot.text)) || null : matches[0] || null;
   }
-  function available(id) { return availability?.eggs?.some(egg => egg.id === id && egg.available); }
+  const lensIcon = '<svg class="hunt-found-lens" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="m25 25 11 11" stroke="#3c1720" stroke-width="5.5" stroke-linecap="round"/><path d="m26.5 26.5 8 8" stroke="#a88148" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="16" r="12.5" fill="#fff8e8" fill-opacity=".35" stroke="#4b1924" stroke-width="3"/><circle cx="16" cy="16" r="11" stroke="#c6a169" stroke-width="1.2"/></svg>';
+  const foundHere = new Set();
+  function available(id) { return !foundHere.has(id) && availability?.eggs?.some(egg => egg.id === id && egg.available); }
+  // The server decides: once anyone claims a sticker it stays on the page, disabled, under a magnifying glass.
+  function found(id) {
+    if (foundHere.has(id)) return true;
+    const egg = availability?.eggs?.find(entry => entry.id === id);
+    return Boolean(egg && (egg.found ?? (availability.status === 'active' && !egg.available)));
+  }
+  function paint(button, id) {
+    const isFound = found(id);
+    button.style.visibility = isFound || available(id) ? 'visible' : 'hidden';
+    button.classList.toggle('hunt-found', isFound); button.disabled = isFound;
+    button.setAttribute('aria-label', isFound ? 'CO-OP dragon sticker, already found' : 'Open hidden CO-OP dragon sticker');
+    if (isFound) button.title = 'Already found by another Dragon'; else button.removeAttribute('title');
+  }
   function mount() {
     if (!window.RRHS_HUNT_ACTIVE) return;
     for (const location of config.locations) {
@@ -35,12 +50,12 @@
       const target = targetFor(location);
       const previous = mounted.get(location.id);
       if (previous && previous.target === target && previous.button.isConnected) {
-        previous.button.style.visibility = available(location.id) ? 'visible' : 'hidden'; continue;
+        paint(previous.button, location.id); continue;
       }
       if (previous) { previous.observer?.disconnect(); previous.button.remove(); mounted.delete(location.id); }
       if (!target) continue;
       const button = EasterEgg(location.id);
-      button.style.visibility = available(location.id) ? 'visible' : 'hidden';
+      paint(button, location.id);
       let observer;
       const interactive = target.closest('button, a');
       if (interactive) {
@@ -63,7 +78,7 @@
     const button = document.createElement('button'); button.type = 'button';
     button.className = 'hunt-egg'; button.dataset.eggId = id;
     button.setAttribute('aria-label', 'Open hidden CO-OP dragon sticker');
-    button.innerHTML = stickerImage;
+    button.innerHTML = stickerImage + lensIcon;
     button.addEventListener('click', event => {
       event.stopPropagation();
       if (window.RRHS_HUNT_PARENT && window.parent !== window) parent.postMessage({ type: 'rrhs-hunt-open', id }, window.RRHS_HUNT_PARENT);
@@ -74,7 +89,7 @@
   function close() {
     generation++; active = null;
     dialog.close(); document.body.style.overflow = returnOverflow;
-    const focusTarget = trigger && getComputedStyle(trigger).visibility !== 'hidden'
+    const focusTarget = trigger && !trigger.disabled && getComputedStyle(trigger).visibility !== 'hidden'
       ? trigger : trigger?.parentElement.querySelector('.project-card-button');
     focusTarget?.focus({ preventScroll: true });
     dialog.querySelector('.hunt-content').replaceChildren();
@@ -131,7 +146,7 @@
       try {
         const result = await request({ action: 'claim', eggId: id, studentId: input.value.trim(), idempotencyKey: active.key });
         if (version !== generation) return;
-        active.submitting = false; active.claimed = true;
+        active.submitting = false; active.claimed = true; foundHere.add(id); mount();
         reveal(result, version); refresh();
       } catch (error) {
         if (version !== generation) return;

@@ -33,7 +33,7 @@ function createPreview({ now = Date.now, randomInt = crypto.randomInt, singleEgg
   }
   function availability() {
     return { mode: 'preview', status: status(), expiresAt: config.expiresAt, remaining: pool.length,
-      eggs: config.locations.map(({ id }) => ({ id, available: status() === 'active' && !eggs.has(id) && !disabled.has(id) })) };
+      eggs: config.locations.map(({ id }) => ({ id, available: status() === 'active' && !eggs.has(id) && !disabled.has(id), found: eggs.has(id) })) };
   }
   function rateLimit(key) {
     const bucket = Math.floor(now() / 60000);

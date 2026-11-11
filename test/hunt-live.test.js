@@ -68,6 +68,8 @@ test('a claim creates one single-use Ecwid coupon and emails the code only to th
   assert.equal(availability.remaining, 19);
   assert.equal(availability.eggs.find(egg => egg.id === 'shop-drinks').available, false);
   assert.equal(availability.eggs.filter(egg => egg.available).length, 19);
+  // Found stickers stay on the page, disabled under a magnifying glass, for everyone.
+  assert.equal(availability.eggs.filter(egg => egg.found).map(egg => egg.id).join(), 'shop-drinks');
 });
 
 test('one reward per student and per sticker, with the same message for both', () => {

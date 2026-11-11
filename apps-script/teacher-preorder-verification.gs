@@ -183,7 +183,7 @@ function huntAvailability_(props) {
   var state = huntState_(props), status = huntStatus_(state);
   var taken = state.claims.map(function (claim) { return claim.eggId; });
   return { ok: true, mode: 'live', status: status, expiresAt: HUNT_EXPIRES_AT, remaining: HUNT_EGGS.length - state.claims.length,
-    eggs: HUNT_EGGS.map(function (id) { return { id: id, available: status === 'active' && taken.indexOf(id) === -1 }; }) };
+    eggs: HUNT_EGGS.map(function (id) { var found = taken.indexOf(id) !== -1; return { id: id, available: status === 'active' && !found, found: found }; }) };
 }
 
 function huntCode_() {
