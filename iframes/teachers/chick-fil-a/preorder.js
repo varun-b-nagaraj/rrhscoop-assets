@@ -54,7 +54,7 @@
     document.querySelectorAll('[data-summary]').forEach(el => {
       el.innerHTML = `<p class="eyebrow">Reserved for your lunch break</p><h3>Your preorder</h3>${lines}${sauceSummary}<div class="receipt-total"><span>Subtotal</span><span>${money(subtotal())}</span></div><p>Final taxes &amp; delivery at checkout.</p><p class="receipt-date">${details.fulfillment === 'pickup'
         ? `Store pickup<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(displayTime(details.time)) : 'Choose a pickup time'}`
-        : `Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(details.time) : 'Around 12:45 p.m.'}`}</p>`;
+        : `Delivery<strong>${escape(delivery?.label || '')}</strong>${details.time ? escape(displayTime(details.time)) : 'Around 12:45 p.m.'}`}</p>`;
     });
     const total = money(subtotal());
     $('subtotal').textContent = total;
