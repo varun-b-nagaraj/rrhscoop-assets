@@ -11,6 +11,8 @@
   let token = '', verifiedEmail = '', details = {}, challenge = '', checkout = null;
   let expiryTimer = null;
   let widgetReady = null, preparing = false, checkoutValid = false, currentView = 'menu', resendUntil = 0;
+  let setupControl;
+  let pickupTimes = [];
   const drawer = $('preorder-drawer');
   const drawerShell = drawer.querySelector('.drawer-shell');
   const drawerScroll = $('drawer-scroll');
@@ -216,9 +218,9 @@
     $('teacher-room').disabled = pickup;
     $('delivery-time').disabled = pickup;
     $('pickup-details').hidden = !pickup;
-    $('pickup-time').disabled = !pickup;
-    $('pickup-time').required = pickup;
-    $('pickup-time-help').textContent = `Choose a time for ${delivery?.label || 'the next school day'} at the RRHS CO-OP.`;
+    $('pickup-time-help').textContent = pickupTimes.length
+      ? `Choose a time for ${delivery?.label || 'the next school day'} at the RRHS CO-OP.`
+      : 'Pickup times are currently unavailable for this date.';
   }
   $('delivery-form').addEventListener('change', event => {
     if (event.target.name === 'fulfillment') {
@@ -230,6 +232,18 @@
     details.time = $(fulfillmentChoice() === 'pickup' ? 'pickup-time' : 'delivery-time').value;
     summary();
   });
+  function renderPickupTimes() {
+    $('pickup-times').innerHTML = pickupTimes.map(time => `<button type="button" data-time="${escape(time)}" aria-pressed="${time === $('pickup-time').value}">${displayTime(time)}</button>`).join('');
+    updateFulfillmentFields();
+  }
+  $('pickup-times').addEventListener('click', event => {
+    const option = event.target.closest('button[data-time]');
+    if (!option) return;
+    $('pickup-time').value = option.dataset.time;
+    details.time = option.dataset.time;
+    $('pickup-times').querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button === option)));
+    summary();
+  });
   function review() {
     const pickup = details.fulfillment === 'pickup';
     const data = [['For', details.name], ['Email', details.email]];
@@ -237,12 +251,12 @@
       data.push(['Fulfillment', 'Pick up at the RRHS CO-OP'], ['Pickup time', `${delivery.label} · ${displayTime(details.time)} Central`],
         ['Payment', 'Pay online or at pickup']);
     } else {
-      data.push(['Room', details.room], ['Delivery', delivery.label], ['Time', details.time || 'Around 12:45 p.m.'],
+      data.push(['Room', details.room], ['Delivery', delivery.label], ['Time', details.time ? displayTime(details.time) : 'Around 12:45 p.m.'],
         ['Payment', 'Pay online']);
     }
     $('review-fulfillment-note').textContent = pickup
-      ? `In Ecwid checkout, choose Pickup at Round Rock High School CO-OP Store. Your selected time is saved. Choose card or Pay at pickup.`
-      : 'In Ecwid checkout, choose Deliver to Room and complete payment online.';
+      ? 'Your pickup time is saved. Choose online payment or Pay at pickup on the next screen.'
+      : 'Your delivery details are saved. Choose how to pay on the next screen.';
     $('delivery-review').innerHTML = data.map(([label, value]) =>
       `<div><dt>${label}</dt><dd>${escape(value)}</dd></div>`).join('');
     show('review');
@@ -258,6 +272,10 @@
       email: email.value.trim().toLowerCase(),
       fulfillment,
     };
+    if (fulfillment === 'pickup' && !pickupTimes.includes(details.time)) {
+      message('details-error', 'Choose an available pickup time or select classroom delivery.');
+      return;
+    }
     busy($('send-code'), 'Checking your email…', async()=> {
       if (token && verifiedEmail === details.email) { try { await request({ action:'session', token }); rememberVerification(); review(); return; } catch (err) { if (err.status !== 401) throw err; forget(); } }
       if (token) forget();
@@ -293,12 +311,18 @@
     const items = cart?.items || [];
     return checkout && items.length === checkout.items.length && items.every(line=> checkout.items.some(item=>Number(line.product?.id)===item.id && Number(line.quantity)===item.quantity));
   }
+  function matchingFulfillment(cart) {
+    return (checkout.fulfillment === 'pickup' ? /pickup/i : /deliver to room/i).test(cart?.shippingMethod || '');
+  }
   function loadWidget() {
     if (widgetReady) return widgetReady;
     widgetReady = new Promise((resolve,reject)=> {
       const timer = setTimeout(()=>reject(new Error('Secure checkout could not load. Check your connection and try again.')),25000);
       window.RRHS_CFA_CHECKOUT_CONTEXT = true;
       window.ec = window.ec || {};
+      window.ec.order = window.ec.order || {};
+      window.ec.order.extraFields = window.ec.order.extraFields || {};
+      window.ec.order.extraFields.pvhvhag = { available: false, required: false };
       const script = document.createElement('script');
       script.src = `https://app.ecwid.com/script.js?${encodeURIComponent(storeId)}&data_platform=code`;
       script.onerror = ()=>{ clearTimeout(timer); widgetReady=null; reject(new Error('Ecwid could not load. Please try again.')); };
@@ -321,7 +345,8 @@
           });
           window.Ecwid.OnCartChanged.add(cart=> {
             if (preparing || currentView !== 'payment') return;
-            checkoutValid = matchingCart(cart) && Date.now() < checkout.expiresAt;
+            checkoutValid = matchingCart(cart) && Date.now() < checkout.expiresAt &&
+              (!cart.shippingMethod || matchingFulfillment(cart));
             message('checkout-error', checkoutValid ? '' : 'Your checkout items changed. Go back to preorder review to rebuild your lunch order.');
             $('ecwid-checkout').inert = !checkoutValid;
           });
@@ -346,22 +371,171 @@
     window.ec.order = window.ec.order || {};
     const fields = window.ec.order.extraFields = window.ec.order.extraFields || {};
     delete fields.cfa_pickup_schedule;
-    delete fields.ecwid_pickup_time;
     if (checkout.fulfillment !== 'pickup' || !checkout.pickupSchedule) return;
     fields.cfa_pickup_schedule = {
       title: 'Pickup schedule', value: checkout.pickupSchedule, type: 'text',
       orderDetailsDisplaySection: 'shipping_info', showInNotifications: true, showInInvoice: true,
     };
-    // The preorder drawer already collected the pickup date and time.
-    fields.ecwid_pickup_time = { available: false };
+  }
+  async function waitForCheckout(find, timeout = 6000) {
+    const end = Date.now() + timeout;
+    do {
+      if (!drawer.open || currentView !== 'payment' || Date.now() >= checkout.expiresAt) {
+        throw new Error('Return to preorder review to start a new checkout.');
+      }
+      const result = find();
+      if (result) return result;
+      await new Promise(resolve => setTimeout(resolve, 80));
+    } while (Date.now() < end);
+    return null;
+  }
+  function clickSetupControl(control) {
+    if (!control || control.disabled) return false;
+    setupControl = control;
+    try { control.click(); } finally { setupControl = null; }
+    return true;
+  }
+  function setCheckoutField(field, value) {
+    if (!field) return;
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  async function setPickupSchedule() {
+    const pickupInput = () => $('ecwid-checkout').querySelector('input[aria-label="Please choose a date"]');
+    const calendar = () => document.querySelector('.ec-date-selector__menu');
+    let menu;
+    for (let attempt = 0; attempt < 4 && !menu; attempt++) {
+      const dateInput = await waitForCheckout(pickupInput, 1200);
+      if (!dateInput) break;
+      dateInput.scrollIntoView({ block: 'center', behavior: 'instant' });
+      dateInput.focus({ preventScroll: true });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!dateInput.isConnected) continue;
+      const bounds = dateInput.getBoundingClientRect();
+      dateInput.dispatchEvent(new MouseEvent('click', {
+        bubbles: true, cancelable: true, view: window, detail: 1,
+        clientX: bounds.left + bounds.width / 2, clientY: bounds.top + bounds.height / 2,
+      }));
+      menu = await waitForCheckout(calendar, 800);
+    }
+    if (!menu) throw new Error('Ecwid could not open the pickup calendar. Return to preorder review and try again.');
+    const day = () => menu.querySelector(`[id="dp-${checkout.delivery.date}"] .dp--date-hoverable`);
+    if (!day()) {
+      const nextMonth = menu.querySelector('[aria-label="Next month" i]');
+      if (nextMonth) clickSetupControl(nextMonth);
+    }
+    const date = await waitForCheckout(day, 1500);
+    if (!date) throw new Error('Ecwid has no pickup slots on the selected date. Go back and choose classroom delivery.');
+    clickSetupControl(date);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const time = await waitForCheckout(() => menu.querySelector('select.ec-pika-select'));
+    const wanted = displayTime(checkout.time).replace(/\./g, '').toUpperCase();
+    const slot = time && [...time.options].find(option => !option.disabled && option.textContent.trim().replace(/^0/, '') === wanted);
+    if (!slot) throw new Error('Ecwid no longer offers that pickup time. Go back and choose another time.');
+    time.selectedIndex = slot.index;
+    time.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    time.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const done = await waitForCheckout(() => [...menu.querySelectorAll('button')].find(button =>
+      !button.disabled && /^ok$/i.test(button.textContent.trim())));
+    if (!clickSetupControl(done)) throw new Error('Ecwid could not save that pickup time. Go back and try again.');
+    if (!await waitForCheckout(() => pickupInput()?.value, 2000)) {
+      throw new Error('Ecwid could not save that pickup time. Go back and try again.');
+    }
+  }
+  async function advanceToPayment() {
+    const host = $('ecwid-checkout');
+    const pickup = checkout.fulfillment === 'pickup';
+    const stage = name => host.querySelector(`.ec-cart-step--${name}.ec-cart-step--current`);
+    const visible = element => element.getClientRects().length > 0;
+    const next = (container, label) => [...container.querySelectorAll('button')].find(button =>
+      !button.disabled && visible(button) && button.textContent.trim() === label);
+    window.Ecwid.openPage('cart');
+    const cart = await waitForCheckout(() => host.querySelector('#ec-cart-email-input') && host);
+    if (!cart) return false;
+    const terms = cart.querySelector('.ec-cart__agreement input[type="checkbox"]');
+    if (terms && !terms.checked) clickSetupControl(terms);
+    if (!clickSetupControl(next(cart, 'Checkout'))) return false;
+
+    const address = await waitForCheckout(() => stage('address') || stage('delivery'));
+    if (!address) return false;
+    if (address.matches('.ec-cart-step--address')) {
+      const tabs = [...address.querySelectorAll('.ec-tabs__tab')].filter(visible);
+      const tab = tabs.find(option => pickup ? /pick it up/i.test(option.textContent) : /deliver to address/i.test(option.textContent));
+      if (pickup && !tab) return false;
+      if (tab && !tab.classList.contains('ec-tabs__tab--active')) {
+        clickSetupControl(tab);
+        if (!await waitForCheckout(() => tab.classList.contains('ec-tabs__tab--active'))) return false;
+      }
+      if (!pickup) {
+        const state = await waitForCheckout(() => {
+          const select = address.querySelector('select[name="province"]');
+          return select?.querySelector('option[value="TX"]') && select;
+        }, 2000);
+        setCheckoutField(state, 'TX');
+        await new Promise(resolve => setTimeout(resolve, 160));
+      }
+      const continueAddress = await waitForCheckout(() => next(address, 'Continue'));
+      if (!clickSetupControl(continueAddress)) return false;
+      if (!await waitForCheckout(() => !stage('address'), 2000)) {
+        const stillOnAddress = stage('address');
+        if (stillOnAddress) clickSetupControl(next(stillOnAddress, 'Continue'));
+      }
+    }
+
+    const onPayment = () => /\/checkoutPD(?:[/?&]|$)/i.test(location.hash);
+    const deliveryStep = await waitForCheckout(() => stage('delivery') || onPayment());
+    if (!deliveryStep) return false;
+    if (deliveryStep !== true) {
+      const shipping = await waitForCheckout(() => [...deliveryStep.querySelectorAll('.ec-radiogroup__item')].find(option =>
+        visible(option) && (pickup ? /Pickup at Round Rock High School/i : /Deliver to Room/i).test(option.textContent)));
+      if (!shipping) return false;
+      const radio = shipping.querySelector('input[type="radio"]');
+      if (radio && (pickup || !radio.checked)) clickSetupControl(radio);
+      const room = deliveryStep.querySelector('input[name="z7rty2b"]');
+      if (pickup) {
+        await new Promise(resolve => setTimeout(resolve, 350));
+        await setPickupSchedule();
+      }
+      else if (room) {
+        setCheckoutField(room, checkout.room);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      if (!clickSetupControl(next(stage('delivery') || deliveryStep, 'Continue'))) return false;
+      if (!await waitForCheckout(onPayment, 2000)) {
+        const stillOnDelivery = stage('delivery');
+        if (stillOnDelivery) clickSetupControl(next(stillOnDelivery, 'Continue'));
+      }
+    }
+    if (!await waitForCheckout(onPayment)) return false;
+    const prepared = await getCart();
+    if (!matchingCart(prepared) || !matchingFulfillment(prepared)) {
+      throw new Error('Ecwid could not confirm the selected items and fulfillment. Return to preorder review and try again.');
+    }
+    return true;
   }
   async function prepareCheckout() {
+    if (!$('preorder-terms').checked) {
+      $('preorder-terms').focus();
+      throw new Error('Agree to the CO-OP store policies to continue.');
+    }
     checkout = await request({ action:'checkout', token, ...details, items:selectedItems().map(({sku,quantity,price})=>({sku,quantity,price})), sauces:sauceCounts, deliveryDate:delivery.date });
     if (!drawer.open) return;
     try { sessionStorage.setItem('rrhs-cfa-pending',JSON.stringify({token,grant:checkout.grant})); } catch (_) {}
     checkoutExpiry();
-    $('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;
-    show('payment'); preparing = true; checkoutValid = false; $('ecwid-checkout').inert = true; $('checkout-status').hidden = false;
+    $('checkout-fulfillment-note').textContent = checkout.fulfillment === 'pickup'
+      ? `Pickup at the RRHS CO-OP · ${checkout.pickupSchedule}`
+      : `Classroom delivery · Room ${checkout.room} · ${checkout.delivery.label} · ${checkout.time ? displayTime(checkout.time) : 'around 12:45 p.m.'}`;
+    const host = $('ecwid-checkout');
+    show('payment');
+    preparing = true;
+    checkoutValid = false;
+    host.inert = false;
+    host.classList.remove('is-payment-ready');
+    host.classList.add('is-preparing');
+    $('checkout-status').hidden = false;
+    message('checkout-error', '');
     try {
       await loadWidget();
       if (!drawer.open) return;
@@ -390,31 +564,39 @@
         });
       }
       await ecwidCall('setCustomerEmail',checkout.email);
-      if (checkout.fulfillment !== 'pickup') {
-        await ecwidCall('setAddress', { name: checkout.name, street: `Round Rock High School, Room ${checkout.room}`, city: 'Round Rock', stateOrProvinceCode: 'TX', postalCode: '78681', countryName: 'United States', countryCode: 'US' });
-      }
+      await ecwidCall('setAddress', { name: checkout.name, street: checkout.room ? `Round Rock High School, Room ${checkout.room}` : '201 Deep Wood Drive', city: 'Round Rock', stateOrProvinceCode: 'TX', postalCode: '78681', countryName: 'United States', countryCode: 'US' });
       await ecwidCall('setOrderComments',checkout.comments);
       const cart = await getCart();
       if (!matchingCart(cart)) throw new Error('Your checkout items changed. Please return to preorder review and try again.');
       if (!drawer.open) return;
-      checkoutValid = true; $('ecwid-checkout').inert = false; $('checkout-status').hidden = true;
-      window.Ecwid.Cart.canGotoCheckout(allowed => { if (allowed) window.Ecwid.Cart.gotoCheckout(); else window.Ecwid.openPage('cart'); });
+      const ready = await advanceToPayment();
+      if (!ready && checkout.fulfillment === 'pickup') throw new Error('Ecwid could not confirm your pickup details. Return to preorder review and try again.');
+      checkoutValid = true; host.inert = false; $('checkout-status').hidden = true;
+      host.classList.toggle('is-payment-ready', ready);
+      if (!ready) message('checkout-error', 'Your preorder details are saved. Complete any remaining steps below to reach payment.');
     } catch (err) {
       message('checkout-error',err.message); $('checkout-status').hidden=true;
       // Keep the native form inaccessible if setup or validation failed.
-      $('ecwid-checkout').inert=true;
-    } finally { preparing=false; sendHeight(); }
+      host.inert = true;
+    } finally { preparing=false; if (checkoutValid) host.classList.remove('is-preparing'); sendHeight(); }
   }
   $('pay-now').addEventListener('click',()=>busy($('pay-now'),'Preparing checkout…',prepareCheckout,'payment-error'));
   $('back-from-payment').addEventListener('click',()=>{ checkoutValid=false; clearTimeout(expiryTimer); show('review'); });
   // Guard native checkout controls as well as the custom preorder buttons.
   window.addEventListener('click',event=> {
+    if (preparing && setupControl?.contains(event.target)) return;
     const button = event.target.closest('button,input[type=submit]');
     if (!button || !button.closest('#ecwid-checkout')) return;
     if (!checkoutValid || preparing || Date.now() >= checkout.expiresAt) { event.preventDefault(); event.stopImmediatePropagation(); return; }
     const email = document.querySelector('#ec-cart-email-input');
     if (email && email.value.trim().toLowerCase() !== checkout.email) { event.preventDefault(); event.stopImmediatePropagation(); message('checkout-error','Use the district email you verified, or go back to verify a different address.'); }
   },true);
+  window.addEventListener('submit', event => {
+    if (event.target.closest('#ecwid-checkout') && (!checkoutValid || preparing || Date.now() >= checkout.expiresAt)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
   let lastHeight=0;
   function sendHeight() {
     if (window.parent === window || drawer.open || openingPromise) return;
@@ -451,10 +633,11 @@
   (async()=> {
     try {
       const data=await request(); menu=data.menu;sauces=data.sauces;delivery=data.delivery;storeId=data.storeId;
+      pickupTimes = data.pickupTimes || [];
       sauceLimit = data.sauceLimit || sauceLimit;
       $('sauce-limit').textContent = `Optional · up to ${sauceLimit} packets of each sauce`;
       $('delivery-label').textContent=delivery.label;
-      renderMenu();renderSauces();summary();
+      renderMenu();renderSauces();renderPickupTimes();summary();
       if(token) { try {const session=await request({action:'session',token});verifiedEmail=session.email;$('teacher-email').value=verifiedEmail;$('send-code').innerHTML='Review delivery details <span aria-hidden="true">→</span>';}catch(_){forget();} }
       let pending=null; try { pending=JSON.parse(sessionStorage.getItem('rrhs-cfa-pending') || 'null'); } catch (_) {}
       if(pending && /checkout/i.test(location.hash)) {
@@ -470,6 +653,7 @@
           renderMenu();
           renderSauces();
           for(const [id,value] of [['teacher-name',details.name],['teacher-room',details.room],['teacher-email',details.email],[details.fulfillment === 'pickup' ? 'pickup-time' : 'delivery-time',details.time]])$(id).value=value;
+          renderPickupTimes();
           review();$('checkout-fulfillment-note').textContent = $('review-fulfillment-note').textContent;await openDrawer('payment');preparing=true;configurePickupFields();await loadWidget();preparing=false;
           checkoutValid=true;$('checkout-status').hidden=true;checkoutExpiry();
         } catch (err) {

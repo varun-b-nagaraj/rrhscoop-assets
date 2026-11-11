@@ -107,7 +107,7 @@ function cfaEmail_(label, title, content) {
 function cfaDispatchMessage_(data) {
   var total = data.orders.length;
   var title = total + (total === 1 ? ' faculty preorder' : ' faculty preorders');
-  var intro = 'Orders placed before 2 p.m. Central on ' + data.date + '.';
+  var intro = 'Orders received from yesterday at 2 p.m. through today’s cutoff, ' + data.date + ' at 2 p.m. Central.';
   var text = [intro];
   var html = '<p style="margin:0 0 20px;color:#655a53;">' + cfaEscape_(intro) + '</p>';
   if (!total) {
@@ -189,13 +189,13 @@ var CFA_DISPATCH_PRODUCTS = [
 ];
 
 function cfaReadOrders_(date, config) {
-  // This UTC window covers the requested Central-time window in both seasons.
+  // Cover both Central cutoff boundaries in either season.
   // Filter again by the local date and cutoff before sending.
   var start = Date.parse(date + 'T00:00:00Z') / 1000;
   var orderUrl = 'https://app.ecwid.com/api/v3/' + config.storeId + '/orders' +
     '?paymentStatus=PAID%2CAWAITING_PAYMENT&productId=' +
     encodeURIComponent(CFA_DISPATCH_PRODUCTS.map(function (product) { return product.id; }).join(',')) +
-    '&createdFrom=' + start + '&createdTo=' + (start + 86400) + '&limit=100';
+    '&createdFrom=' + (start - 86400) + '&createdTo=' + (start + 86400) + '&limit=100';
 
   var orders = [];
   for (var offset = 0; ; offset += 100) {
@@ -224,8 +224,11 @@ function cfaDispatchOrder_(order, date) {
   if (['PAID', 'AWAITING_PAYMENT'].indexOf(order.paymentStatus) === -1) return null;
   var placed = new Date(timestamp > 1e12 ? timestamp : timestamp * 1000);
   var timeZone = 'America/Chicago';
-  if (Utilities.formatDate(placed, timeZone, 'yyyy-MM-dd') !== date ||
-      Number(Utilities.formatDate(placed, timeZone, 'HHmm')) >= 1400) return null;
+  var previousDate = new Date(Date.parse(date + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
+  var placedDate = Utilities.formatDate(placed, timeZone, 'yyyy-MM-dd');
+  var placedTime = Number(Utilities.formatDate(placed, timeZone, 'HHmm'));
+  if (!(placedDate === previousDate && placedTime >= 1400) &&
+      !(placedDate === date && placedTime < 1400)) return null;
 
   var comments = String(order.orderComments || '').split(/\r?\n/);
   function extra(key) {

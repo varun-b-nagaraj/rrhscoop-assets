@@ -10,6 +10,7 @@ const MENU = Object.freeze([
 const SAUCE_LIMIT = 10;
 const SAUCES = Object.freeze({ ranch: 'Garden Herb Ranch', cfa: 'Chick-fil-A Sauce', buffalo: 'Zesty Buffalo', ketchup: 'Ketchup' });
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
+const CUTOFF_HOUR = 14;
 
 function fail(status, message) { const err = new Error(message); err.status = status; throw err; }
 function emailAddress(value) {
@@ -49,7 +50,7 @@ function nextDelivery(now = new Date(), dates = calendar.dates) {
   const p = localParts(now);
   const today = `${p.year}-${p.month}-${p.day}`;
   const start = new Date(`${today}T12:00:00Z`);
-  for (let i = 1; i <= 370; i++) {
+  for (let i = Number(p.hour) < CUTOFF_HOUR ? 1 : 2; i <= 370; i++) {
     const day = new Date(start); day.setUTCDate(day.getUTCDate() + i);
     const key = day.toISOString().slice(0, 10);
     const entry = dates[key];
@@ -58,6 +59,12 @@ function nextDelivery(now = new Date(), dates = calendar.dates) {
     return { date: key, label, defaultTime: '12:45' };
   }
   fail(503, 'The next delivery date is not on our school calendar yet. Please contact the CO-OP.');
+}
+function checkoutSeconds(now) {
+  const p = localParts(now);
+  const cutoffMinutes = (CUTOFF_HOUR - Number(p.hour)) * 60 - Number(p.minute);
+  if (cutoffMinutes <= 0 || cutoffMinutes > 30) return 30 * 60;
+  return cutoffMinutes * 60 - Math.floor(now.getTime() / 1000) % 60;
 }
 function validateOrder(body) {
   if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 3) fail(400, 'Choose at least one lunch item.');
@@ -110,6 +117,22 @@ async function catalog() {
     return { ...item, price: p.price, available: p.enabled === true, canCheckout: p.enabled === true && (p.inStock === true || p.unlimited === true || p.outOfStockVisibilityBehaviour === 'ALLOW_PREORDER'), canPreorder: p.outOfStockVisibilityBehaviour === 'ALLOW_PREORDER', stock: p.unlimited ? null : p.quantity };
   }));
 }
+async function pickupTimes(delivery) {
+  const profile = await ecwid('/profile?responseFields=shipping(shippingOptions(title,enabled,scheduledPickup,pickupBusinessHours))');
+  const method = profile.shipping?.shippingOptions?.find(option =>
+    option.enabled && option.title === 'Pickup at Round Rock High School CO-OP Store');
+  if (!method?.scheduledPickup) return [];
+  const day = delivery.label.slice(0, 3).toUpperCase();
+  const hours = JSON.parse(method.pickupBusinessHours || '{}')[day] || [];
+  const times = new Set();
+  const minutes = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+  for (const [start, end] of hours) {
+    for (let time = minutes(start); time <= minutes(end); time += 30) {
+      times.add(`${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`);
+    }
+  }
+  return [...times].sort();
+}
 async function mailAction(action, payload) {
   const endpoint = String(process.env.RRHS_CFA_VERIFICATION_URL || '').trim();
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(endpoint)) fail(503, 'Email verification is not connected yet. Please try again once the CO-OP enables it.');
@@ -149,4 +172,4 @@ function orderComments(order, email, delivery) {
     `Sauces: ${packets.join(', ') || 'None'}`,
   ].join('\n');
 }
-module.exports = { MENU, SAUCES, SAUCE_LIMIT, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, validateOrder, catalog, mailAction, orderSauces, orderComments, pickupScheduleLabel };
+module.exports = { MENU, SAUCES, SAUCE_LIMIT, SESSION_SECONDS, fail, emailAddress, sign, verify, nextDelivery, checkoutSeconds, validateOrder, catalog, pickupTimes, mailAction, orderSauces, orderComments, pickupScheduleLabel };

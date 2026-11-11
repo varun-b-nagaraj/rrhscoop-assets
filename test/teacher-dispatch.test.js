@@ -63,7 +63,7 @@ function setup(placed) {
   return { context, requests, messages };
 }
 
-test('direct Ecwid dispatch sends once after 2:30 Central and excludes orders placed at or after 2', () => {
+test('direct Ecwid dispatch sends once after 2:30 Central and carries late orders to the following report', () => {
   const early = setup('2026-11-10T20:29:59Z');
   early.context.sendCfaDispatch();
   assert.equal(early.requests.length, 0);
@@ -79,13 +79,18 @@ test('direct Ecwid dispatch sends once after 2:30 Central and excludes orders pl
   assert.equal(due.messages[0].to, 's137323@student.roundrockisd.org,s138524@student.roundrockisd.org');
   assert.match(due.messages[0].htmlBody, /CFA01/);
   assert.doesNotMatch(due.messages[0].htmlBody, /LATE|REGULAR|teacher@roundrockisd\.org/);
+  const tomorrow = setup('2026-11-11T20:30:00Z');
+  tomorrow.context.sendCfaDispatch();
+  assert.match(tomorrow.messages[0].htmlBody, /LATE/);
+  assert.doesNotMatch(tomorrow.messages[0].htmlBody, /CFA01|REGULAR/);
 });
 
 test('order cutoff follows Central daylight saving time', () => {
   const { context } = setup('2027-04-01T19:30:00Z');
   assert.ok(context.cfaDispatchOrder_(order('2027-04-01T18:59:59Z'), '2027-04-01'));
   assert.equal(context.cfaDispatchOrder_(order('2027-04-01T19:00:00Z'), '2027-04-01'), null);
-  assert.equal(context.cfaDispatchOrder_(order('2027-04-01T04:59:59Z'), '2027-04-01'), null);
+  assert.ok(context.cfaDispatchOrder_(order('2027-04-01T04:59:59Z'), '2027-04-01'));
+  assert.equal(context.cfaDispatchOrder_(order('2027-03-31T18:59:59Z'), '2027-04-01'), null);
 });
 
 test('combined setup replaces old triggers and preserves receipt history', () => {

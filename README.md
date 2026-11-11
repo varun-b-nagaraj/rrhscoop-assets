@@ -245,8 +245,10 @@ HTML block on the Ecwid page at `/teachers/chick-fil-a`. The Teacher Hub links t
 that page. The iframe allows forms, scripts, payment permissions, and user-initiated
 navigation for payment providers.
 
-The three menu prices come from Ecwid. The order date is the next instructional
-A/B day in `check-out-page/aday-bday.json`. An order can include up to ten packets of each sauce. The order comments carry the delivery date, room, time,
+The three menu prices come from Ecwid. Orders placed before 2 p.m. Central use
+the next instructional A/B day in `check-out-page/aday-bday.json`. At 2 p.m.
+or later, scheduling starts two calendar days out and skips non-school days.
+An order can include up to ten packets of each sauce. The order comments carry the delivery date, room, time,
 verified email, and sauces into Ecwid.
 
 ### Connect district email
@@ -292,16 +294,18 @@ combined triggers continue with the saved script. For a new install, remove
 any separate receipt trigger, then run `setup` in the combined project.
 
 The dispatch goes to the two student dispatchers on the first run at or after
-2:30 p.m. Central. It includes that day's faculty preorders placed before
-2 p.m., with payment status labeled. `sendCfaDispatchPreview` emails a fictional
+2:30 p.m. Central. It includes faculty preorders placed from the previous day's
+2 p.m. cutoff up to the current day's 2 p.m. cutoff, with payment status labeled.
+`sendCfaDispatchPreview` emails a fictional
 sample to the Gmail test inbox. `sendTestReceipt` sends the latest paid receipt
 to the Apps Script editor's signed-in account.
 
 ### Faculty pickup and pay at pickup
 
 The preorder page offers classroom delivery with online payment or scheduled
-pickup at the RRHS CO-OP. The fulfillment drawer records the pickup time for
-the next school day. Ecwid lets pickup customers pay online or choose **Pay at pickup**. In Ecwid, keep
+pickup at the RRHS CO-OP. The fulfillment drawer uses the scheduled school day
+and offers pickup times from the Ecwid pickup method's hours. Ecwid lets pickup
+customers pay online or choose **Pay at pickup**. In Ecwid, keep
 that offline payment method restricted to the CO-OP pickup shipping method.
 
 The combined script sends a pickup confirmation with the balance due, then a paid

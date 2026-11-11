@@ -9,12 +9,22 @@ const products = require('../check-out-page/cfa-products');
 const valid = () => ({ name:'Faculty Member', room:'1314', time:'', items:[{sku:'601_sku',quantity:2,price:6.25}], sauces:{ranch:3,cfa:1,ketchup:0,buffalo:2} });
 function res() {return {statusCode:0,headers:{},setHeader(k,v){this.headers[k]=v;},end(v){this.data=JSON.parse(v);}};}
 
-test('calendar rolls Friday afternoon and Sunday to Monday',()=> {
-  for(const date of ['2026-11-06T22:00:00Z','2026-11-08T21:00:00Z']) assert.equal(s.nextDelivery(new Date(date)).date,'2026-11-09');
+test('calendar rolls Friday afternoon and Sunday before cutoff to Monday',()=> {
+  for(const date of ['2026-11-06T22:00:00Z','2026-11-08T19:59:59Z']) assert.equal(s.nextDelivery(new Date(date)).date,'2026-11-09');
+  assert.equal(s.nextDelivery(new Date('2026-11-08T20:00:00Z')).date,'2026-11-10');
+});
+test('2 p.m. Central closes next-day ordering and expires open checkout grants',()=> {
+  const before = new Date('2026-11-10T19:59:59.500Z');
+  const cutoff = new Date('2026-11-10T20:00:00Z');
+  assert.equal(s.nextDelivery(before).date,'2026-11-11');
+  assert.equal(s.nextDelivery(cutoff).date,'2026-11-12');
+  assert.equal(s.checkoutSeconds(before),1);
+  assert.equal(s.checkoutSeconds(cutoff),1800);
+  assert.equal(s.nextDelivery(new Date('2027-04-06T19:00:00Z')).date,'2027-04-08');
 });
 test('calendar skips the full Thanksgiving break',()=>assert.equal(s.nextDelivery(new Date('2026-11-20T22:00:00Z')).date,'2026-11-30'));
 test('calendar uses Central dates across UTC midnight and DST',()=> {
-  assert.equal(s.nextDelivery(new Date('2026-11-10T01:00:00Z')).date,'2026-11-10');
+  assert.equal(s.nextDelivery(new Date('2026-11-10T01:00:00Z')).date,'2026-11-11');
   assert.equal(s.nextDelivery(new Date('2027-03-15T02:00:00Z')).date,'2027-03-22');
 });
 test('calendar fails closed past the last published school date',()=>assert.throws(()=>s.nextDelivery(new Date('2028-01-01')), /calendar/));
@@ -56,7 +66,7 @@ test('signed verification rejects tampering, expiry, wrong purpose, and missing 
   }finally{if(previous===undefined)delete process.env.RRHS_CFA_VERIFICATION_SECRET;else process.env.RRHS_CFA_VERIFICATION_SECRET=previous;}
 });
 test('order comments carry the exact date, room, email, and order-level sauce counts',()=> {
-  const text=s.orderComments(s.validateOrder(valid()),'teacher@roundrockisd.org',s.nextDelivery(new Date('2026-11-08T20:00:00Z')));
+  const text=s.orderComments(s.validateOrder(valid()),'teacher@roundrockisd.org',s.nextDelivery(new Date('2026-11-08T19:59:59Z')));
   for(const value of ['2026-11-09','1314','teacher@roundrockisd.org','Garden Herb Ranch: 3','Zesty Buffalo: 2','12:45']) assert.ok(text.includes(value));
 });
 test('normal-cart gate detects all supplied SKUs and IDs, including mixed carts',()=> {

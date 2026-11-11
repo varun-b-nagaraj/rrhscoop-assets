@@ -9,8 +9,8 @@
   <meta name="description" content="Plan your next school-day lunch. Choose Chick-fil-A, verify your district email, and pay securely with RRHS CO-OP.">
   <link rel="stylesheet" href="../../../custom-visuals/theme-tokens.css?live=1">
   <link rel="preload" href="fonts/spectral-regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="preorder.css?live=9">
-  <script src="preorder.js?live=10" defer></script>
+  <link rel="stylesheet" href="preorder.css?live=10">
+  <script src="preorder.js?live=11" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the lunch menu</a>
@@ -24,7 +24,7 @@
     <section id="menu-view" class="view" aria-labelledby="menu-title">
       <div class="section-heading"><div><p class="eyebrow">01 / Made for your lunch break</p><h2 id="menu-title" tabindex="-1">What sounds good?</h2></div><p>Pick your lunch. Make it yours.<br>All items are preorder only.</p></div>
       <div id="menu" class="menu-grid" aria-busy="true"><p class="loading">Loading today’s menu…</p></div>
-      <div class="menu-bottom"><p class="fine-print"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Delivery is on the <strong>next school day</strong>, including Monday after a weekend unless it’s a holiday.</span></p><div class="menu-total"><div><span class="eyebrow">Your lunch subtotal</span><strong id="subtotal">$0.00</strong><span class="muted">Final taxes &amp; delivery shown at checkout.</span></div><button class="button primary" id="review-order" type="button" disabled>Review preorder <span aria-hidden="true">→</span></button></div></div>
+      <div class="menu-bottom"><p class="fine-print"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Order <strong>before 2 p.m. Central</strong> for the next available school day. At 2 p.m. or later, tomorrow is closed for preorders.</span></p><div class="menu-total"><div><span class="eyebrow">Your lunch subtotal</span><strong id="subtotal">$0.00</strong><span class="muted">Final taxes &amp; delivery shown at checkout.</span></div><button class="button primary" id="review-order" type="button" disabled>Review preorder <span aria-hidden="true">→</span></button></div></div>
     </section>
   </main>
   <footer><span>A little convenience. A lot of Dragon spirit.</span><a href="mailto:rrhs_coop_store@roundrockisd.org">Questions? Email the CO-OP <span aria-hidden="true">↗</span></a></footer>
@@ -62,8 +62,9 @@
           <div id="classroom-details"><div class="field-row"><div class="field"><label for="teacher-room">Room number <span>(required)</span></label><input id="teacher-room" name="room" required maxlength="40" placeholder="e.g. 1314"></div><div class="field"><label for="delivery-time">Preferred time <span>(optional)</span></label><input id="delivery-time" name="time" type="time" aria-describedby="time-help"></div></div>
           <p id="time-help" class="helper"><svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg>Leave the time blank and we’ll deliver around 12:45 p.m. Requested times depend on our student delivery schedule.</p></div>
           <div class="field" id="pickup-details" hidden>
-            <label for="pickup-time">Pickup time <span>(required)</span></label>
-            <input id="pickup-time" type="time" disabled aria-describedby="pickup-time-help">
+            <strong id="pickup-time-label">Pickup time</strong>
+            <input id="pickup-time" type="hidden">
+            <div id="pickup-times" role="group" aria-labelledby="pickup-time-label" aria-describedby="pickup-time-help"></div>
             <p class="helper" id="pickup-time-help"></p>
           </div>
           <div class="field"><label for="teacher-email">District email <span>(required)</span></label><input id="teacher-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="85" placeholder="your.name@roundrockisd.org" aria-describedby="email-help"><p id="email-help" class="helper">Please use your @roundrockisd.org address. We’ll send a code to confirm it’s yours.</p></div>
@@ -86,10 +87,10 @@
     </section>
     <section id="review-view" class="view" aria-labelledby="review-title" hidden>
       <button class="back" type="button" data-back="details">← Edit preorder details</button>
-      <div class="checkout-layout"><div><p class="eyebrow">04 / Checkout</p><h2 id="review-title" tabindex="-1">Your next lunch,<br>all lined up.</h2><p class="verified"><span aria-hidden="true">✓</span> District email verified</p><dl id="delivery-review" class="delivery-review"></dl><p class="helper" id="review-fulfillment-note"></p><button class="button primary full" id="pay-now" type="button">Continue to checkout <span aria-hidden="true">→</span></button><p class="payment-note">Secure checkout through the CO-OP’s existing Ecwid payment methods. Apple Pay appears on supported devices when enabled by our payment provider.</p><p id="payment-error" class="inline-error" role="alert" hidden></p><button class="text-button" id="forget-email" type="button">Forget my verified email on this device</button></div><aside class="receipt" data-summary></aside></div>
+      <div class="checkout-layout"><div><p class="eyebrow">04 / Checkout</p><h2 id="review-title" tabindex="-1">Your next lunch,<br>all lined up.</h2><p class="verified"><span aria-hidden="true">✓</span> District email verified</p><dl id="delivery-review" class="delivery-review"></dl><p class="helper" id="review-fulfillment-note"></p><label class="remember preorder-terms"><input type="checkbox" id="preorder-terms" required><span>I agree to the CO-OP’s <a href="https://rrhscoop.roundrockisd.org/products/pages/terms" target="_blank" rel="noopener">terms and conditions</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/returns" target="_blank" rel="noopener">shipping and returns</a>, <a href="https://rrhscoop.roundrockisd.org/products/pages/shipping-payment" target="_blank" rel="noopener">payment policies</a>, and <a href="https://rrhscoop.roundrockisd.org/products/pages/privacy-policy" target="_blank" rel="noopener">privacy policy</a>.</span></label><button class="button primary full" id="pay-now" type="button">Continue to payment <span aria-hidden="true">→</span></button><p class="payment-note">Secure checkout through the CO-OP’s existing Ecwid payment methods. Apple Pay appears on supported devices when enabled by our payment provider.</p><p id="payment-error" class="inline-error" role="alert" hidden></p><button class="text-button" id="forget-email" type="button">Forget my verified email on this device</button></div><aside class="receipt" data-summary></aside></div>
     </section>
     <section id="payment-view" class="view" aria-labelledby="payment-title" hidden>
-      <button class="back" type="button" id="back-from-payment">← Back to preorder review</button><p class="eyebrow">04 / Secure payment</p><h2 id="payment-title" tabindex="-1">Make it a lunch date.</h2><p class="section-intro">Complete your preorder below. Your sauce choices are attached to the order.</p><p id="checkout-fulfillment-note" class="helper"></p><p id="checkout-status" role="status" class="notice">Preparing your secure checkout…</p><p id="checkout-error" role="alert" class="notice error" hidden></p><div id="ecwid-checkout" class="ecwid-host"></div>
+      <button class="back" type="button" id="back-from-payment">← Back to preorder review</button><p class="eyebrow">04 / Secure payment</p><h2 id="payment-title" tabindex="-1">Make it a lunch date.</h2><p class="section-intro">Complete your preorder below. Your sauce choices are attached to the order.</p><p id="checkout-fulfillment-note" class="helper"></p><p id="checkout-status" role="status" class="notice">Getting your checkout ready…</p><p id="checkout-error" role="alert" class="notice error" hidden></p><div id="ecwid-checkout" class="ecwid-host"></div>
     </section>
     <section id="complete-view" class="view" aria-labelledby="complete-title" hidden><p class="eyebrow">RRHS CO-OP / Faculty lunch</p><h2 id="complete-title" tabindex="-1">Thanks for your preorder.</h2><p id="order-result" class="section-intro"></p><p>Ecwid will email your order details and payment status. Your confirmation includes how and when to get your lunch.</p><a class="button primary" href="https://rrhscoop.roundrockisd.org/teachers" target="_top">Back to the teacher hub <span aria-hidden="true">→</span></a></section>
     </div>

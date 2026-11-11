@@ -186,3 +186,12 @@ html.preorder-overlay .page {
 .verification-info summary::-webkit-details-marker { display:none; }
 .verification-info summary span { display:grid; place-items:center; width:20px; height:20px; flex:0 0 20px; border:1px solid currentColor; border-radius:50%; font:italic 600 14px/1 Georgia,serif; }
 .verification-info p { margin:0; padding-left:29px; }
+
+.ecwid-host.is-preparing { position:fixed; inset:0; opacity:0; overflow:auto; pointer-events:none; }
+.ecwid-host .ec-form__row--pvhvhag { display:none !important; }
+.ecwid-host.is-payment-ready .ec-cart-step--done { display:none; }
+.preorder-terms a { color:var(--maroon); text-underline-offset:3px; }
+#pickup-times { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+#pickup-times button { min-height:44px; padding:6px 12px; border:1px solid var(--line); color:var(--maroon); background:var(--paper); font:inherit; }
+#pickup-times button[aria-pressed="true"] { color:var(--paper); background:var(--maroon); border-color:var(--maroon); }
+body:has(.ecwid-host.is-preparing) .ec-date-selector__menu { opacity:0; pointer-events:none; }

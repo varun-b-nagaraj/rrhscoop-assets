@@ -17,8 +17,9 @@ module.exports = async function handler(req, res) {
   const send = (status, data) => { res.statusCode = status; res.end(JSON.stringify(data)); };
   try {
     if (req.method === 'GET') {
-      const menu = await service.catalog();
-      return send(200, { menu, sauces: service.SAUCES, sauceLimit: service.SAUCE_LIMIT, delivery: service.nextDelivery(), storeId: String(process.env.RRHS_ECWID_STORE_ID || '').trim(), verificationReady: Boolean(process.env.RRHS_CFA_VERIFICATION_URL && (process.env.RRHS_CFA_VERIFICATION_SECRET || '').trim().length >= 32) });
+      const delivery = service.nextDelivery();
+      const [menu, pickupTimes] = await Promise.all([service.catalog(), service.pickupTimes(delivery).catch(() => [])]);
+      return send(200, { menu, sauces: service.SAUCES, sauceLimit: service.SAUCE_LIMIT, delivery, pickupTimes, storeId: String(process.env.RRHS_ECWID_STORE_ID || '').trim(), verificationReady: Boolean(process.env.RRHS_CFA_VERIFICATION_URL && (process.env.RRHS_CFA_VERIFICATION_SECRET || '').trim().length >= 32) });
     }
     if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
     const origin = req.headers?.origin;
@@ -40,12 +41,16 @@ module.exports = async function handler(req, res) {
     if (body.action === 'resume') {
       const checkout = service.verify(body.grant, 'checkout');
       if (checkout.email !== session.email) service.fail(401, 'Verify the email used for this preorder.');
+      if (checkout.delivery.date !== service.nextDelivery().date) service.fail(409, 'The lunch date has changed. Review your preorder again.');
       return send(200, { ...checkout, sauces: service.orderSauces(checkout), comments: service.orderComments(checkout, checkout.email, checkout.delivery), grant: body.grant, expiresAt: checkout.exp * 1000 });
     }
     if (body.action !== 'checkout') service.fail(400, 'Unknown preorder action.');
     const order = service.validateOrder(body);
-    const delivery = service.nextDelivery();
-    if (body.deliveryDate !== delivery.date) service.fail(409, `The delivery date has changed to ${delivery.label}. Refresh the menu and review your order.`);
+    const quotedDate = service.nextDelivery();
+    if (body.deliveryDate !== quotedDate.date) service.fail(409, `The lunch date has changed to ${quotedDate.label}. Refresh the menu and review your order.`);
+    if (order.fulfillment === 'pickup' && !(await service.pickupTimes(quotedDate)).includes(order.time)) {
+      service.fail(409, 'That pickup time is unavailable. Refresh the menu and choose another time.');
+    }
     const menu = await service.catalog();
     for (const item of order.items) {
       const current = menu.find(p => p.sku === item.sku);
@@ -53,9 +58,13 @@ module.exports = async function handler(req, res) {
       if (current.price !== body.items.find(p => p.sku === item.sku).price) service.fail(409, 'A menu price changed. Refresh the page and review the new prices.');
       item.price = current.price;
     }
+    const now = new Date();
+    const delivery = service.nextDelivery(now);
+    if (body.deliveryDate !== delivery.date) service.fail(409, `The lunch date has changed to ${delivery.label}. Refresh the menu and review your order.`);
     const subtotal = Math.round(order.items.reduce((sum,p) => sum + p.price * p.quantity, 0) * 100) / 100;
     const checkout = { email: session.email, name: order.name, room: order.room, time: order.time, fulfillment: order.fulfillment, pickupSchedule: service.pickupScheduleLabel(order, delivery), delivery, items: order.items, sauces: order.sauces, subtotal };
-    return send(200, { ...checkout, comments: service.orderComments(order, session.email, delivery), grant: service.sign(checkout, 'checkout', 30 * 60), expiresAt: Date.now() + 30 * 60 * 1000 });
+    const seconds = service.checkoutSeconds(now);
+    return send(200, { ...checkout, comments: service.orderComments(order, session.email, delivery), grant: service.sign(checkout, 'checkout', seconds, now.getTime()), expiresAt: (Math.floor(now.getTime() / 1000) + seconds) * 1000 });
   } catch (err) {
     if (!err.status) console.warn('[cfa-preorder]', err.name);
     return send(err.status || 502, { error: err.status ? err.message : 'We could not complete that request. Please try again.' });
