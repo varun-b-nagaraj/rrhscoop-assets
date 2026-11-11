@@ -32,6 +32,13 @@ const { createServer } = require('./easter-hunt-preview.cjs');
           });
           assert.ok(Math.abs(layout.back.width-layout.next.width)<1 && Math.abs(layout.back.height-layout.next.height)<1,`Back and Next must have matching button sizes (${viewport.width}, step ${step}, ${JSON.stringify(layout.back)} ${JSON.stringify(layout.next)})`);
           assert.ok(layout.artBottom<=layout.headingTop || layout.headingBottom<=layout.artTop,`Artwork must not overlap the heading (${viewport.width}x${viewport.height}, step ${step}: ${JSON.stringify(layout)})`);
+          if (step>0) {
+            const spacing=await page.locator('.hunt-step.is-active').evaluate(el=>{
+              const header=el.querySelector('.hunt-eyebrow'),body=el.querySelector('.hunt-step-body');
+              return {top:body.getBoundingClientRect().top-header.getBoundingClientRect().bottom-parseFloat(getComputedStyle(header).marginBottom),bottom:el.getBoundingClientRect().bottom-body.getBoundingClientRect().bottom};
+            });
+            assert.ok(Math.abs(spacing.top-spacing.bottom)<2,'Slide body must be vertically centered below its fixed label');
+          }
           if (step===1) {
             const cards=await page.locator('.hunt-step.is-active .hunt-how li').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height};}));
             for(let i=0;i<cards.length;i++) for(let j=i+1;j<cards.length;j++) {

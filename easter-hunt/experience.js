@@ -101,24 +101,24 @@
        <p>${TOTAL} CO-OP dragons are hiding around this website.<br>The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span>${stickerImage}<strong>${TOTAL}</strong> hidden dragons</span><span>${tagIcon}<strong>10–35%</strong> off</span><span>${giftIcon}<strong>1</strong> per person</span></div>`,
       `<p class="hunt-eyebrow">How to claim</p>
-       <h2 class="hunt-simple-title">It’s simple!</h2>
+       <div class="hunt-step-body"><h2 class="hunt-simple-title">It’s simple!</h2>
        <div class="hunt-hero hunt-how-hero"><ol class="hunt-how">
          <li><span class="hunt-how-icon hunt-spot-art">${stickerImage}${laptopIcon}</span><strong>1. Spot</strong><span>a dragon on<br>any page</span></li>
          <li><span class="hunt-how-icon hunt-tap-art">${stickerImage}</span><strong>2. Tap</strong><span>the sticker</span></li>
          <li><span class="hunt-how-icon">${couponMail}</span><strong>3. Claim</strong><span>with your<br>S-number</span></li>
        </ol></div>
-       <p class="hunt-intro-hint"><span class="hunt-info-icon" aria-hidden="true">i</span><span>Teachers and staff: use your @roundrockisd.org email. Your code will arrive in your school inbox.</span></p>`,
+       <p class="hunt-intro-hint"><span class="hunt-info-icon" aria-hidden="true">i</span><span>Teachers and staff: use your @roundrockisd.org email. Your code will arrive in your school inbox.</span></p></div>`,
       `<p class="hunt-eyebrow">First come, first served</p>
-       <div class="hunt-hero"><div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div></div>
+       <div class="hunt-step-body"><div class="hunt-hero"><div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div></div>
        <h2>Once it’s found,<br>it’s gone.</h2>
-       <p>The first person to claim a dragon keeps it.<br>Everyone else sees it under a magnifying glass.</p>`,
+       <p>The first person to claim a dragon keeps it.<br>Everyone else sees it under a magnifying glass.</p></div>`,
       `<p class="hunt-eyebrow">Look up, top right</p>
-       <div class="hunt-hero hunt-header-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
+       <div class="hunt-step-body"><div class="hunt-hero hunt-header-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
          <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here!</span></figure></div>
        <h2>Come back anytime.</h2>
        <p>Tap the dragon counter in the top right of your page beside search and cart to reopen this guide and see how many are left.</p>
        <p class="hunt-intro-tally">${stickerImage}<span>${remaining} of ${TOTAL} dragons still hiding</span></p>
-       ${preview ? '<p class="hunt-guide-preview">Development preview · no real coupon is issued.</p>' : ''}`,
+       ${preview ? '<p class="hunt-guide-preview">Development preview · no real coupon is issued.</p>' : ''}</div>`,
     ];
     intro = document.createElement('dialog'); intro.className = 'hunt-dialog hunt-intro-dialog';
     intro.setAttribute('aria-label', 'How the CO-OP package hunt works');

@@ -112,6 +112,9 @@
 .hunt-intro-dialog .hunt-close { z-index:2; }
 .hunt-intro-dialog>.hunt-terms { font-size:11px; margin-top:12px; }
 .hunt-step { grid-area:1/1; display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; visibility:hidden; opacity:0; min-width:0; }
+.hunt-step-body { display:flex; flex-direction:column; flex-shrink:0; margin-block:auto; }
+.hunt-step-body>p { margin-bottom:8px; }
+.hunt-step-body>p:last-child { margin-bottom:0; }
 .hunt-step>.hunt-eyebrow { display:flex; align-items:center; justify-content:center; gap:12px; margin:0 18px 10px; font-size:11px; letter-spacing:.13em; }
 .hunt-step>.hunt-eyebrow::before,.hunt-step>.hunt-eyebrow::after { content:""; width:40px; height:1px; background:#c8898b; flex:0 1 40px; }
 /* Share the tallest slide height so paging never moves the navigation. */
