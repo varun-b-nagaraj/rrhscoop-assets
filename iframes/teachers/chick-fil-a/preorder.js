@@ -65,9 +65,10 @@
   const drawerSteps = {
     selections: { label: '01 / Your order', title: 'Review your preorder' },
     details: { label: '02 / Fulfillment', title: 'Where’s lunch headed?', back: 'selections', backLabel: 'Back to your selections' },
-    verify: { label: '03 / Email verification', title: 'Check your district inbox', back: 'details', backLabel: 'Back to preorder details' },
-    review: { label: '04 / Checkout', title: 'Review and pay', back: 'details', backLabel: 'Edit preorder details' },
-    payment: { label: '04 / Checkout', title: 'Payment', back: 'review', backLabel: 'Back to preorder review' },
+    // Verification is part of step 02 because returning teachers skip it.
+    verify: { label: '02 / Verify email', title: 'Check your district inbox', back: 'details', backLabel: 'Back to preorder details' },
+    review: { label: '03 / Review', title: 'Order summary', back: 'details', backLabel: 'Edit preorder details' },
+    payment: { label: '04 / Payment', title: 'Payment', back: 'review', backLabel: 'Back to order summary' },
     complete: { label: 'Order received', title: 'Thanks for your preorder' },
   };
   function updateDrawerBack() {

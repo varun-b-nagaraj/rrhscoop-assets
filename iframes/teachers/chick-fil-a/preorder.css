@@ -224,7 +224,7 @@ body:has(.ecwid-host.is-preparing) .ec-date-selector__menu * { pointer-events:no
 #pickup-times button[aria-pressed="true"] { color:var(--paper); background:var(--maroon); border-color:var(--maroon); }
 body:has(.ecwid-host.is-preparing) .ec-date-selector__menu { opacity:0; }
 
-/* Review and pay: order summary first, then grouped detail cards, then the confirm block. */
+/* Order summary step: order first, then grouped detail cards, then the confirm block. */
 .review-stack { display:grid; gap:16px; }
 .review-receipt { padding:24px; }
 .review-receipt h3 { margin-top:8px; }
