@@ -6,9 +6,9 @@
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stickerImage = window.RRHS_EASTER_HUNT.stickerImage;
-  const headerGuide = new URL('hunt-header-guide.jpg?v=1', document.currentScript.src).href;
+  const headerGuide = new URL('hunt-header-guide.jpg?v=2', document.currentScript.src).href;
   const arrowIcon = window.RRHS_EASTER_HUNT.arrowIcon;
-  let counter, tooltip, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
+  let counter, tour, intro, timer, frame, scheduled = false, oldOverflow, returnFocus, header;
   let data = window.RRHS_EASTER_HUNT?.getAvailability(), suspended = 0;
   const enabled = () => window.RRHS_HUNT_ACTIVE === true;
   // The intro replays on every page load. Only our screenshot tools switch it off.
@@ -32,15 +32,6 @@
     if (count.textContent !== value) count.textContent = value;
     counter.querySelector('.hunt-counter-preview').hidden = !preview;
     counter.querySelector('button').setAttribute('aria-label', `${preview ? 'Preview. ' : ''}${found} of ${TOTAL} dragon stickers found across the hunt. ${remaining} remaining. Learn about the package hunt.`);
-    tooltip.textContent = sample
-      ? 'Look for the red dragon sticker holding a CO-OP package. Twenty are hidden around the website. The deeper you dig, the bigger the reward. Select this button to read the hunt details.'
-      : `${preview ? 'Local development preview. ' : ''}${found} of ${TOTAL} hidden dragon stickers have been claimed across the hunt. ${remaining} rewards remain. Find the dragon holding a CO-OP package for a mystery reward. One reward per person. Select to read the hunt details again.`;
-  }
-  function placeTooltip() {
-    if (!counter || !tooltip || tooltip.hidden) return;
-    const bounds = counter.getBoundingClientRect();
-    tooltip.style.top = `${bounds.bottom + 10}px`;
-    tooltip.style.left = `${Math.max(12, Math.min(innerWidth - Math.min(300, innerWidth - 24) - 12, bounds.right - 300))}px`;
   }
   function mountCounter() {
     if (!enabled()) return;
@@ -49,15 +40,9 @@
     if (counter?.isConnected && (!search || counter.nextElementSibling === search)) return;
     if (!counter) {
       counter = document.createElement('div'); counter.className = 'hunt-counter';
-      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog" aria-describedby="hunt-counter-tip" title="Read the hunt details">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/${TOTAL}</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
-      tooltip = document.createElement('div'); tooltip.id = 'hunt-counter-tip'; tooltip.className = 'hunt-counter-tooltip';
-      tooltip.setAttribute('role', 'tooltip'); tooltip.hidden = true; document.body.append(tooltip);
-      const show = () => { tooltip.hidden = false; placeTooltip(); };
-      const hide = () => { tooltip.hidden = true; };
-      counter.addEventListener('pointerenter', show); counter.addEventListener('pointerleave', hide);
-      counter.addEventListener('focusin', show); counter.addEventListener('focusout', hide);
-      counter.addEventListener('keydown', event => { if (event.key === 'Escape') { hide(); event.stopPropagation(); } });
-      counter.querySelector('button').addEventListener('click', () => { hide(); showInformation(); });
+      counter.innerHTML = `<button type="button" class="hunt-counter-trigger" aria-haspopup="dialog">${stickerImage}<span><span class="hunt-counter-count" aria-live="polite">0/${TOTAL}</span><span class="hunt-counter-label"> found</span></span><span class="hunt-counter-preview">Preview</span></button>`;
+      // No hover tooltip: the button opens the guide, which has all the details.
+      counter.querySelector('button').addEventListener('click', showInformation);
     }
     if (search) {
       header?.classList.remove('hunt-header-active'); header = search.closest('.ins-header'); header.classList.add('hunt-header-active');
@@ -92,26 +77,26 @@
     const { found, remaining, preview } = counterState();
     const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
     const steps = [
-      `<div class="hunt-step-art hunt-intro-seal">${dragon}</div>
-       <p class="hunt-eyebrow">This is what you’re looking for</p>
+      `<p class="hunt-eyebrow">This is what you’re looking for</p>
+       <div class="hunt-hero"><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
        <h2>Good things hide<br>in plain sight.</h2>
        <p>${TOTAL} CO-OP dragons are hiding around this website. The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span><strong>${TOTAL}</strong> hidden dragons</span><span><strong>10–35%</strong> off</span><span><strong>1</strong> per person</span></div>`,
       `<p class="hunt-eyebrow">How to claim</p>
-       <h2>Spot it. Tap it.<br>Claim it.</h2>
-       <ol class="hunt-how">
+       <div class="hunt-hero"><ol class="hunt-how">
          <li><span class="hunt-how-icon">${stickerImage}</span><strong>Spot</strong><span>a dragon on any page</span></li>
          <li><span class="hunt-how-icon">${tapIcon}</span><strong>Tap</strong><span>the sticker</span></li>
          <li><span class="hunt-how-icon">${mailIcon}</span><strong>Claim</strong><span>with your S&#8209;number</span></li>
-       </ol>
+       </ol></div>
+       <h2>Spot it. Tap it.<br>Claim it.</h2>
        <p class="hunt-intro-hint">Teachers and staff: use your @roundrockisd.org email. Your code arrives in your school inbox.</p>`,
       `<p class="hunt-eyebrow">First come, first served</p>
-       <div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div>
+       <div class="hunt-hero"><div class="hunt-step-art hunt-art-found" aria-hidden="true"><span class="hunt-art-halo"></span>${stickerImage}${window.RRHS_EASTER_HUNT.lensIcon}</div></div>
        <h2>Once it’s found,<br>it’s gone.</h2>
        <p>The first person to claim a dragon keeps it. Everyone else sees it under a magnifying glass.</p>`,
-      `<figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="800" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
-         <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure>
-       <p class="hunt-eyebrow">Look up, top right</p>
+      `<p class="hunt-eyebrow">Look up, top right</p>
+       <div class="hunt-hero"><figure class="hunt-where"><span class="hunt-where-shot"><img src="${headerGuide}" width="744" height="142" alt="The top right of the CO-OP website. The dragon counter sits just left of the search, account and cart icons." decoding="async">
+         <span class="hunt-where-count" aria-hidden="true">${found}/${TOTAL}</span><span class="hunt-where-ring" aria-hidden="true"></span></span><span class="hunt-where-tag" aria-hidden="true">${upIcon}Tap here</span></figure></div>
        <h2>Come back<br>anytime.</h2>
        <p>Tap the dragon counter in the top right of your page beside search and cart to reopen this guide and see how many are left.</p>
        ${preview ? '<p class="hunt-preview">Local development preview. No real coupon is issued.</p>' : `<p class="hunt-intro-tally">${remaining} of ${TOTAL} dragons still hiding</p>`}`,
@@ -290,19 +275,17 @@
   document.addEventListener('rrhs-hunt-availability', event => { data = event.detail; updateCounter(); });
   document.addEventListener('rrhs-hunt-toggle', event => {
     if (event.detail.enabled) activate();
-    else { dismiss(); counter?.remove(); tooltip?.remove(); header?.classList.remove('hunt-header-active'); counter = tooltip = header = null; scheduled = false; suspended = 0; }
+    else { dismiss(); counter?.remove(); header?.classList.remove('hunt-header-active'); counter = header = null; scheduled = false; suspended = 0; }
   });
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mountCounter);
   else new MutationObserver(mountCounter).observe(document.body, { childList: true, subtree: true });
   // Rotating a phone mid-intro restarts it at the new size instead of ending it.
   let lastWidth = innerWidth, restart;
   addEventListener('resize', () => {
-    placeTooltip();
     if (!tour || innerWidth === lastWidth) return;
     lastWidth = innerWidth; clearTimeout(restart);
     restart = setTimeout(() => { if (tour && !tour.classList.contains('hunt-tour-transitioning')) { stopTour(); start(); } }, 250);
   });
-  addEventListener('scroll', placeTooltip, { passive: true });
   motion.addEventListener('change', () => { if (motion.matches && tour) introduction(true); });
   window.RRHS_HUNT_INTRO = { replay: start, open: showInformation, dismiss };
   if (enabled()) activate();
