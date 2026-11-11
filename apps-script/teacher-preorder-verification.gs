@@ -114,7 +114,7 @@ function buildEasterEggRewardEmail(reward) {
   var preview = reward.preview === true;
   if (!preview && !/^[A-Z0-9-]{16,80}$/.test(reward.code || '')) throw new Error('A fulfilled reward code is required');
   var name = String(reward.name || 'Dragon').trim().slice(0, 150);
-  var code = preview ? (/^PREVIEW-[A-F0-9]{12}$/.test(reward.reference || '') ? reward.reference : 'NO CODE · DEVELOPMENT PREVIEW') : reward.code;
+  var code = preview ? (/^(PREVIEW-[A-F0-9]{12}|FAKE-[A-Z0-9]{6,16})$/.test(reward.reference || '') ? reward.reference : 'NO CODE · DEVELOPMENT PREVIEW') : reward.code;
   var subject = (preview ? '[Preview] ' : '') + 'You Found a Hidden CO-OP Reward!';
   var terms = 'Valid on one eligible CO-OP online order. One use only. Excludes taxes, delivery fees, and other noneligible charges. Cannot be combined with other promotional codes. Expires Friday, November 13, 2026, at 11:59 PM Central.';
   var text = (preview ? 'DEVELOPMENT PREVIEW. No coupon was created. Preview references cannot be redeemed.\n\n' : '') +
@@ -162,6 +162,7 @@ function huntRelay_(input, props) {
     email = { subject: payload.code + ' is your hunt dashboard code', text: 'Your dragon hunt dashboard code is ' + payload.code + '. It expires in 10 minutes. If you did not request it, ignore this email.',
       html: cfaEmail_('Dragon hunt', 'Your dashboard code', '<p>Enter this code on the hunt dashboard. It expires in 10 minutes.</p><p style="background:#f1eee8;border-left:3px solid #6e1f2a;padding:16px 20px;color:#6e1f2a;font:400 34px/1.2 Georgia,serif;letter-spacing:6px;">' + payload.code + '</p><p>If you did not request this, ignore this email.</p>') };
   } else if (payload.kind === 'reward') email = buildEasterEggRewardEmail(payload);
+  else if (payload.kind === 'test-reward') email = buildEasterEggRewardEmail({ percentage: payload.percentage, name: payload.name, preview: true, reference: payload.code });
   else return { ok: false, status: 400, error: 'Invalid mail template.' };
   var key = 'hunt_relay_mail_' + payload.id;
   var digest = cfaDigest_(input.body, secret), previous = JSON.parse(props.getProperty(key) || 'null');

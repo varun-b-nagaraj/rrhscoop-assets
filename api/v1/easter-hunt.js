@@ -24,6 +24,7 @@ module.exports=async function handler(req,res) {
   let body=req.body;
   try{if(body==null){let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>2048)throw Error();}body=JSON.parse(raw||'{}');}else if(typeof body==='string'){if(Buffer.byteLength(body)>2048)throw Error();body=JSON.parse(body);}}catch(_){return send(400,{error:'Invalid request.'});}
   const client=String(req.headers?.['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
+  if(body?.action==='dev-email')return send(200,await live.devEmail({studentId:String(body.studentId||''),eggId:String(body.eggId||''),code:String(body.code||'')},client));
   if(body?.action==='claim'){
    if(!enabled())return send(503,{error:'The hidden package hunt is not open yet.'});
    if(typeof body.studentId!=='string'||typeof body.eggId!=='string'||typeof body.idempotencyKey!=='string')return send(400,{error:'Please reopen the package and try again.'});
@@ -41,5 +42,5 @@ module.exports=async function handler(req,res) {
    try {const image=require('node:fs').readFileSync(require('node:path').join(__dirname,'_hunt-locations',spot.id+'.jpg'));return send(200,{image:'data:image/jpeg;base64,'+image.toString('base64')});}catch(_){return send(404,{error:'No screenshot for this sticker yet.'});}
   }
   return send(400,{error:'Unknown action.'});
- }catch(error){return send([400,401,409,429].includes(error.status)?error.status:503,{error:error.status?error.message:'We couldn’t open this package just now. Please try again in a minute.'});}
+ }catch(error){return send([400,401,403,409,429].includes(error.status)?error.status:503,{error:error.status?error.message:'We couldn’t open this package just now. Please try again in a minute.'});}
 };

@@ -80,6 +80,18 @@ async function adminCheck(token,db=database()) {
   if(!row)fail(401,'Sign in again to the hunt dashboard.');
   return secure.open(row.email_cipher);
 }
+// Dev mode: emails a clearly marked test copy of the reward email with the fake code. Only the
+// dashboard admins can receive one, so dev mode can never be used to email students.
+async function devEmail(input,client,db=database(),send=integrations.relay) {
+  const person=identity(input.studentId),percentage=rewards[input.eggId];
+  if(!percentage || !/^FAKE-[A-Z0-9]{6,16}$/.test(input.code||''))fail(400,'Please reopen the package and try again.');
+  if(!admins().includes(person.email) && !admins().includes(person.studentId))fail(403,'Test emails only go to dashboard admins, so nothing was sent to '+person.email+'.');
+  await limit(settings().id+':dev-email:ip:'+client,10,3600,db);
+  await limit(settings().id+':dev-email:to:'+secure.hash(person.email),5,3600,db);
+  const mail=await send({kind:'test-reward',id:crypto.randomUUID(),recipient:person.email,name:person.name,percentage,code:input.code});
+  if(mail.emailStatus!=='sent')fail(503,'The test email could not be sent. Try again in a minute.');
+  return {emailStatus:'sent',email:person.email};
+}
 async function reserve(input,db=database()) {
   const config=settings();
   if(!rewards[input.eggId] || !/^[a-f0-9-]{36}$/i.test(input.idempotencyKey||''))fail(400,'Please reopen the package and try again.');
@@ -143,4 +155,4 @@ async function adminLog(token,db=database()) {
   return {...a,email,promo:config.id,claims:mapped,events,pool:Object.keys(rewards).filter(id=>!claims.some(c=>c.egg_id===id)).map(id=>rewards[id]),
     eggs:a.eggs.map(e=>({...e,percentage:rewards[e.id]}))};
 }
-module.exports={identity,status,promotion,availability,adminCode,adminVerify,adminCheck,adminLog,reserve,fulfill,claim,retry,result,limit};
+module.exports={devEmail,identity,status,promotion,availability,adminCode,adminVerify,adminCheck,adminLog,reserve,fulfill,claim,retry,result,limit};

@@ -28,7 +28,15 @@
     const code = 'FAKE-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[byte % 32]).join('');
     state.claims.push({ eggId: data.eggId, who, percentage, code, at: new Date().toISOString() });
     try { localStorage.setItem(DEV_STATE, JSON.stringify(state)); } catch (_) {}
-    return { mode: 'dev', percentage, code, emailStatus: 'fake', email: /^s\d/.test(who) ? who + '@student.roundrockisd.org' : who };
+    const result = { mode: 'dev', percentage, code, emailStatus: 'fake', email: /^s\d/.test(who) ? who + '@student.roundrockisd.org' : who };
+    // A real, clearly marked test email (dashboard admins only). The fake claim stands even if it fails.
+    try {
+      const response = await fetch(endpoint, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dev-email', studentId: who, eggId: data.eggId, code }), signal: AbortSignal.timeout(30000) });
+      const sent = await response.json();
+      if (response.ok) result.emailStatus = 'sent'; else result.emailNote = sent.error;
+    } catch (_) { result.emailNote = 'The test email could not be sent.'; }
+    return result;
   }
   async function request(data, fresh) {
     if (dev()) return devRequest(data);
@@ -207,7 +215,7 @@
       <p class="hunt-eyebrow">A lovely little find</p><h2 id="hunt-title">You unlocked<br><span class="hunt-percentage" aria-hidden="true">0</span><span aria-hidden="true">% OFF!</span><span class="hunt-sr-only">${result.percentage}% OFF!</span></h2>
       <p>${preview ? 'Valid on the first $25 of your eligible cart subtotal.' : 'Off your next eligible CO-OP online order.'}</p>
       ${preview ? `<p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>`
-        : result.mode === 'dev' ? `<p class="hunt-preview hunt-dev-code">Dev mode · fake code <code>${escape(result.code)}</code><br>It won’t work at checkout, and no email was sent to ${escape(result.email)}.</p>`
+        : result.mode === 'dev' ? `<p class="hunt-preview hunt-dev-code">Dev mode · fake code <code>${escape(result.code)}</code><br>It won’t work at checkout. ${result.emailStatus === 'sent' ? `A test email was sent to <strong>${escape(result.email)}</strong>.` : escape(result.emailNote || 'No email was sent.')}</p>`
       : `<p class="hunt-delivery">Your one-time code ${result.emailStatus === 'sent' ? 'is on its way to' : 'will be emailed to'} <strong>${escape(result.email)}</strong>.</p>`}
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
       <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : 'No email is sent from a local preview.'}`

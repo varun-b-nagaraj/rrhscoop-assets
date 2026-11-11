@@ -310,3 +310,24 @@ test('Apps Script only relays signed mail and never decides anything about the h
   call({ kind: 'legacy-clear' });
   assert.equal([...values.keys()].filter(k => k.startsWith('hunt_')).length, 1, 'only the mail receipt remains');
 });
+
+test('dev mode emails a marked test copy with the fake code, to dashboard admins only', async () => {
+  const env = await setup(), sent = [];
+  const send = async payload => { sent.push(payload); return { ok: true, emailStatus: 'sent' }; };
+  const result = await live.devEmail({ studentId: 'S151579', eggId: 'faq', code: 'FAKE-8VKWQLRS' }, 'c', env.db, send);
+  assert.deepEqual(result, { emailStatus: 'sent', email: 's151579@student.roundrockisd.org' });
+  assert.deepEqual([sent[0].kind, sent[0].recipient, sent[0].percentage, sent[0].code], ['test-reward', 's151579@student.roundrockisd.org', 15, 'FAKE-8VKWQLRS']);
+  await refused(live.devEmail({ studentId: 's100001', eggId: 'faq', code: 'FAKE-8VKWQLRS' }, 'c', env.db, send), 403, /dashboard admins/);
+  await refused(live.devEmail({ studentId: 's151579', eggId: 'faq', code: 'RRHSHUNT-REALCODE1234' }, 'c', env.db, send), 400);
+  for (let i = 0; i < 4; i++) await live.devEmail({ studentId: 's151579', eggId: 'faq', code: 'FAKE-8VKWQLRS' }, 'c', env.db, send);
+  await refused(live.devEmail({ studentId: 's151579', eggId: 'faq', code: 'FAKE-8VKWQLRS' }, 'c', env.db, send), 429);
+  assert.equal(sent.length, 5);
+  assert.equal((await env.db.query('SELECT count(*)::int AS n FROM hunt.claims', [])).rows[0].n, 0, 'a test email never claims anything');
+});
+
+test('the Apps Script test-reward email is marked as a test and shows the fake code', () => {
+  const source = fs.readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'), 'utf8');
+  const context = {}; vm.runInNewContext(source, context);
+  const email = context.buildEasterEggRewardEmail({ percentage: 15, name: 'Dragon', preview: true, reference: 'FAKE-8VKWQLRS' });
+  assert.match(email.subject, /^\[Preview\]/); assert.match(email.text, /FAKE-8VKWQLRS/); assert.match(email.text, /No coupon was created/);
+});
