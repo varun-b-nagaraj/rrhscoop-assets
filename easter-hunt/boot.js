@@ -48,9 +48,9 @@
     window.RRHS_HUNT_ACTIVE = enabled;
     if (!window.RRHS_HUNT_ACTIVE) return;
     const css = document.createElement('link'); css.rel = 'stylesheet';
-    css.href = new URL('hunt.css?v=27', base).href;
+    css.href = new URL('hunt.css?v=28', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=16')).then(() => topLevel ? load('experience.js?v=27') : undefined)
+    loading = styled.then(() => load('hunt.js?v=17')).then(() => topLevel ? load('experience.js?v=28') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }

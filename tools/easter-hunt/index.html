@@ -21,12 +21,11 @@
 
 <section id="board" hidden>
   <div class="toolbar"><p id="signed-in" class="muted"></p>
-    <a id="sheet" class="button" href="#" target="_blank" rel="noopener" hidden>Open log in Google Sheets</a>
-    <button id="refresh" type="button">Refresh</button><button id="pause" type="button">Pause hunt</button><button id="sign-out" class="link" type="button">Sign out</button></div>
+    <button id="refresh" type="button">Refresh</button><button id="sign-out" class="link" type="button">Sign out</button></div>
   <p id="notice" class="status" role="status" aria-live="polite"></p>
   <p id="outdated" class="warning" role="alert" hidden></p>
   <div class="tiles">
-    <div class="tile"><span class="label">Status</span><strong id="status">–</strong></div>
+    <div class="tile"><span class="label">Status</span><strong id="status">–</strong><small id="promo"></small></div>
     <div class="tile"><span class="label">Claimed</span><strong id="claimed">–</strong></div>
     <div class="tile"><span class="label">Rewards left</span><strong id="left">–</strong><small id="pool"></small></div>
     <div class="tile"><span class="label">Ends</span><strong>Fri, Nov 13</strong><small>11:59 PM Central</small></div>
@@ -40,11 +39,11 @@
     <p class="muted">Highest reward first. Select a sticker to see exactly where it hides.</p><ul id="stickers" class="stickers"></ul></section>
 
   <section class="card" aria-labelledby="log-title"><h2 id="log-title">Event log</h2>
-    <p class="muted">Every claim, refusal, email, sign-in and pause, newest first. The full history is kept in the Google Sheet.</p>
+    <p class="muted">Every claim, refusal, coupon, email and sign-in for this promo, newest first. Stored in Neon.</p>
     <div class="table-wrap"><table><thead><tr><th scope="col">Time</th><th scope="col">Event</th><th scope="col">Student / staff</th><th scope="col">Sticker</th><th scope="col">Details</th></tr></thead>
-    <tbody id="events"></tbody></table></div><p id="events-empty" class="muted" hidden>No events yet. Run setupHuntLog in Apps Script if this stays empty after a claim.</p></section>
+    <tbody id="events"></tbody></table></div><p id="events-empty" class="muted" hidden>No events yet.</p></section>
 </section>
 </main>
 <dialog id="spot-dialog" class="spot-dialog" aria-labelledby="spot-title"><div class="spot-head"><h2 id="spot-title"></h2><button id="spot-close" type="button">Close</button></div>
   <p class="muted">Page: <a id="spot-link" href="#" target="_blank" rel="noopener"></a></p><p id="spot-status" class="status" role="status"></p><img id="spot-image" alt="" hidden></dialog>
-<script src="/easter-hunt/config.js?v=5"></script><script src="/tools/easter-hunt/dashboard.js?v=5"></script></body></html>
+<script src="/easter-hunt/config.js?v=5"></script><script src="/tools/easter-hunt/dashboard.js?v=6"></script></body></html>

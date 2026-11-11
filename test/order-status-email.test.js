@@ -241,7 +241,7 @@ test('old saved states are pruned once a day', () => {
 });
 
 test('the minute trigger runs dispatch, receipts, status updates, then hunt email retries', () => {
-  assert.match(script, /for \(const job of \[sendCfaDispatch, sendPendingReceipts, sendOrderStatusUpdates, retryHuntEmails\]\)/);
+  assert.match(script, /for \(const job of \[sendCfaDispatch, sendPendingReceipts, sendOrderStatusUpdates, requestHuntJobs_\]\)/);
 });
 
 test('status emails escape customer text', () => {

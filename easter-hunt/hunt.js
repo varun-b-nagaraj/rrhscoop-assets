@@ -34,7 +34,7 @@
     if (dev()) return devRequest(data);
     const response = await fetch(fresh ? `${endpoint}?fresh=${Date.now()}` : endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
       headers: data ? { 'Content-Type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined,
-      signal: AbortSignal.timeout(10000) });
+      signal: AbortSignal.timeout(data ? 55000 : 10000) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'We couldn’t open this package. Please try again.');
     return result;
@@ -230,7 +230,10 @@
   async function refresh(fresh) {
     if (!window.RRHS_HUNT_ACTIVE || (refreshPending && !fresh) || document.hidden) return;
     refreshPending = true;
-    try { availability = await request(null, fresh === true); if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable();
+    try { const next = await request(null, fresh === true);
+      // A reset (or a new promo) changes the scope: forget what this tab marked as found.
+      if (availability?.scope && next.scope && availability.scope !== next.scope) foundHere.clear();
+      availability = next; if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable();
       // Dev mode: fake claims live in this page's storage, so keep the sticker iframes in step.
       if (dev() && window.parent === window) { const ids = availability.eggs.filter(egg => egg.found).map(egg => egg.id);
         if (ids.length) for (const frame of document.querySelectorAll('iframe')) { try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-found', ids }, assetOrigin); } catch (_) {} } } }

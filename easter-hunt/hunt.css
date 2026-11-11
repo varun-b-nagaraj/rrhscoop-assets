@@ -132,13 +132,37 @@
 .hunt-step-art .hunt-sticker { width:100%; height:100%; }
 .hunt-hero .hunt-intro-seal { width:144px; height:144px; }
 .hunt-step.is-active .hunt-intro-seal .hunt-sticker { animation:hunt-bob 3.2s .5s ease-in-out infinite; }
-.hunt-dragon-hero { position:relative; isolation:isolate; }
-.hunt-hero-clouds { position:absolute; left:50%; top:50%; width:min(100%,280px); height:100px; transform:translate(-50%,-40%); z-index:0; pointer-events:none; }
-.hunt-hero-cloud { position:absolute; left:0; top:24px; width:148px; opacity:.85; }
+/* Screen 1: the dragon flies right, so clouds stream past it right to left at different depths. */
+.hunt-dragon-hero { position:relative; isolation:isolate; width:100%; }
+.hunt-hero-clouds { position:absolute; inset:-8px 0; z-index:0; overflow:hidden; pointer-events:none; container-type:inline-size;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent),linear-gradient(#000 62%,transparent);
+  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent),linear-gradient(#000 62%,transparent); mask-composite:intersect; }
+.hunt-hero-cloud { position:absolute; left:100%; top:var(--y); width:var(--w); opacity:var(--o); }
 .hunt-hero-cloud svg { display:block; width:100%; height:auto; }
-.hunt-hero-cloud:nth-child(2) { left:70px; top:4px; width:122px; opacity:.65; }
-.hunt-hero-cloud:last-child { left:auto; right:0; top:40px; width:118px; transform:scaleX(-1); }
-.hunt-dragon-hero .hunt-intro-seal { z-index:1; }
+.hunt-cloud-1 { --y:46%; --w:210px; --o:.9; --t:26s; --d:-17s; }   /* big, near, trailing on the left */
+.hunt-cloud-2 { --y:6%;  --w:96px;  --o:.5; --t:34s; --d:-6s; }
+.hunt-cloud-3 { --y:34%; --w:132px; --o:.65; --t:22s; --d:-2s; }
+.hunt-cloud-4 { --y:58%; --w:120px; --o:.75; --t:24s; --d:-5s; }
+.hunt-cloud-5 { --y:16%; --w:150px; --o:.4; --t:40s; --d:-30s; }
+.hunt-cloud-2 svg, .hunt-cloud-4 svg { transform:scaleX(-1); }
+.hunt-step.is-active .hunt-hero-cloud { animation:hunt-drift var(--t) var(--d) linear infinite; }
+@keyframes hunt-drift { from { transform:translateX(0); } to { transform:translateX(calc(-100cqw - 100%)); } }
+/* Wind streaks off the dragon's tail. */
+.hunt-wind { position:absolute; left:calc(50% - 128px); top:38%; width:64px; height:44px; }
+.hunt-wind i { position:absolute; right:0; height:3px; border-radius:3px; background:#e8b98f; opacity:0; }
+.hunt-wind i:nth-child(1) { top:0; width:44px; } .hunt-wind i:nth-child(2) { top:18px; width:60px; } .hunt-wind i:nth-child(3) { top:36px; width:36px; }
+.hunt-step.is-active .hunt-wind i { animation:hunt-whoosh 1.8s ease-out infinite; }
+.hunt-step.is-active .hunt-wind i:nth-child(2) { animation-delay:.5s; } .hunt-step.is-active .hunt-wind i:nth-child(3) { animation-delay:1s; }
+@keyframes hunt-whoosh { 0% { opacity:0; transform:translateX(16px) scaleX(.4); transform-origin:right; } 30% { opacity:.8; } 100% { opacity:0; transform:translateX(-28px) scaleX(1); } }
+.hunt-dragon-hero .hunt-intro-seal { position:relative; z-index:1; }
+/* Lean into the flight and glide on the air. */
+.hunt-step.is-active .hunt-dragon-hero .hunt-intro-seal .hunt-sticker { animation:hunt-flight 3.2s ease-in-out infinite; }
+@keyframes hunt-flight { 0%,100% { transform:translate(0,-2px) rotate(6deg); } 50% { transform:translate(4px,-12px) rotate(3deg); } }
+@media (prefers-reduced-motion:reduce) {
+  .hunt-step.is-active .hunt-hero-cloud, .hunt-step.is-active .hunt-wind i, .hunt-step.is-active .hunt-dragon-hero .hunt-intro-seal .hunt-sticker { animation:none; }
+  .hunt-cloud-1 { transform:translateX(-92cqw); } .hunt-cloud-3 { transform:translateX(-30cqw); } .hunt-cloud-4 { transform:translateX(-68cqw); } .hunt-cloud-2, .hunt-cloud-5 { display:none; }
+  .hunt-dragon-hero .hunt-intro-seal .hunt-sticker { transform:rotate(6deg); }
+}
 .hunt-step:nth-child(2) .hunt-hero { height:164px; }
 .hunt-step:nth-child(3) .hunt-hero { height:184px; }
 .hunt-how { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; width:100%; margin:0; padding:0; list-style:none; }

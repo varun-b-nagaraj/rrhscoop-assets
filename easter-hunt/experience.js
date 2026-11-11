@@ -82,6 +82,7 @@
   const upIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const backIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const cloudArt = '<svg viewBox="0 0 120 64" fill="none" aria-hidden="true"><path d="M10 55C-5 43 3 22 21 23 17 3 49-7 61 14 78 2 99 14 94 32 120 24 130 55 108 59H21Z" fill="#f9e2ca"/><path d="M24 41C46 50 58 22 39 22 25 22 31 37 39 32M76 47C91 53 99 37 89 34" stroke="#fffaf3" stroke-width="3" stroke-linecap="round"/></svg>';
+  const flightCloudArt = '<svg viewBox="0 0 180 96" fill="none" aria-hidden="true"><path d="M24 78C0 81-7 49 15 40 6 14 45 4 57 24 68-2 108 3 113 28 142 9 169 29 158 52 187 59 181 89 156 88 137 101 119 89 105 87 88 98 67 90 58 83 47 94 29 91 24 78Z" fill="#f9e2ca"/><path d="M31 55C8 36 59 27 55 53 52 70 29 69 29 59M119 48C139 27 158 57 136 63M83 78c-11-4-15-15-8-21" stroke="#fffaf3" stroke-width="3" stroke-linecap="round"/></svg>';
   const tagIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12 12 3h9v9l-9 9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="17" cy="7" r="1.5" fill="currentColor"/></svg>';
   const giftIcon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10h16v11H4Zm-1-4h18v4H3Zm9 0v15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 6C3 7 5-2 10 2c1 1 2 4 2 4Zm0 0c9 1 7-8 2-4-1 1-2 4-2 4Z" stroke="currentColor" stroke-width="2"/></svg>';
   const laptopIcon = '<svg class="hunt-mini-laptop" viewBox="0 0 64 40" fill="none" aria-hidden="true"><rect x="9" y="2" width="46" height="30" rx="3" fill="#faf8f4" stroke="currentColor" stroke-width="2.5"/><path d="M3 33h58l-5 5H8Z" fill="#f9e2ca" stroke="currentColor" stroke-width="2.5"/><path d="m29 13 6 7m-7-1 7-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -93,7 +94,7 @@
     const dragon = stickerImage.replace('alt=""', 'alt="Red CO-OP dragon holding a package"');
     const steps = [
       `<p class="hunt-eyebrow">The CO-OP Dragon Hunt</p>
-       <div class="hunt-hero hunt-dragon-hero"><div class="hunt-hero-clouds" aria-hidden="true"><span class="hunt-hero-cloud">${cloudArt}</span><span class="hunt-hero-cloud">${cloudArt}</span><span class="hunt-hero-cloud">${cloudArt}</span></div><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
+       <div class="hunt-hero hunt-dragon-hero"><div class="hunt-hero-clouds" aria-hidden="true">${[1,2,3,4,5].map(n => `<span class="hunt-hero-cloud hunt-cloud-${n}">${flightCloudArt}</span>`).join('')}<span class="hunt-wind"><i></i><i></i><i></i></span></div><div class="hunt-step-art hunt-intro-seal">${dragon}</div></div>
        <h2>Good things hide<br>in plain sight.</h2>
        <p>${TOTAL} CO-OP dragons are hiding around this website.<br>The deeper the page, the bigger the reward.</p>
        <div class="hunt-intro-rules"><span>${stickerImage}<strong>${TOTAL}</strong> hidden dragons</span><span>${tagIcon}<strong>10–35%</strong> off</span><span>${giftIcon}<strong>1</strong> per person</span></div>`,

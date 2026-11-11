@@ -1,0 +1,16 @@
+{
+  "name": "rrhscoop-assets",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "hunt:migrate": "node tools/hunt-db.cjs migrate",
+    "hunt:status": "node tools/hunt-db.cjs status",
+    "hunt:reset": "node tools/hunt-db.cjs reset"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}

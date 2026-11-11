@@ -4,7 +4,7 @@
   const KEY = 'rrhs-hunt-dashboard-session';
   const SPOTS = window.RRHS_HUNT_CONFIG.locations, TOTAL = SPOTS.length;
   const STICKERS = Object.fromEntries(SPOTS.map(spot => [spot.id, spot.label]));
-  const STATUS = { active: 'Live', paused: 'Paused', sold_out: 'Sold out', expired: 'Ended', scheduled: 'Not started' };
+  const STATUS = { active: 'Live', paused: 'Resetting', sold_out: 'Sold out', expired: 'Ended', scheduled: 'Not started', disabled: 'Off' };
   let session = null, email = '', data = null;
   try { session = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (_) {}
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -46,23 +46,21 @@
   $('restart').addEventListener('click', () => { $('code-form').hidden = true; $('email-form').hidden = false; $('sign-in-status').textContent = ''; $('email').focus(); });
 
   function emailPill(status) {
-    return status === 'sent' ? '<span class="pill">Sent</span>' : status === 'failed' ? '<span class="pill bad">Failed · retrying</span>' : `<span class="pill wait">${escape(status || 'Pending')}</span>`;
+    return status === 'sent' ? '<span class="pill">Sent</span>' : status === 'failed' ? '<span class="pill bad">Failed · needs a look</span>' : `<span class="pill wait">${escape(status || 'Pending')}</span>`;
   }
   function render(result) {
     data = result;
     $('sign-in').hidden = true; $('board').hidden = false;
     $('signed-in').textContent = `Signed in as ${result.email}`;
     $('status').textContent = STATUS[result.status] || result.status;
-    // The website and the Apps Script must list the same stickers. If not, the deployed script is out of date.
+    $('promo').textContent = result.status === 'disabled' ? 'Turn on with RRHS_HUNT_ENABLED in Vercel' : 'Promo ' + (result.promo || '');
+    // The website config and the server's reward list must name the same stickers.
     const known = new Set((result.eggs || []).map(egg => egg.id)), missing = SPOTS.filter(spot => !known.has(spot.id)).length;
     $('outdated').hidden = !missing;
-    $('outdated').textContent = missing ? `The deployed Apps Script is out of date: it doesn’t know ${missing} of the ${TOTAL} stickers, so they can’t be claimed and the numbers below come from the old hunt. Paste the latest script, deploy a new web-app version, then run resetHuntForNewPromo.` : '';
+    $('outdated').textContent = missing ? `The server doesn’t know ${missing} of the ${TOTAL} stickers, so they can’t be claimed. Redeploy the latest code to Vercel.` : '';
     $('claimed').textContent = `${result.claims.length}/${(result.eggs || []).length || TOTAL}`;
     $('left').textContent = result.remaining;
     $('pool').textContent = result.pool.length ? 'Left: ' + [...result.pool].sort((a, b) => a - b).map(p => p + '%').join(', ') : 'All rewards claimed';
-    $('pause').textContent = result.paused ? 'Resume hunt' : 'Pause hunt';
-    $('pause').classList.toggle('danger', !result.paused);
-    $('sheet').hidden = !result.sheetUrl; if (result.sheetUrl) $('sheet').href = result.sheetUrl;
     $('claims').innerHTML = [...result.claims].reverse().map(c => `<tr><td>${when(c.at)}</td><td><strong>${escape(c.studentId)}</strong></td><td>${sticker(c.eggId)}</td>
       <td class="num">${c.percentage}%</td><td><code>${escape(c.code)}</code></td><td>${emailPill(c.emailStatus)}</td></tr>`).join('');
     $('claims-empty').hidden = result.claims.length > 0;
@@ -85,11 +83,6 @@
     catch (error) { if (error.status === 401) showSignIn(error.message); else $('notice').textContent = error.message; }
   }
   $('refresh').addEventListener('click', async () => { busy($('refresh'), true); await load(); busy($('refresh'), false); });
-  $('pause').addEventListener('click', async () => {
-    const pausing = !data?.paused;
-    if (pausing && !confirm('Pause the hunt? No one can claim a reward until you resume it.')) return;
-    busy($('pause'), true); await load(pausing ? 'admin-pause' : 'admin-resume'); busy($('pause'), false);
-  });
   // Click a sticker to see a screenshot of exactly where it hides.
   $('stickers').addEventListener('click', async event => {
     const button = event.target.closest('[data-spot]'); if (!button || !session) return;

@@ -8,7 +8,7 @@ const source = readFileSync(require.resolve('../apps-script/teacher-preorder-ver
 const START = Date.parse('2026-11-10T12:00:00-06:00');
 
 function runtime({ properties = {}, alias = '' } = {}) {
-  const props = new Map(Object.entries({ RRHS_ECWID_STORE_ID: '123', RRHS_ECWID_API_TOKEN: 'test-only-token', ...properties }));
+  const props = new Map(Object.entries({ RRHS_ECWID_STORE_ID: '123', RRHS_ECWID_API_TOKEN: 'test-only-token', RRHS_HUNT_RELAY_SECRET: 'r'.repeat(40), ...properties }));
   const state = { now: START, quota: 100, aliases: [], lock: true, triggerError: false, apiStatus: 200,
     pdfType: 'application/pdf', orderId: 'EXAMPLE-ORDER', deployed: true, triggers: [], requests: [], logs: [], sends: 0, locksReleased: 0 };
   const trigger = (name, minutes) => ({ name, minutes, getHandlerFunction: () => name });

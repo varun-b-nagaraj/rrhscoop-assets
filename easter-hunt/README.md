@@ -10,49 +10,59 @@ Twenty dragon stickers hidden around the CO-OP website, one per page (the long T
 | 25% ×2 | Shipping & returns, Terms & Conditions |
 | 35% ×1 | Privacy policy (Customers' Rights) |
 
-Placements are in `easter-hunt/config.js`; rewards are in `HUNT_REWARDS` in the Apps Script (a test keeps the two in step).
+Placements are in `easter-hunt/config.js`; rewards are in `easter-hunt/rules.js` (a test keeps the two in step).
 
-## Turning it on and off
+## Who controls what
 
-The **only** switch is the Vercel environment variable `RRHS_HUNT_ENABLED`:
+| Piece | Job |
+| --- | --- |
+| **Vercel env** | Every decision. `RRHS_HUNT_ENABLED` turns it on/off, `RRHS_HUNT_PROMO_ID` names the promo. |
+| **Neon** (project "Digital Pass CO-Op", schema `hunt`) | Every claim, coupon code, email status, dashboard session and the event log. |
+| **Apps Script** | Only sends email (reward codes, dashboard sign-in codes) through a signed relay, and pings Vercel each minute to retry anything pending. It stores nothing about the hunt and cannot reset or pause it. |
 
-- `true` turns the hunt on for every visitor.
-- Any other value, or no value, turns it off for everyone. The API then reports `disabled` and refuses claims.
+Vercel env variables (production):
 
-Vercel applies an environment variable change only to new deployments. After changing it, redeploy (Deployments → ⋯ → Redeploy). Pages pick up the change within about 30 seconds of the deploy.
+- `RRHS_HUNT_ENABLED`: `true` turns the hunt on for everyone; anything else turns it off.
+- `RRHS_HUNT_PROMO_ID`: the promo's name. A new ID starts a completely empty hunt.
+- `RRHS_HUNT_DATABASE_URL`: Neon pooled connection string.
+- `RRHS_HUNT_SECRET`: encrypts S-numbers and codes at rest.
+- `RRHS_HUNT_RELAY_SECRET`: signs mail requests; the same value goes in the Apps Script's Script properties.
+- Optional: `RRHS_HUNT_STARTS_AT`, `RRHS_HUNT_EXPIRES_AT`, `RRHS_HUNT_ADMINS` (comma-separated).
 
-To stop claims temporarily without redeploying, use **Pause hunt** on the dashboard.
+Vercel applies an env change only to new deployments: redeploy after changing one.
+
+## Resetting
+
+Run from the repo (it reads `.env`):
+
+```sh
+node tools/hunt-db.cjs status
+node tools/hunt-db.cjs reset --confirm 2026-11-dragon-hunt
+```
+
+Reset deletes this promo's Ecwid coupons, clears every claim and the log, and frees all twenty dragons. Open pages notice within a few seconds. It also deletes any coupons left by the old Apps Script hunt and clears its saved data.
 
 ## How a claim works
 
-1. The website asks `/api/v1/easter-hunt` for availability. Pages check every 5 seconds and Vercel caches the answer for 2 seconds. The Apps Script is the only source of truth: once anyone claims a sticker, every visitor sees it greyed out under a magnifying glass and it can no longer be opened. The finder's own tabs and the page's iframes switch instantly; everyone else within a few seconds. Opening a sticker always re-checks with the server, skipping the cache.
-2. The student enters their S-number. The API forwards the claim to the Apps Script web app (`RRHS_CFA_VERIFICATION_URL`).
-3. Under its script lock, the Apps Script:
-   - checks the hunt window (Nov 9 – Fri Nov 13, 11:59 PM Central);
-   - checks one reward per person (S-number or staff email) and one per sticker;
-   - gives the sticker's fixed reward;
-   - creates a single-use, uncapped percent-off Ecwid coupon (`RRHSHUNT-…`);
-   - records the claim, then emails the code to `S-number@student.roundrockisd.org`, or to the staff email as entered.
-4. The website sees only the percentage, never the code.
-5. If the email fails, the minute job (`runCoopJobs`) retries it, up to 5 attempts.
+1. Pages ask `/api/v1/easter-hunt` for availability every 5 seconds (Vercel caches it for 2 seconds). Once anyone claims a dragon, everyone sees it greyed out under a magnifying glass.
+2. The student enters their S-number (staff: their `@roundrockisd.org` email). There is no extra code step: the reward only ever goes to that person's school inbox.
+3. Vercel locks the promo row in Neon, checks one reward per person and one per dragon, and saves the claim before anything else happens.
+4. Vercel creates a single-use, percent-off Ecwid coupon (`RRHSHUNT-…`), then asks Apps Script to email it.
+5. If Ecwid or email fails, the claim stays saved and the minute job retries with the same code, up to 10 times.
+6. The website sees only the percentage, never the code.
 
-## Dashboard and logs
+## Dashboard
 
 <https://rrhscoop-assets.vercel.app/easter-hunt/dashboard>
 
-- **Sign-in:** a 6-digit code is emailed to an approved address (`HUNT_ADMINS` in the Apps Script). The session lasts 12 hours.
-- **What it shows:** status, rewards left, every claim with its coupon code and email status, each sticker with its reward, and the event log.
-- **Sticker screenshots:** select a sticker to see a screenshot of exactly where it hides. The screenshots live in `api/v1/_hunt-locations/` and are served only to a signed-in admin, never as public files. Retake them with `node tools/capture-hunt-locations.mjs` after moving a sticker.
-- **Pause / Resume** stops or restarts claims without losing records.
-- **Where logs are stored:** every claim, refusal, email, retry, sign-in and pause is appended to the Google Sheet **"RRHS CO-OP package hunt log"** in the script owner's Drive. Claims are also kept in Script properties (`hunt_live_state`), so the dashboard works even if the sheet is unavailable.
+Sign in with a 6-digit code emailed to an approved address; the session lasts 12 hours. It shows status, rewards left, every claim with its code and email status, each sticker with a screenshot of where it hides, and the event log. Screenshots live in `api/v1/_hunt-locations/` (retake with `node tools/capture-hunt-locations.mjs`).
 
-Apps Script editor actions:
-- `setupHuntLog()`: run once. It authorizes Google Sheets and creates the log.
-- `showHuntClaims()`: logs every claim.
-- `pauseHunt()` / `resumeHunt()`: same as the dashboard buttons.
-- `resetHuntForNewPromo()`: starts over. It deletes the Ecwid coupons the hunt created, clears every claim and empties the log sheet. This can't be undone.
+## Apps Script setup (once)
 
-After pasting a new version of the script, deploy a **new version of the existing web-app deployment** (Deploy → Manage deployments → edit → New version). Otherwise Vercel keeps talking to the old code.
+1. Paste `apps-script/teacher-preorder-verification.gs` into the project.
+2. Project Settings → Script properties: add `RRHS_HUNT_RELAY_SECRET` with the same value as in Vercel.
+3. Deploy → Manage deployments → edit → **New version**.
+4. Check it with `node tools/hunt-db.cjs relay-check`.
 
 ## Dev mode (fake codes)
 
@@ -72,10 +82,12 @@ Dev mode shows all 20 stickers even when `RRHS_HUNT_ENABLED` is off. Claims stay
 
 | Files | Purpose |
 | --- | --- |
-| `easter-hunt/config.js` | Deadline and the twelve sticker locations |
+| `easter-hunt/config.js` | Deadline and the twenty sticker locations |
 | `easter-hunt/boot.js`, `hunt.js`, `hunt.css`, `experience.js` | Loader, stickers, claim dialogs, header counter, intro |
-| `api/v1/easter-hunt.js` | Availability, claims and dashboard API (`RRHS_HUNT_ENABLED` switch) |
-| `apps-script/teacher-preorder-verification.gs` | Reward pool, coupons, emails, log sheet, dashboard sign-in |
+| `api/v1/easter-hunt.js`, `api/v1/hunt-jobs.js` | Availability, claims, dashboard API; minute retries |
+| `easter-hunt/live.js`, `rules.js`, `db.js`, `secure.js`, `integrations.js` | Claim rules on Neon, rewards, encryption, Ecwid and mail relay |
+| `migrations/`, `tools/hunt-db.cjs` | Neon schema; migrate, status and reset commands |
+| `apps-script/teacher-preorder-verification.gs` | Signed mail relay only |
 | `tools/easter-hunt/` | Dashboard page |
 | `tools/easter-hunt-preview.cjs`, `easter-hunt/service.js` | Local simulator |
 
@@ -85,4 +97,4 @@ Dev mode shows all 20 stickers even when `RRHS_HUNT_ENABLED` is off. Claims stay
 node --test
 ```
 
-`test/hunt-live.test.js` covers the claim rules, coupons, email retries, the env switch and dashboard sign-in. All tests use fake Ecwid, mail and storage, so they make no live writes.
+`test/hunt-live.test.js` runs the claim rules, coupons, retries, reset, the env switch and dashboard sign-in against an in-memory Postgres (PGlite) with fake Ecwid and mail, so it makes no live writes.

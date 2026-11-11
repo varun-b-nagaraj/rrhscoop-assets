@@ -1,8 +1,11 @@
 {
   "functions": {
     "api/v1/easter-hunt.js": {
-      "maxDuration": 30,
+      "maxDuration": 60,
       "includeFiles": "api/v1/_hunt-locations/**"
+    },
+    "api/v1/hunt-jobs.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

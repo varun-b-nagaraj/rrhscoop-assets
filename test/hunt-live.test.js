@@ -1,316 +1,312 @@
 'use strict';
+// The live hunt against a real (in-memory) Postgres, with fake Ecwid and fake mail. Nothing leaves this process.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'), 'utf8');
+const { PGlite } = require('@electric-sql/pglite');
 const config = require('../easter-hunt/config');
+const { rewards } = require('../easter-hunt/rules');
 
-function runtime({ now = '2026-11-11T12:00:00-06:00' } = {}) {
-  const values = new Map([['RRHS_ECWID_STORE_ID', '123'], ['RRHS_ECWID_API_TOKEN', 'token']]);
-  const coupons = [], sent = [], state = { now: Date.parse(now), mailFails: false, ecwidStatus: 200, random: 0 };
-  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, String(value)), deleteProperty: key => values.delete(key), getProperties: () => Object.fromEntries(values) };
-  const context = {
-    Date: class extends Date { constructor(...args) { super(...(args.length ? args : [state.now])); } static now() { return state.now; } },
-    Math: Object.assign(Object.create(Math), { random: () => state.random }),
-    console: { error() {} }, Logger: { log() {} },
-    Utilities: { formatDate: () => '2026-11-11 12:00:00 -0600', getUuid: () => require('node:crypto').randomUUID(), computeDigest: () => Array.from({ length: 32 }, (_, i) => i * 7), DigestAlgorithm: {} },
-    PropertiesService: { getScriptProperties: () => props },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
-    UrlFetchApp: { fetch(url, options) {
-      coupons.push({ url, options, body: JSON.parse(options.payload) });
-      return { getResponseCode: () => state.ecwidStatus, getContentText: () => JSON.stringify(state.ecwidStatus === 200 ? { id: 900 + coupons.length } : { errorMessage: 'nope' }) };
-    } },
-    GmailApp: { sendEmail(...message) { if (state.mailFails) throw new Error('Gmail down'); sent.push(message); } },
+process.env.RRHS_HUNT_SECRET = 'test-secret-'.repeat(4);
+process.env.RRHS_HUNT_PROMO_ID = 'test-promo';
+process.env.RRHS_HUNT_STARTS_AT = '2020-01-01T00:00:00Z';
+process.env.RRHS_HUNT_EXPIRES_AT = '2099-01-01T00:00:00Z';
+const live = require('../easter-hunt/live');
+const integrations = require('../easter-hunt/integrations');
+const { migrate, reset } = require('../tools/hunt-db.cjs');
+
+async function memory() {
+  const pg = new PGlite();
+  const db = { query: (text, params) => params ? pg.query(text, params) : pg.exec(text).then(results => results.at(-1) || { rows: [] }),
+    connect: async () => ({ query: db.query, release() {} }), end: () => pg.close() };
+  return db;
+}
+function fakes() {
+  const coupons = new Map(), mail = [], deleted = [], state = { couponFails: false, mailFails: false };
+  let next = 900;
+  const services = {
+    async findCoupon(code) { return [...coupons.values()].find(c => c.code === code); },
+    async ensureCoupon(claim, code, expiresAt, who) {
+      if (state.couponFails) throw new Error('Ecwid down');
+      const found = await services.findCoupon(code); if (found) return found.id;
+      const coupon = { id: String(++next), code, percentage: claim.percentage, who, expiresAt }; coupons.set(coupon.id, coupon); return coupon.id;
+    },
+    async deleteCoupon(id) { deleted.push(String(id)); return coupons.delete(String(id)); },
+    async relay(payload) {
+      if (payload.kind === 'legacy-export') return { ok: true, legacy: state.legacy || null };
+      if (payload.kind === 'legacy-clear') { state.legacy = null; state.legacyCleared = true; return { ok: true }; }
+      if (state.mailFails) throw new Error('Gmail down');
+      mail.push(payload); return { ok: true, emailStatus: 'sent' };
+    },
   };
-  vm.runInNewContext(source, context);
-  let n = 0;
-  const claim = (studentId, eggId, key) => context.huntClaim_({ studentId, eggId, idempotencyKey: key || `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}` }, props);
-  return { context, props, values, coupons, sent, state, claim };
+  return { services, coupons, mail, deleted, state };
+}
+async function setup() {
+  const db = await memory(); await migrate(db);
+  const fake = fakes(); let n = 0;
+  const key = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+  const claim = (studentId, eggId, idempotencyKey = key()) => live.claim({ studentId, eggId, idempotencyKey }, 'client-' + n, db, fake.services);
+  return { db, ...fake, claim, key };
+}
+const refused = (promise, status, pattern) => assert.rejects(promise, error => error.status === status && (!pattern || pattern.test(error.message)));
+async function withEnv(values, fn) {
+  const before = Object.fromEntries(Object.keys(values).map(k => [k, process.env[k]]));
+  for (const [k, v] of Object.entries(values)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  try { return await fn(); } finally { for (const [k, v] of Object.entries(before)) if (v === undefined) delete process.env[k]; else process.env[k] = v; }
 }
 
-test('Apps Script hunt settings match the website config', () => {
-  const { context } = runtime();
-  assert.equal(context.HUNT_STARTS_AT, config.startsAt);
-  assert.equal(context.HUNT_EXPIRES_AT, config.expiresAt);
-  assert.equal(Date.parse(context.HUNT_ECWID_EXPIRES.replace(' ', 'T').replace(' -0600', '-06:00')), Date.parse(config.expiresAt));
-  assert.deepEqual([...context.HUNT_EGGS], config.locations.map(location => location.id));
-  // The deeper the page, the bigger the reward: 7×10%, 6×15%, 4×20%, 2×25%, 1×35%.
-  const counts = {}; Object.values(context.HUNT_REWARDS).forEach(p => { counts[p] = (counts[p] || 0) + 1; });
-  assert.deepEqual({ ...counts }, { 10: 7, 15: 6, 20: 4, 25: 2, 35: 1 });
-  assert.equal(context.HUNT_REWARDS['inventory-intelligence'], 20);
-  assert.equal(context.HUNT_REWARDS['privacy-policy'], 35);
-  for (const id of ['shop-snacks', 'shop-drinks', 'shop-long-sleeves', 'shop-t-shirts']) assert.equal(context.HUNT_REWARDS[id], 10);
+test('server rewards match the website stickers: 7×10%, 6×15%, 4×20%, 2×25%, 1×35%', () => {
+  assert.deepEqual(Object.keys(rewards), config.locations.map(location => location.id));
+  const counts = {}; Object.values(rewards).forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+  assert.deepEqual(counts, { 10: 7, 15: 6, 20: 4, 25: 2, 35: 1 });
 });
 
-test('a claim creates one single-use Ecwid coupon and emails the code only to the school mailbox', () => {
-  const { claim, coupons, sent, context, props } = runtime();
-  const result = claim('S151579', 'shop-drinks');
-  assert.equal(result.ok, true);
-  assert.equal(result.mode, 'live');
-  assert.equal(result.percentage, 10, 'Drinks is a product page, worth 10%');
-  assert.equal(result.email, 's151579@student.roundrockisd.org');
-  assert.equal(result.emailStatus, 'sent');
-  assert.equal(JSON.stringify(result).includes('RRHSHUNT-'), false, 'the browser never receives the code');
-  assert.equal(coupons.length, 1);
-  assert.match(coupons[0].url, /\/123\/discount_coupons$/);
-  assert.equal(coupons[0].options.headers.Authorization, 'Bearer token');
-  const body = coupons[0].body;
-  assert.equal(body.discountType, 'PERCENT'); assert.equal(body.discount, 10); assert.equal(body.usesLimit, 'SINGLE'); assert.equal(body.status, 'ACTIVE');
-  assert.equal(body.expirationDate, '2026-11-14 00:00:00 -0600');
-  assert.match(body.code, /^RRHSHUNT-[A-Z2-9]{10}$/);
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0][0], 's151579@student.roundrockisd.org');
-  assert.doesNotMatch(sent[0][1], /Preview/);
-  assert.match(sent[0][2], new RegExp(body.code));
-  assert.doesNotMatch(sent[0][2], /first \$25|DEVELOPMENT PREVIEW/);
-  const availability = context.huntAvailability_(props);
-  assert.equal(availability.remaining, 19);
-  assert.equal(availability.eggs.find(egg => egg.id === 'shop-drinks').available, false);
-  assert.equal(availability.eggs.filter(egg => egg.available).length, 19);
-  // Found stickers stay on the page, disabled under a magnifying glass, for everyone.
-  assert.equal(availability.eggs.filter(egg => egg.found).map(egg => egg.id).join(), 'shop-drinks');
-});
-
-test('one reward per student and per sticker, with the same message for both', () => {
-  const { claim, coupons } = runtime();
-  claim('s100001', 'shop-snacks');
-  const again = claim('s100001', 'shop-t-shirts');
-  const taken = claim('s100002', 'shop-snacks');
-  assert.equal(again.status, 409); assert.equal(taken.status, 409);
-  assert.equal(again.error, taken.error);
-  assert.equal(coupons.length, 1);
-});
-
-test('retrying the same request returns the original reward without a second coupon', () => {
-  const { claim, coupons, sent } = runtime();
-  const key = '11111111-1111-4111-8111-111111111111';
-  const first = claim('s100003', 'shop-snacks', key), repeat = claim('s100003', 'shop-snacks', key);
-  assert.deepEqual({ ...repeat }, { ...first });
-  assert.equal(coupons.length, 1); assert.equal(sent.length, 1);
-});
-
-test('each sticker pays its own fixed reward, and the hunt sells out after all twenty', () => {
-  const { claim, context, props, state } = runtime();
-  config.locations.forEach((location, i) => {
-    state.now += 2000;
-    assert.equal(claim('s2000' + String(i).padStart(2, '0'), location.id).percentage, context.HUNT_REWARDS[location.id]);
+test('a claim saves to Neon, creates one single-use coupon and emails the code only to the school inbox', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    const result = await env.claim(' S151579 ', 'privacy-policy');
+    assert.equal(result.mode, 'live'); assert.equal(result.percentage, 35);
+    assert.equal(result.email, 's151579@student.roundrockisd.org'); assert.equal(result.emailStatus, 'sent');
+    assert.doesNotMatch(JSON.stringify(result), /RRHSHUNT/, 'the website never sees the code');
+    assert.equal(env.coupons.size, 1);
+    const [coupon] = env.coupons.values();
+    assert.match(coupon.code, /^RRHSHUNT-[A-F0-9]{16}$/); assert.equal(coupon.percentage, 35); assert.equal(coupon.who, 's151579');
+    assert.deepEqual(env.mail.map(m => [m.kind, m.recipient, m.code]), [['reward', 's151579@student.roundrockisd.org', coupon.code]]);
+    const a = await live.availability(env.db);
+    assert.equal(a.remaining, 19);
+    assert.deepEqual(a.eggs.find(e => e.id === 'privacy-policy'), { id: 'privacy-policy', found: true, available: false });
+    // Identities and codes are encrypted at rest.
+    const row = (await env.db.query('SELECT * FROM hunt.claims', [])).rows[0];
+    assert.doesNotMatch(JSON.stringify(row), /s151579|RRHSHUNT/);
   });
-  const availability = context.huntAvailability_(props);
-  assert.equal(availability.status, 'sold_out'); assert.equal(availability.remaining, 0);
-  assert.match(claim('s299999', 'shop-snacks').error, /All twenty rewards/);
 });
 
-test('a failed coupon leaves the sticker available and nothing recorded', () => {
-  const { claim, state, sent, context, props } = runtime();
-  state.ecwidStatus = 403;
-  const result = claim('s100004', 'shop-snacks');
-  assert.equal(result.status, 503); assert.equal(sent.length, 0);
-  assert.equal(context.huntAvailability_(props).remaining, 20);
-  state.ecwidStatus = 200;
-  assert.equal(claim('s100004', 'shop-snacks').ok, true);
+test('one reward per person and per dragon, with the same message for both', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    await env.claim('s100001', 'shop-snacks');
+    await refused(env.claim('s100001', 'shop-drinks'), 409, /could not be claimed/);
+    await refused(env.claim('s100002', 'shop-snacks'), 409, /could not be claimed/);
+    assert.equal(env.coupons.size, 1);
+    const log = (await env.db.query('SELECT event FROM hunt.events ORDER BY id', [])).rows.map(r => r.event);
+    assert.ok(log.includes('Refused: already has a reward') && log.includes('Refused: sticker already claimed'));
+  });
 });
 
-test('a failed email keeps the reward and the minute job retries it', () => {
-  const { claim, state, sent, context, values } = runtime();
-  state.mailFails = true;
-  const result = claim('s100005', 'shop-snacks');
-  assert.equal(result.ok, true); assert.equal(result.emailStatus, 'pending');
-  assert.equal(claim('s100005', 'shop-t-shirts').status, 409, 'a mail failure never allows a second reward');
-  state.mailFails = false;
-  context.retryHuntEmails();
-  assert.equal(sent.length, 1); assert.equal(sent[0][0], 's100005@student.roundrockisd.org');
-  context.retryHuntEmails();
-  assert.equal(sent.length, 1);
-  assert.equal(JSON.parse(values.get('hunt_live_state')).claims[0].emailStatus, 'sent');
+test('repeating the same request returns the original reward without a second coupon', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup(), key = env.key();
+    const first = await env.claim('s100003', 'faq', key), again = await env.claim('s100003', 'faq', key);
+    assert.deepEqual(again, first);
+    assert.equal(env.coupons.size, 1); assert.equal(env.mail.length, 1);
+    await refused(env.claim('s100004', 'faq', key), 409);
+  });
 });
 
-test('claims are refused before the start, after the deadline, and while paused', () => {
-  assert.match(runtime({ now: '2026-11-14T00:00:00-06:00' }).claim('s100006', 'shop-snacks').error, /hunt has ended/);
-  assert.equal(runtime({ now: '2026-11-08T23:59:00-06:00' }).claim('s100006', 'shop-snacks').status, 409);
-  const env = runtime(); env.context.pauseHunt();
-  assert.equal(env.claim('s100006', 'shop-snacks').status, 409);
-  assert.equal(env.context.huntAvailability_(env.props).status, 'paused');
-  env.context.resumeHunt();
-  assert.equal(env.claim('s100006', 'shop-snacks').ok, true);
+test('each dragon pays its own reward and the hunt sells out after all twenty', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    let i = 0;
+    for (const [id, percentage] of Object.entries(rewards)) assert.equal((await env.claim('s2000' + String(++i).padStart(2, '0'), id)).percentage, percentage);
+    assert.equal((await live.availability(env.db)).status, 'sold_out');
+    await refused(env.claim('s300000', 'faq'), 409);
+  });
 });
 
-test('bad input and bursts are rejected', () => {
-  const env = runtime();
-  assert.equal(env.claim('151579', 'shop-snacks').status, 400);
-  assert.equal(env.claim('s151579', 'not-a-sticker').status, 400);
-  for (let i = 0; i < 30; i++) env.claim('s3000' + String(i).padStart(2, '0'), 'nowhere');
-  // Invalid requests are rejected before counting; valid ones count toward 30 a minute.
-  const burst = runtime();
-  for (let i = 0; i < 30; i++) burst.claim('s100007', 'shop-snacks');
-  assert.equal(burst.claim('s100008', 'shop-t-shirts').status, 429);
+test('a failed coupon or email keeps the reward saved, and the retry job finishes it with the same code', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    env.state.couponFails = true;
+    const pending = await env.claim('s100005', 'terms');
+    assert.equal(pending.emailStatus, 'pending');
+    assert.equal((await live.availability(env.db)).eggs.find(e => e.id === 'terms').found, true, 'the dragon stays claimed');
+    env.state.couponFails = false; env.state.mailFails = true;
+    await env.db.query('UPDATE hunt.claims SET next_attempt_at=now()', []);
+    await live.retry(env.db, env.services);
+    assert.equal(env.coupons.size, 1); assert.equal(env.mail.length, 0);
+    env.state.mailFails = false;
+    await env.db.query('UPDATE hunt.claims SET next_attempt_at=now()', []);
+    await live.retry(env.db, env.services);
+    const [coupon] = env.coupons.values();
+    assert.deepEqual(env.mail.map(m => m.code), [coupon.code]);
+    assert.equal((await env.db.query('SELECT email_status FROM hunt.claims', [])).rows[0].email_status, 'sent');
+    assert.equal((await live.retry(env.db, env.services)).processed, 0, 'nothing left to do');
+  });
 });
 
-test('doPost answers availability without the lock and claims through it', () => {
-  const env = runtime();
-  let locked = 0;
-  env.context.LockService = { getScriptLock: () => ({ tryLock: () => { locked++; return true; }, releaseLock() {} }) };
-  env.context.ContentService = { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) };
-  const post = body => env.context.doPost({ postData: { contents: JSON.stringify(body) } });
-  assert.equal(post({ action: 'hunt-availability' }).remaining, 20);
-  assert.equal(locked, 0);
-  assert.equal(post({ action: 'hunt-claim', studentId: 's100009', eggId: 'shop-snacks', idempotencyKey: '22222222-2222-4222-8222-222222222222' }).ok, true);
-  assert.equal(locked, 1);
+test('claims are refused when Vercel turns the hunt off, before the start and after the deadline', async () => {
+  const env = await setup();
+  for (const value of [undefined, '', 'false', '1', 'yes']) await withEnv({ RRHS_HUNT_ENABLED: value }, async () => {
+    assert.equal((await live.availability(env.db)).status, 'disabled');
+    await refused(env.claim('s100006', 'faq'), 409);
+  });
+  await withEnv({ RRHS_HUNT_ENABLED: ' TRUE ', RRHS_HUNT_STARTS_AT: '2098-01-01T00:00:00Z' }, async () => {
+    assert.equal((await live.availability(env.db)).status, 'scheduled'); await refused(env.claim('s100006', 'faq'), 409);
+  });
+  await withEnv({ RRHS_HUNT_ENABLED: 'true', RRHS_HUNT_EXPIRES_AT: '2021-01-01T00:00:00Z' }, async () => {
+    assert.equal((await live.availability(env.db)).status, 'expired'); await refused(env.claim('s100006', 'faq'), 409, /ended/);
+  });
+  assert.equal(env.coupons.size, 0);
 });
 
-test('the API forwards live claims and caches availability at the edge', async () => {
-  const before = process.env.RRHS_HUNT_ENABLED; process.env.RRHS_HUNT_ENABLED = 'true';
-  const service = require('../teacher-preorders/service'), original = service.mailAction;
+test('bad input and bursts are rejected; staff claim with their district email', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    for (const bad of ['123456', 's12', 'jane@gmail.com', 'jane@student.roundrockisd.org', 'jane@roundrockisd.org.evil.com', '@roundrockisd.org']) await refused(env.claim(bad, 'faq'), 400);
+    await refused(env.claim('s100007', 'not-a-dragon'), 400);
+    await refused(live.claim({ studentId: 's100007', eggId: 'faq', idempotencyKey: 'x' }, 'c', env.db, env.services), 400);
+    const staff = await env.claim(' Jane.Doe@RoundRockISD.org ', 'teachers-top');
+    assert.equal(staff.email, 'jane.doe@roundrockisd.org'); assert.equal(env.mail[0].recipient, 'jane.doe@roundrockisd.org');
+    for (let i = 0; i < 20; i++) await live.claim({ studentId: 's9', eggId: 'faq', idempotencyKey: 'x' }, 'burst', env.db, env.services).catch(() => {});
+    await refused(live.claim({ studentId: 's100008', eggId: 'faq', idempotencyKey: env.key() }, 'burst', env.db, env.services), 429);
+  });
+});
+
+test('reset deletes this promo’s coupons and the old Apps Script ones, clears claims and the log, and frees every dragon', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    await env.claim('s100010', 'shop-snacks'); await env.claim('s100011', 'privacy-policy');
+    env.state.legacy = { promo: 'old', claims: [{ studentId: 's151579', eggId: 'leadership', couponId: 77 }] };
+    const before = (await live.availability(env.db)).scope;
+    const result = await reset(env.db, env.services);
+    assert.equal(result.cleared, 2); assert.equal(result.couponsDeleted, 2);
+    assert.deepEqual(result.oldAppsScript, { claims: 1, deleted: 0 });
+    assert.deepEqual(env.deleted.sort(), ['77', '901', '902']);
+    assert.equal(env.state.legacyCleared, true);
+    const after = await live.availability(env.db);
+    assert.equal(after.remaining, 20); assert.equal(after.status, 'active'); assert.notEqual(after.scope, before, 'open tabs see a new scope');
+    assert.deepEqual((await env.db.query('SELECT event FROM hunt.events', [])).rows.map(r => r.event), ['Hunt reset']);
+    assert.equal((await env.claim('s100010', 'shop-snacks')).percentage, 10, 'students can claim again');
+  });
+});
+
+test('a new RRHS_HUNT_PROMO_ID in Vercel starts an empty hunt', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup();
+    await env.claim('s100012', 'faq');
+    await withEnv({ RRHS_HUNT_PROMO_ID: 'spring-2027' }, async () => {
+      const fresh = await live.availability(env.db);
+      assert.equal(fresh.remaining, 20); assert.equal(fresh.scope, 'spring-2027:1');
+      assert.equal((await env.claim('s100012', 'faq')).percentage, 15);
+    });
+  });
+});
+
+test('dashboard: emailed code for approved addresses only, a 12-hour session, and the full log', async () => {
+  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    const env = await setup(), sent = [];
+    const send = async payload => { sent.push(payload); return { ok: true, emailStatus: 'sent' }; };
+    await refused(live.adminCode('someone@roundrockisd.org', 'c', env.db, send), 401);
+    assert.equal(sent.length, 0);
+    await live.adminCode(' RRHS_COOP_STORE@roundrockisd.org ', 'c', env.db, send);
+    assert.equal(sent[0].kind, 'admin-code'); assert.equal(sent[0].recipient, 'rrhs_coop_store@roundrockisd.org');
+    await refused(live.adminCode('rrhs_coop_store@roundrockisd.org', 'c', env.db, send), 429);
+    const code = sent[0].code;
+    await refused(live.adminVerify('rrhs_coop_store@roundrockisd.org', code === '000000' ? '111111' : '000000', env.db), 401);
+    const session = await live.adminVerify('rrhs_coop_store@roundrockisd.org', code, env.db);
+    assert.ok(session.token.length >= 40);
+    await refused(live.adminVerify('rrhs_coop_store@roundrockisd.org', code, env.db), 401, /expired/);
+    await refused(live.adminLog('forged-token-forged-token-forged', env.db), 401);
+    await env.claim('s151579', 'shop-snacks');
+    const log = await live.adminLog(session.token, env.db);
+    assert.equal(log.claims.length, 1); assert.equal(log.claims[0].studentId, 's151579'); assert.match(log.claims[0].code, /^RRHSHUNT-/);
+    assert.equal(log.remaining, 19); assert.equal(log.pool.length, 19); assert.equal(log.promo, 'test-promo');
+    assert.ok(log.events.some(e => e.event === 'Claimed' && e.studentId === 's151579' && e.eggId === 'shop-snacks'));
+    await env.db.query("UPDATE hunt.sessions SET expires_at=now()-interval '1 second'", []);
+    await refused(live.adminLog(session.token, env.db), 401);
+  });
+});
+
+test('the API: CORS, the env switch, edge caching, and claims that never leak the code', async () => {
+  const env = await setup();
+  require('../easter-hunt/db').use(env.db);
+  const saved = { ...integrations };
+  Object.assign(integrations, env.services);
   const handler = require('../api/v1/easter-hunt');
-  const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
-  const calls = [];
+  const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = value === undefined ? undefined : JSON.parse(value); } });
+  const origin = 'https://rrhscoop.roundrockisd.org';
   try {
-    service.mailAction = async (action, payload) => { calls.push([action, payload]); return action === 'hunt-claim'
-      ? { ok: true, mode: 'live', percentage: 25, email: 's151579@student.roundrockisd.org', emailStatus: 'sent', code: 'SHOULD-NOT-LEAK' }
-      : { ok: true, mode: 'live', status: 'active', remaining: 9, eggs: [{ id: 'shop-snacks', available: true }] }; };
-    const claimed = res();
-    await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's151579', eggId: 'shop-snacks', idempotencyKey: '33333333-3333-4333-8333-333333333333' } }, claimed);
-    assert.equal(claimed.statusCode, 200); assert.equal(claimed.body.percentage, 25);
-    assert.equal('code' in claimed.body, false);
-    assert.deepEqual(calls[0], ['hunt-claim', { studentId: 's151579', eggId: 'shop-snacks', idempotencyKey: '33333333-3333-4333-8333-333333333333' }]);
-    const open = res();
-    await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, open);
-    assert.equal(open.body.mode, 'live'); assert.equal(open.body.remaining, 9);
-    assert.match(open.headers['Cache-Control'], /s-maxage=2/);
-    service.mailAction = async () => { throw Object.assign(new Error(service.HUNT_TAKEN || 'This package could not be claimed.'), { status: 409 }); };
-    const taken = res();
-    await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's1', eggId: 'shop-snacks', idempotencyKey: 'x' } }, taken);
-    assert.equal(taken.statusCode, 409); assert.match(taken.body.error, /could not be claimed/);
-    service.mailAction = async () => { throw Object.assign(new Error('Unknown action.'), { status: 400 }); };
-    const outdated = res();
-    await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's1', eggId: 'shop-snacks', idempotencyKey: 'x' } }, outdated);
-    assert.equal(outdated.statusCode, 503);
-    const down = res();
-    await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, down);
-    assert.equal(down.body.status, 'unavailable'); assert.equal(down.headers['Cache-Control'], 'no-store');
-  } finally { service.mailAction = original; if (before === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = before; }
-});
-
-test('RRHS_HUNT_ENABLED is the only switch: anything but "true" closes the hunt', async () => {
-  const service = require('../teacher-preorders/service'), original = service.mailAction;
-  const handler = require('../api/v1/easter-hunt');
-  const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
-  const before = process.env.RRHS_HUNT_ENABLED; let calls = 0;
-  service.mailAction = async () => { calls++; return { ok: true, mode: 'live', status: 'active', remaining: 12, eggs: [] }; };
-  try {
-    for (const value of [undefined, '', 'false', '1', 'yes']) {
-      if (value === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = value;
-      const get = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, get);
-      assert.equal(get.body.mode, 'disabled');
-      const post = res(); await handler({ method: 'POST', headers: {}, body: { action: 'claim', studentId: 's1', eggId: 'shop-snacks', idempotencyKey: 'x' } }, post);
-      assert.equal(post.statusCode, 503);
-    }
-    assert.equal(calls, 0);
-    process.env.RRHS_HUNT_ENABLED = ' TRUE ';
-    const on = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, on);
-    assert.equal(on.body.mode, 'live'); assert.equal(calls, 1);
-  } finally { service.mailAction = original; if (before === undefined) delete process.env.RRHS_HUNT_ENABLED; else process.env.RRHS_HUNT_ENABLED = before; }
-});
-
-test('dashboard sign-in: emailed code for approved addresses only, then a session that reads the log and pauses', () => {
-  const env = runtime(), mails = [];
-  env.context.MailApp = { sendEmail: message => mails.push(message) };
-  env.context.Utilities.computeHmacSha256Signature = (text, key) => [...require('node:crypto').createHmac('sha256', key).update(text).digest()];
-  env.context.Utilities.base64EncodeWebSafe = bytes => Buffer.from(bytes).toString('base64url');
-  const admin = input => env.context.huntAdmin_(input, env.props);
-  assert.equal(admin({ action: 'hunt-admin-code', email: 'someone@roundrockisd.org' }).status, 401);
-  assert.equal(mails.length, 0);
-  assert.equal(admin({ action: 'hunt-admin-code', email: 'RRHS_COOP_STORE@roundrockisd.org' }).ok, true);
-  assert.equal(mails[0].to, 'rrhs_coop_store@roundrockisd.org');
-  const code = mails[0].subject.match(/^(\d{6}) /)[1];
-  assert.equal(admin({ action: 'hunt-admin-code', email: 'rrhs_coop_store@roundrockisd.org' }).status, 429);
-  assert.equal(admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code: code === '000000' ? '111111' : '000000' }).status, 401);
-  const signedIn = admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code });
-  assert.equal(signedIn.ok, true, JSON.stringify(signedIn)); assert.ok(signedIn.token.length >= 40);
-  assert.equal(admin({ action: 'hunt-admin-verify', email: 'rrhs_coop_store@roundrockisd.org', code }).status, 401, 'a code works once');
-  assert.equal(admin({ action: 'hunt-admin-log', token: 'forged-token-forged-token-forged-token-forged' }).status, 401);
-  env.claim('s151579', 'shop-snacks');
-  const log = admin({ action: 'hunt-admin-log', token: signedIn.token });
-  assert.equal(log.claims.length, 1); assert.match(log.claims[0].code, /^RRHSHUNT-/); assert.equal(log.remaining, 19); assert.equal(log.pool.length, 19);
-  assert.equal(admin({ action: 'hunt-admin-pause', token: signedIn.token }).paused, true);
-  assert.equal(env.claim('s151580', 'shop-t-shirts').status, 409);
-  assert.equal(admin({ action: 'hunt-admin-resume', token: signedIn.token }).status, 'active');
-  env.state.now += 13 * 3600000;
-  assert.equal(admin({ action: 'hunt-admin-log', token: signedIn.token }).status, 401, 'sessions expire after 12 hours');
-});
-
-test('dashboard actions are only accepted from the dashboard origin', async () => {
-  const handler = require('../api/v1/easter-hunt');
-  const res = { headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } };
-  await handler({ method: 'POST', headers: { origin: 'https://rrhscoop.roundrockisd.org' }, body: { action: 'admin-log', token: 'x' } }, res);
-  assert.equal(res.statusCode, 403);
-});
-
-test('a new promo deletes the hunt coupons, clears every claim and empties the log', () => {
-  const env = runtime(), deletes = [];
-  const fetch = env.context.UrlFetchApp.fetch;
-  env.context.UrlFetchApp.fetch = (url, options) => options.method === 'delete' ? (deletes.push(url), { getResponseCode: () => 200 }) : fetch(url, options);
-  let rows = 5;
-  env.values.set('HUNT_LOG_SHEET_ID', 'sheet');
-  env.context.SpreadsheetApp = { openById: () => ({ getSheets: () => [{ getLastRow: () => rows, deleteRows: (start, count) => { rows -= count; }, appendRow: () => { rows++; } }] }) };
-  env.claim('s100010', 'shop-snacks'); env.claim('s100011', 'privacy-policy');
-  env.context.resetHuntForNewPromo();
-  assert.equal(deletes.length, 2);
-  assert.match(deletes[0], /\/discount_coupons\/90\d$/);
-  assert.equal(env.values.has('hunt_live_state'), false);
-  assert.equal(env.context.huntAvailability_(env.props).remaining, 20);
-  assert.equal(rows, 2, 'header plus the "new promo started" row');
-  assert.equal(env.claim('s100010', 'shop-snacks').ok, true, 'students can claim again in the new promo');
-});
-
-test('data from an older promo never counts, and the reset still deletes its coupons and every hunt value', () => {
-  const env = runtime(), deletes = [];
-  const fetch = env.context.UrlFetchApp.fetch;
-  env.context.UrlFetchApp.fetch = (url, options) => options.method === 'delete' ? (deletes.push(url), { getResponseCode: () => 200 }) : fetch(url, options);
-  // What the old 12-sticker script left behind: one claim, a random pool, old preview keys.
-  env.values.set('hunt_live_state', JSON.stringify({ claims: [{ studentId: 's151579', eggId: 'inventory-intelligence', percentage: 25, couponId: 77 }], pool: [10, 15], paused: true }));
-  env.values.set('hunt_preview_rate', '{}'); env.values.set('hunt_rate', '{}'); env.values.set('hunt_session_abc', '{}');
-  const fresh = env.context.huntAvailability_(env.props);
-  assert.equal(fresh.status, 'active'); assert.equal(fresh.remaining, 20);
-  assert.equal(fresh.eggs.filter(egg => egg.found).length, 0);
-  env.context.SpreadsheetApp = { openById: () => ({ getSheets: () => [{ getLastRow: () => 1, deleteRows() {}, appendRow() {} }] }) };
-  env.values.set('HUNT_LOG_SHEET_ID', 'sheet');
-  env.context.resetHuntForNewPromo();
-  assert.equal(deletes.join(), 'https://app.ecwid.com/api/v3/123/discount_coupons/77');
-  assert.deepEqual([...env.values.keys()].filter(key => key.startsWith('hunt_')), ['hunt_session_abc']);
-});
-
-test('staff claim with their @roundrockisd.org email and get the code there, one reward each', () => {
-  const env = runtime();
-  const result = env.claim(' Jane.Doe@RoundRockISD.org ', 'teachers-top');
-  assert.equal(result.ok, true);
-  assert.equal(result.email, 'jane.doe@roundrockisd.org');
-  assert.equal(result.percentage, 15);
-  assert.equal(env.sent[0][0], 'jane.doe@roundrockisd.org');
-  assert.match(env.sent[0][2], /RRHSHUNT-/);
-  assert.match(env.coupons[0].body.name, /jane\.doe@roundrockisd\.org/);
-  assert.equal(env.claim('jane.doe@roundrockisd.org', 'leadership').status, 409, 'one reward per staff email');
-  for (const bad of ['jane@gmail.com', 'jane@student.roundrockisd.org', 'jane@roundrockisd.org.evil.com', '@roundrockisd.org']) {
-    assert.equal(env.claim(bad, 'faq').status, 400, bad);
-  }
-  assert.equal(env.sent.length, 1);
+    await withEnv({ RRHS_HUNT_ENABLED: 'false' }, async () => {
+      const off = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, off);
+      assert.equal(off.body.mode, 'disabled');
+      const post = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'claim', studentId: 's1', eggId: 'faq', idempotencyKey: 'x' } }, post);
+      assert.equal(post.statusCode, 503); assert.equal(post.headers['Access-Control-Allow-Origin'], origin);
+    });
+    await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+      const open = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, open);
+      assert.equal(open.body.status, 'active'); assert.equal(open.body.remaining, 20); assert.match(open.headers['Cache-Control'], /s-maxage=2/);
+      const claimed = res();
+      await handler({ method: 'POST', headers: { origin }, body: { action: 'claim', studentId: 's151579', eggId: 'shop-snacks', idempotencyKey: '33333333-3333-4333-8333-333333333333' } }, claimed);
+      assert.equal(claimed.statusCode, 200); assert.equal(claimed.body.percentage, 10); assert.doesNotMatch(JSON.stringify(claimed.body), /RRHSHUNT/);
+      const taken = res();
+      await handler({ method: 'POST', headers: { origin }, body: { action: 'claim', studentId: 's151580', eggId: 'shop-snacks', idempotencyKey: '44444444-3333-4333-8333-333333333333' } }, taken);
+      assert.equal(taken.statusCode, 409);
+      const admin = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-log', token: 'x' } }, admin);
+      assert.equal(admin.statusCode, 403, 'dashboard actions only from the dashboard origin');
+      const preflight = res(); await handler({ method: 'OPTIONS', headers: { origin } }, preflight);
+      assert.equal(preflight.statusCode, 204);
+      const rejected = res(); await handler({ method: 'OPTIONS', headers: { origin: 'https://untrusted.example' } }, rejected);
+      assert.equal(rejected.statusCode, 403); assert.equal(rejected.headers['Access-Control-Allow-Origin'], undefined);
+      const down = res(); require('../easter-hunt/db').use({ query: async () => { throw new Error('down'); } });
+      await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, down);
+      assert.equal(down.body.status, 'unavailable'); assert.equal(down.headers['Cache-Control'], 'no-store');
+    });
+  } finally { Object.assign(integrations, saved); require('../easter-hunt/db').use(undefined); }
 });
 
 test('the dashboard screenshot route needs a valid session and returns the circled image', async () => {
-  const service = require('../teacher-preorders/service'), original = service.mailAction;
+  const env = await setup();
+  require('../easter-hunt/db').use(env.db);
   const handler = require('../api/v1/easter-hunt');
   const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = JSON.parse(value); } });
   const origin = 'https://rrhscoop-assets.vercel.app';
   try {
-    service.mailAction = async (action) => { assert.equal(action, 'hunt-admin-check'); throw Object.assign(new Error('Sign in again to view the dashboard.'), { status: 401 }); };
-    const denied = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: 'faq', token: 'x' } }, denied);
+    const denied = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: 'faq', token: 'x'.repeat(40) } }, denied);
     assert.equal(denied.statusCode, 401); assert.equal('image' in denied.body, false);
-    service.mailAction = async () => ({ ok: true, email: 'rrhs_coop_store@roundrockisd.org' });
-    const missing = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: '../../.env', token: 'x' } }, missing);
+    let code; await live.adminCode('varunnagaraj2009@gmail.com', 'c', env.db, async p => { code = p.code; return { ok: true }; });
+    const { token } = await live.adminVerify('varunnagaraj2009@gmail.com', code, env.db);
+    const missing = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: '../../.env', token } }, missing);
     assert.equal(missing.statusCode, 404);
     for (const spot of config.locations) {
-      const shown = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: spot.id, token: 'x' } }, shown);
+      const shown = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: spot.id, token } }, shown);
       assert.equal(shown.statusCode, 200, spot.id); assert.match(shown.body.image, /^data:image\/jpeg;base64,\/9j\//);
     }
-  } finally { service.mailAction = original; }
+  } finally { require('../easter-hunt/db').use(undefined); }
+});
+
+test('the retry endpoint only accepts a signed tick from Apps Script', async () => {
+  const handler = require('../api/v1/hunt-jobs');
+  const crypto = require('node:crypto'), secret = 'relay-secret-'.repeat(4);
+  const res = () => ({ headers: {}, setHeader() {}, end(value) { this.body = value; } });
+  await withEnv({ RRHS_HUNT_RELAY_SECRET: secret, RRHS_HUNT_DATABASE_URL: undefined }, async () => {
+    const forged = res(); await handler({ headers: {}, body: { timestamp: Date.now(), signature: 'nope' } }, forged);
+    assert.equal(forged.statusCode, 401);
+    const timestamp = Date.now(), signature = crypto.createHmac('sha256', secret).update('job:' + timestamp).digest('base64url');
+    const ok = res(); await handler({ headers: {}, body: { timestamp, signature } }, ok);
+    assert.equal(ok.statusCode, undefined); assert.match(ok.body, /not configured/);
+  });
+});
+
+test('Apps Script only relays signed mail and never decides anything about the hunt', () => {
+  const source = fs.readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'), 'utf8');
+  for (const gone of ['huntClaim_', 'huntAvailability_', 'resetHuntForNewPromo', 'pauseHunt', 'HUNT_REWARDS', 'hunt-claim', 'hunt-admin']) assert.equal(source.includes(gone), false, gone);
+  const crypto = require('node:crypto'), secret = 'relay-secret-'.repeat(4), values = new Map([['RRHS_HUNT_RELAY_SECRET', secret]]), sent = [];
+  const props = { getProperty: k => values.get(k) ?? null, setProperty: (k, v) => values.set(k, String(v)), deleteProperty: k => values.delete(k), getProperties: () => Object.fromEntries(values) };
+  const context = { console: { error() {} }, Logger: { log() {} },
+    Utilities: { computeHmacSha256Signature: (text, key) => [...crypto.createHmac('sha256', key).update(text).digest()], base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url') + '=',
+      base64DecodeWebSafe: text => [...Buffer.from(text, 'base64url')], newBlob: bytes => ({ getDataAsString: () => Buffer.from(bytes).toString('utf8') }) },
+    MailApp: { getRemainingDailyQuota: () => 100 }, GmailApp: { sendEmail: (...m) => { if (context.fail) throw new Error('quota'); sent.push(m); } } };
+  vm.runInNewContext(source, context);
+  const call = payload => { const body = Buffer.from(JSON.stringify(payload)).toString('base64url'), timestamp = Date.now();
+    return context.huntRelay_({ body, timestamp, signature: crypto.createHmac('sha256', secret).update(timestamp + '.' + body).digest('base64url') }, props); };
+  assert.equal(context.huntRelay_({ body: 'e30', timestamp: Date.now(), signature: 'forged' }, props).status, 401);
+  const reward = { kind: 'reward', id: '11111111-1111-4111-8111-111111111111', recipient: 's151579@student.roundrockisd.org', name: 'Dragon', percentage: 20, code: 'RRHSHUNT-ABCDEF0123456789' };
+  context.fail = true; assert.equal(call(reward).status, 503); assert.equal(sent.length, 0);
+  context.fail = false; assert.equal(call(reward).emailStatus, 'sent'); assert.equal(call(reward).emailStatus, 'sent');
+  assert.equal(sent.length, 1, 'a repeat never emails twice'); assert.equal(sent[0][0], 's151579@student.roundrockisd.org'); assert.match(sent[0][2], /RRHSHUNT-ABCDEF0123456789/);
+  assert.equal(call({ ...reward, id: '22222222-1111-4111-8111-111111111111', recipient: 'someone@gmail.com' }).status, 400);
+  values.set('hunt_live_state', '{"claims":[]}'); values.set('hunt_rate', '{}');
+  call({ kind: 'legacy-clear' });
+  assert.equal([...values.keys()].filter(k => k.startsWith('hunt_')).length, 1, 'only the mail receipt remains');
 });
