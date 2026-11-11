@@ -16,6 +16,10 @@
     sessionStorage.removeItem('rrhs-hunt-override');
   } catch (_) {}
   const topLevel = window.parent === window;
+  function announcePresenter() {
+    if (topLevel && window.opener) window.opener.postMessage({ type: 'rrhs-hunt-storefront-ready' }, base.origin);
+  }
+  if (topLevel) { addEventListener('pageshow', announcePresenter); if (document.readyState === 'complete') announcePresenter(); }
   const allowedParents = new Set([base.origin, 'https://rrhscoop.roundrockisd.org']);
   if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) allowedParents.add(location.origin);
   function trustedFrame(source, origin) {

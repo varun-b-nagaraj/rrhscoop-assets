@@ -123,6 +123,9 @@
     if (event.key === factory.KEY && !connected) refresh();
     if (event.key === 'rrhs-hunt-override') $('promo-toggle').checked = event.newValue === 'true';
   });
+  addEventListener('message', event => {
+    if (event.data?.type === 'rrhs-hunt-storefront-ready' && event.source === sourceWindow && event.origin === sourceOrigin) connect(sourceWindow, sourceOrigin);
+  });
   refresh();
   const origin = new URLSearchParams(location.search).get('sourceOrigin');
   if (window.opener && allowed.has(origin)) connect(window.opener, origin);
