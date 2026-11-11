@@ -18,7 +18,7 @@ Placements are in `easter-hunt/config.js`; rewards are in `easter-hunt/rules.js`
 | --- | --- |
 | **Vercel env** | Every decision. `RRHS_HUNT_ENABLED` turns it on/off, `RRHS_HUNT_PROMO_ID` names the promo. |
 | **Neon** (project "Digital Pass CO-Op", schema `hunt`) | Every claim, coupon code, email status, dashboard session and the event log. |
-| **Apps Script** | Only sends email (reward codes, dashboard sign-in codes) through a signed relay, and pings Vercel each minute to retry anything pending. It stores nothing about the hunt and cannot reset or pause it. |
+| **Apps Script** | Only sends email (reward codes) through a signed relay, and pings Vercel each minute to retry anything pending. It stores nothing about the hunt and cannot reset or pause it. |
 
 Vercel env variables (production):
 
@@ -55,7 +55,7 @@ Reset deletes this promo's Ecwid coupons, clears every claim and the log, and fr
 
 <https://rrhscoop-assets.vercel.app/easter-hunt/dashboard>
 
-Sign in with a 6-digit code emailed to an approved address; the session lasts 12 hours. It shows status, rewards left, every claim with its code and email status, each sticker with a screenshot of where it hides, and the event log. Screenshots live in `api/v1/_hunt-locations/` (retake with `node tools/capture-hunt-locations.mjs`).
+Sign in with the dashboard password; the session lasts 12 hours. The server stores a fixed scrypt password hash in `api/_lib/hunt-dashboard-auth.cjs`, rather than reading the password from `.env`. Login is rate-limited in Neon and does not send email. It shows status, rewards left, every claim with its code and email status, each sticker with a screenshot of where it hides, and the event log. Screenshots live in `api/v1/_hunt-locations/` (retake with `node tools/capture-hunt-locations.mjs`).
 
 ## Apps Script setup (once)
 

@@ -5,7 +5,7 @@
   const SPOTS = window.RRHS_HUNT_CONFIG.locations, TOTAL = SPOTS.length;
   const STICKERS = Object.fromEntries(SPOTS.map(spot => [spot.id, spot.label]));
   const STATUS = { active: 'Live', paused: 'Resetting', sold_out: 'Sold out', expired: 'Ended', scheduled: 'Not started', disabled: 'Off' };
-  let session = null, email = '', data = null;
+  let session = null, data = null;
   try { session = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (_) {}
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const when = value => { const date = new Date(value); return Number.isFinite(date.getTime())
@@ -25,25 +25,17 @@
     $('board').hidden = true; $('sign-in').hidden = false;
     $('sign-in-status').textContent = message || '';
   }
-  $('email-form').addEventListener('submit', async event => {
+  $('password-form').addEventListener('submit', async event => {
     event.preventDefault(); const button = event.submitter; busy(button, true);
-    email = $('email').value.trim().toLowerCase(); $('sign-in-status').textContent = 'Sending your code…';
-    try { await call('admin-code', { email }); $('email-form').hidden = true; $('code-form').hidden = false; $('code').focus();
-      $('sign-in-status').textContent = `Code sent to ${email}. It expires in 10 minutes.`; }
-    catch (error) { $('sign-in-status').textContent = error.message; }
-    finally { busy(button, false); }
-  });
-  $('code-form').addEventListener('submit', async event => {
-    event.preventDefault(); const button = event.submitter; busy(button, true); $('sign-in-status').textContent = 'Checking…';
+    $('sign-in-status').textContent = 'Signing in…';
     try {
-      const result = await call('admin-verify', { email, code: $('code').value.trim() });
+      const result = await call('admin-login', { password: $('password').value });
       session = { token: result.token, expiresAt: result.expiresAt };
       try { sessionStorage.setItem(KEY, JSON.stringify(session)); } catch (_) {}
-      $('code').value = ''; $('sign-in-status').textContent = ''; await load();
+      $('password').value = ''; $('sign-in-status').textContent = ''; await load();
     } catch (error) { $('sign-in-status').textContent = error.message; }
     finally { busy(button, false); }
   });
-  $('restart').addEventListener('click', () => { $('code-form').hidden = true; $('email-form').hidden = false; $('sign-in-status').textContent = ''; $('email').focus(); });
 
   function emailPill(status) {
     return status === 'sent' ? '<span class="pill">Sent</span>' : status === 'failed' ? '<span class="pill bad">Failed · needs a look</span>' : `<span class="pill wait">${escape(status || 'Pending')}</span>`;

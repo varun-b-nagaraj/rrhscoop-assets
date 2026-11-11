@@ -193,28 +193,27 @@ test('a new RRHS_HUNT_PROMO_ID in Vercel starts an empty hunt', async () => {
   });
 });
 
-test('dashboard: emailed code for approved addresses only, a 12-hour session, and the full log', async () => {
+test('dashboard: server-side password, rate limits, a 12-hour session, and the private log', async () => {
   await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
-    const env = await setup(), sent = [];
-    const send = async payload => { sent.push(payload); return { ok: true, emailStatus: 'sent' }; };
-    await refused(live.adminCode('someone@roundrockisd.org', 'c', env.db, send), 401);
-    assert.equal(sent.length, 0);
-    await live.adminCode(' RRHS_COOP_STORE@roundrockisd.org ', 'c', env.db, send);
-    assert.equal(sent[0].kind, 'admin-code'); assert.equal(sent[0].recipient, 'rrhs_coop_store@roundrockisd.org');
-    await refused(live.adminCode('rrhs_coop_store@roundrockisd.org', 'c', env.db, send), 429);
-    const code = sent[0].code;
-    await refused(live.adminVerify('rrhs_coop_store@roundrockisd.org', code === '000000' ? '111111' : '000000', env.db), 401);
-    const session = await live.adminVerify('rrhs_coop_store@roundrockisd.org', code, env.db);
+    const env = await setup();
+    const verify = value => value === 'test-only-password';
+    await refused(live.adminLogin('wrong', 'bad-client', env.db, verify), 401);
+    for(let i=0;i<4;i++) await refused(live.adminLogin('wrong', 'bad-client', env.db, verify),401);
+    await refused(live.adminLogin('test-only-password','bad-client',env.db,verify),429);
+    const session = await live.adminLogin('test-only-password', 'owner-client', env.db, verify);
     assert.ok(session.token.length >= 40);
-    await refused(live.adminVerify('rrhs_coop_store@roundrockisd.org', code, env.db), 401, /expired/);
+    assert.ok(session.expiresAt>Date.now()+11*3600000 && session.expiresAt<=Date.now()+12*3600000);
     await refused(live.adminLog('forged-token-forged-token-forged', env.db), 401);
     await env.claim('s151579', 'shop-snacks');
     const log = await live.adminLog(session.token, env.db);
+    assert.equal(log.email,'CO-OP owner');
     assert.equal(log.claims.length, 1); assert.equal(log.claims[0].studentId, 's151579'); assert.match(log.claims[0].code, /^RRHSHUNT-/);
     assert.equal(log.remaining, 19); assert.equal(log.pool.length, 19); assert.equal(log.promo, 'test-promo');
     assert.ok(log.events.some(e => e.event === 'Claimed' && e.studentId === 's151579' && e.eggId === 'shop-snacks'));
     await env.db.query("UPDATE hunt.sessions SET expires_at=now()-interval '1 second'", []);
     await refused(live.adminLog(session.token, env.db), 401);
+    assert.equal(require('../api/_lib/hunt-dashboard-auth.cjs').matchesPassword('incorrect password'),false);
+    assert.equal(require('../api/_lib/hunt-dashboard-auth.cjs').matchesPassword(undefined),false);
   });
 });
 
@@ -264,8 +263,7 @@ test('the dashboard screenshot route needs a valid session and returns the circl
   try {
     const denied = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: 'faq', token: 'x'.repeat(40) } }, denied);
     assert.equal(denied.statusCode, 401); assert.equal('image' in denied.body, false);
-    let code; await live.adminCode('varunnagaraj2009@gmail.com', 'c', env.db, async p => { code = p.code; return { ok: true }; });
-    const { token } = await live.adminVerify('varunnagaraj2009@gmail.com', code, env.db);
+    const { token } = await live.adminLogin('test-only-password', 'screenshot-client', env.db, () => true);
     const missing = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'admin-location', id: '../../.env', token } }, missing);
     assert.equal(missing.statusCode, 404);
     for (const spot of config.locations) {

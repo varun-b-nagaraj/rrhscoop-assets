@@ -31,8 +31,7 @@ module.exports=async function handler(req,res) {
    return send(200,await live.claim({studentId:body.studentId,eggId:body.eggId,idempotencyKey:body.idempotencyKey},client));
   }
   if(!local&&origin&&origin!=='https://rrhscoop-assets.vercel.app')return send(403,{error:'Open the hunt dashboard to continue.'});
-  if(body?.action==='admin-code')return send(200,await live.adminCode(body.email,client));
-  if(body?.action==='admin-verify')return send(200,await live.adminVerify(body.email,body.code));
+  if(body?.action==='admin-login')return send(200,await live.adminLogin(body.password,client));
   if(body?.action==='admin-log')return send(200,await live.adminLog(body.token));
   if(body?.action==='admin-retry'){await live.adminCheck(body.token);await live.fulfill(body.claimId);return send(200,await live.adminLog(body.token));}
   if(body?.action==='admin-location'){

@@ -40,38 +40,17 @@ async function availability(db=database()) {
   return {mode:config.enabled?'live':'disabled',status:state,scope:config.id+':'+p.epoch,expiresAt:config.expiresAt,remaining:TOTAL-used.size,
     eggs:Object.keys(rewards).map(id=>({id,found:used.has(id),available:state==='active'&&!used.has(id)}))};
 }
-function adminEmail(value) {
-  const email=String(value||'').trim().toLowerCase();
-  if(!admins().includes(email))fail(401,'This address cannot open the dashboard.');
-  return email;
-}
-// Dashboard sign-in only. Students and staff claim with their S-number or email, no code.
-async function adminCode(value,client,db=database(),send=integrations.relay) {
-  const config=settings(),email=adminEmail(value),subject=secure.hash('admin:'+email);
+// Password login runs on Vercel; no email or Apps Script call is involved.
+async function adminLogin(password,client,db=database(),verify=require('../api/_lib/hunt-dashboard-auth.cjs').matchesPassword) {
+  const config=settings();
   await promotion(db,config);
-  await limit(config.id+':admin:ip:'+client,10,60,db);
-  await limit(config.id+':admin:mail:'+subject,1,60,db);
-  const id=crypto.randomUUID(),code=String(crypto.randomInt(1000000)).padStart(6,'0');
-  await db.query('DELETE FROM hunt.challenges WHERE subject_key=$1',[subject]);
-  await db.query(`INSERT INTO hunt.challenges(id,subject_key,code_hash,expires_at) VALUES($1,$2,$3,now()+interval '10 minutes')`,[id,subject,secure.hash(id+':'+code)]);
-  await send({kind:'admin-code',id,recipient:email,code});
-  return {ok:true};
-}
-async function adminVerify(value,code,db=database()) {
-  const email=adminEmail(value),subject=secure.hash('admin:'+email);
-  const ok=await transaction(async c=>{
-    const row=(await c.query('SELECT * FROM hunt.challenges WHERE subject_key=$1 FOR UPDATE',[subject])).rows[0];
-    if(!row || new Date(row.expires_at)<=new Date() || row.attempts>=5)return false;
-    await c.query('UPDATE hunt.challenges SET attempts=attempts+1 WHERE id=$1',[row.id]);
-    if(!secure.equal(secure.hash(row.id+':'+String(code||'').trim()),row.code_hash))return false;
-    await c.query('DELETE FROM hunt.challenges WHERE id=$1',[row.id]);
-    return true;
-  },db);
-  if(!ok)fail(401,'That code does not match or has expired. Request a new one.');
+  await limit(config.id+':dashboard-password:ip:'+client,5,15*60,db);
+  await limit(config.id+':dashboard-password:global',50,15*60,db);
+  if(!verify(password))fail(401,'Incorrect password.');
   const token=crypto.randomBytes(32).toString('base64url'),expiresAt=Date.now()+12*3600000;
   await db.query('DELETE FROM hunt.sessions WHERE expires_at<now()');
-  await db.query('INSERT INTO hunt.sessions(token_hash,email_cipher,expires_at) VALUES($1,$2,$3)',[secure.hash(token),secure.seal(email),new Date(expiresAt)]);
-  await event(db,settings().id,null,'Dashboard sign-in',email);
+  await db.query('INSERT INTO hunt.sessions(token_hash,email_cipher,expires_at) VALUES($1,$2,$3)',[secure.hash(token),secure.seal('CO-OP owner'),new Date(expiresAt)]);
+  await event(db,config.id,null,'Dashboard sign-in','Password login');
   return {token,expiresAt};
 }
 async function adminCheck(token,db=database()) {
@@ -155,4 +134,4 @@ async function adminLog(token,db=database()) {
   return {...a,email,promo:config.id,claims:mapped,events,pool:Object.keys(rewards).filter(id=>!claims.some(c=>c.egg_id===id)).map(id=>rewards[id]),
     eggs:a.eggs.map(e=>({...e,percentage:rewards[e.id]}))};
 }
-module.exports={devEmail,identity,status,promotion,availability,adminCode,adminVerify,adminCheck,adminLog,reserve,fulfill,claim,retry,result,limit};
+module.exports={devEmail,identity,status,promotion,availability,adminLogin,adminCheck,adminLog,reserve,fulfill,claim,retry,result,limit};
