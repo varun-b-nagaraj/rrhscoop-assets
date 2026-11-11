@@ -10,17 +10,17 @@ const valid = () => ({ name:'Faculty Member', room:'1314', time:'', items:[{sku:
 function res() {return {statusCode:0,headers:{},setHeader(k,v){this.headers[k]=v;},end(v){this.data=JSON.parse(v);}};}
 
 test('calendar rolls Friday afternoon and Sunday before cutoff to Monday',()=> {
-  for(const date of ['2026-11-06T22:00:00Z','2026-11-08T19:59:59Z']) assert.equal(s.nextDelivery(new Date(date)).date,'2026-11-09');
-  assert.equal(s.nextDelivery(new Date('2026-11-08T20:00:00Z')).date,'2026-11-10');
+  for(const date of ['2026-11-06T22:00:00Z','2026-11-08T21:59:59Z']) assert.equal(s.nextDelivery(new Date(date)).date,'2026-11-09');
+  assert.equal(s.nextDelivery(new Date('2026-11-08T22:00:00Z')).date,'2026-11-10');
 });
-test('2 p.m. Central closes next-day ordering and expires open checkout grants',()=> {
-  const before = new Date('2026-11-10T19:59:59.500Z');
-  const cutoff = new Date('2026-11-10T20:00:00Z');
+test('4 p.m. Central closes next-day ordering and expires open checkout grants',()=> {
+  const before = new Date('2026-11-10T21:59:59.500Z');
+  const cutoff = new Date('2026-11-10T22:00:00Z');
   assert.equal(s.nextDelivery(before).date,'2026-11-11');
   assert.equal(s.nextDelivery(cutoff).date,'2026-11-12');
   assert.equal(s.checkoutSeconds(before),1);
   assert.equal(s.checkoutSeconds(cutoff),1800);
-  assert.equal(s.nextDelivery(new Date('2027-04-06T19:00:00Z')).date,'2027-04-08');
+  assert.equal(s.nextDelivery(new Date('2027-04-06T21:00:00Z')).date,'2027-04-08');
 });
 test('calendar skips the full Thanksgiving break',()=>assert.equal(s.nextDelivery(new Date('2026-11-20T22:00:00Z')).date,'2026-11-30'));
 test('calendar uses Central dates across UTC midnight and DST',()=> {

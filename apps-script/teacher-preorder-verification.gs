@@ -107,7 +107,7 @@ function cfaEmail_(label, title, content) {
 function cfaDispatchMessage_(data) {
   var total = data.orders.length;
   var title = total + (total === 1 ? ' faculty preorder' : ' faculty preorders');
-  var intro = 'Orders received from yesterday at 2 p.m. through today’s cutoff, ' + data.date + ' at 2 p.m. Central.';
+  var intro = 'Orders received from yesterday at 4 p.m. through today’s cutoff, ' + data.date + ' at 4 p.m. Central.';
   var text = [intro];
   var html = '<p style="margin:0 0 20px;color:#655a53;">' + cfaEscape_(intro) + '</p>';
   if (!total) {
@@ -140,7 +140,7 @@ function cfaDispatchMessage_(data) {
 function sendCfaDispatch() {
   var now = new Date();
   var timeZone = 'America/Chicago';
-  if (Number(Utilities.formatDate(now, timeZone, 'HHmm')) < 1430) return;
+  if (Number(Utilities.formatDate(now, timeZone, 'HHmm')) < 1605) return;
   var date = Utilities.formatDate(now, timeZone, 'yyyy-MM-dd');
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('cfa_last_dispatch_date') === date) return;
@@ -227,8 +227,8 @@ function cfaDispatchOrder_(order, date) {
   var previousDate = new Date(Date.parse(date + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
   var placedDate = Utilities.formatDate(placed, timeZone, 'yyyy-MM-dd');
   var placedTime = Number(Utilities.formatDate(placed, timeZone, 'HHmm'));
-  if (!(placedDate === previousDate && placedTime >= 1400) &&
-      !(placedDate === date && placedTime < 1400)) return null;
+  if (!(placedDate === previousDate && placedTime >= 1600) &&
+      !(placedDate === date && placedTime < 1600)) return null;
 
   var comments = String(order.orderComments || '').split(/\r?\n/);
   function extra(key) {

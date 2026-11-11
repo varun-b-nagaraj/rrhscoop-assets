@@ -10,7 +10,7 @@ const MENU = Object.freeze([
 const SAUCE_LIMIT = 10;
 const SAUCES = Object.freeze({ ranch: 'Garden Herb Ranch', cfa: 'Chick-fil-A Sauce', buffalo: 'Zesty Buffalo', ketchup: 'Ketchup' });
 const SESSION_SECONDS = 30 * 24 * 60 * 60;
-const CUTOFF_HOUR = 14;
+const CUTOFF_HOUR = 16;
 
 function fail(status, message) { const err = new Error(message); err.status = status; throw err; }
 function emailAddress(value) {

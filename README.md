@@ -245,8 +245,8 @@ HTML block on the Ecwid page at `/teachers/chick-fil-a`. The Teacher Hub links t
 that page. The iframe allows forms, scripts, payment permissions, and user-initiated
 navigation for payment providers.
 
-The three menu prices come from Ecwid. Orders placed before 2 p.m. Central use
-the next instructional A/B day in `check-out-page/aday-bday.json`. At 2 p.m.
+The three menu prices come from Ecwid. Orders placed before 4 p.m. Central use
+the next instructional A/B day in `check-out-page/aday-bday.json`. At 4 p.m.
 or later, scheduling starts two calendar days out and skips non-school days.
 An order can include up to ten packets of each sauce. The order comments carry the delivery date, room, time,
 verified email, and sauces into Ecwid.
@@ -294,8 +294,8 @@ combined triggers continue with the saved script. For a new install, remove
 any separate receipt trigger, then run `setup` in the combined project.
 
 The dispatch goes to the two student dispatchers on the first run at or after
-2:30 p.m. Central. It includes faculty preorders placed from the previous day's
-2 p.m. cutoff up to the current day's 2 p.m. cutoff, with payment status labeled.
+4:05 p.m. Central. It includes faculty preorders placed from the previous day's
+4 p.m. cutoff up to the current day's 4 p.m. cutoff, with payment status labeled.
 `sendCfaDispatchPreview` emails a fictional
 sample to the Gmail test inbox. `sendTestReceipt` sends the latest paid receipt
 to the Apps Script editor's signed-in account.
