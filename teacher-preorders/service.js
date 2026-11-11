@@ -144,7 +144,7 @@ async function mailAction(action, payload) {
   const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...payload }), signal: AbortSignal.timeout(20000), redirect: 'follow' });
   if (!r.ok) fail(502, 'District email is temporarily unavailable. Please try again.');
   const result = await r.json();
-  if (!result.ok) fail([400,401,429,503].includes(result.status) ? result.status : 502, result.error || 'We could not verify that code. Please try again.');
+  if (!result.ok) fail([400,401,409,429,503].includes(result.status) ? result.status : 502, result.error || 'We could not verify that code. Please try again.');
   return result;
 }
 function orderSauces(order) {

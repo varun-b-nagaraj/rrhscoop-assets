@@ -1,5 +1,21 @@
 # Hidden package hunt
 
+## Live hunt (`HUNT_ENABLED: true`)
+
+With `HUNT_ENABLED` on, every visitor sees all twelve stickers and the claims are real:
+
+- The Apps Script (`apps-script/teacher-preorder-verification.gs`) holds the one shared pool of twelve rewards (10% ×4, 15% ×3, 20% ×2, 25% ×2, 35% ×1) in Script properties, under its script lock.
+- One reward per student (S-number) and one per sticker.
+- Each claim creates a single-use, uncapped percent-off Ecwid coupon (`RRHSHUNT-…`) that expires Friday, November 13 at 11:59 PM Central.
+- The code is emailed only to `S-number@student.roundrockisd.org`. The website shows the percentage, never the code.
+- Failed reward emails are retried by the minute job (`runCoopJobs`).
+- Vercel caches availability at the edge for 10 seconds.
+
+Apps Script editor actions: `showHuntClaims()` lists every claim and code; `pauseHunt()` / `resumeHunt()` stop and restart new claims.
+After pasting a new version of the script, deploy a **new web-app version**, or the live claims fail closed.
+
+The sections below describe the original presentation preview, which still runs locally.
+
 The current implementation is a **personal presentation preview**, hosted on Vercel and runnable locally. It is not a live promotion. No Ecwid coupons are created and no production database is changed. Real preview emails can be sent only to the explicitly allowed presenter mailbox. Preview names are fictional (`Dragon`), verification is simulated, and the UI labels these facts.
 
 All hunt stickers use the supplied transparent dragon holding a CO-OP package,

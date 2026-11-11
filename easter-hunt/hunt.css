@@ -31,6 +31,7 @@
 .hunt-primary:disabled { opacity:.6; cursor:wait; }
 .hunt-dialog .hunt-terms { margin:16px 0 0; color:var(--hunt-muted); font-size:12px; }
 .hunt-dialog .hunt-preview { background:var(--hunt-cream); border:1px dashed #c9b99c; border-radius:6px; padding:12px; font-size:13px; overflow-wrap:anywhere; }
+.hunt-dialog .hunt-delivery { background:var(--hunt-cream); border-left:3px solid #6e1f2a; border-radius:6px; padding:12px; font-size:14px; overflow-wrap:anywhere; }
 .hunt-dialog .hunt-status { min-height:24px; margin:10px 0; color:var(--hunt-maroon); font-size:14px; }
 .hunt-percentage { font-variant-numeric:tabular-nums; }
 .hunt-unwrapped { animation:hunt-shake .55s ease both; }

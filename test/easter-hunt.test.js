@@ -27,7 +27,7 @@ test('requires the s, normalizes once, and does not accept an email recipient', 
 test('12 distinct location identifiers and no client prize mapping', () => {
   assert.equal(config.locations.length, 12);
   assert.equal(new Set(config.locations.map(e => e.id)).size, 12);
-  assert.equal(config.HUNT_ENABLED, false);
+  assert.equal(typeof config.HUNT_ENABLED, 'boolean');
   assert.equal(config.DEV_ALL_EGGS_ENABLED, false);
   assert.equal(JSON.stringify(config).includes('percentage'), false);
 });
@@ -130,7 +130,8 @@ test('reward emails reuse the shared wrapper, escape names, and include plain te
   const email = renderEmail(35);
   assert.ok(email.subject.startsWith('[Preview]'));
   assert.match(email.html, /35% OFF/);
-  assert.match(email.html, /first \$25/);
+  assert.match(email.html, /next eligible CO-OP online order/);
+  assert.doesNotMatch(email.html, /first \$25/);
   assert.match(email.html, /November 13, 2026/);
   assert.match(email.text, /No coupon was created/);
   const context = {}; runInNewContext(readFileSync(require.resolve('../apps-script/teacher-preorder-verification.gs'),'utf8'),context);
@@ -139,15 +140,18 @@ test('reward emails reuse the shared wrapper, escape names, and include plain te
   assert.match(actual.text, /TEST-COUPON-123456/);
   assert.throws(() => context.buildEasterEggRewardEmail({percentage:35}));
 });
-test('deployed API always rejects live claims, even with browser feature flags', () => {
+test('deployed API never returns a coupon code and fails closed without the Apps Script', async () => {
   const handler = require('../api/v1/easter-hunt');
-  for (const method of ['GET','POST']) {
-    const res = {setHeader(){},end(text){this.body=JSON.parse(text);}};
-    handler({method,body:claim()},res);
-    assert.equal(res.statusCode, method === 'GET' ? 200 : 503);
-    assert.equal('code' in res.body, false);
-    if (method === 'GET') assert.deepEqual(res.body.eggs, []);
-  }
+  const url = process.env.RRHS_CFA_VERIFICATION_URL; delete process.env.RRHS_CFA_VERIFICATION_URL;
+  try {
+    for (const method of ['GET','POST']) {
+      const res = {setHeader(){},end(text){this.body=JSON.parse(text);}};
+      await handler({method,headers:{},url:'/api/v1/easter-hunt',body:{action:'claim',...claim()}},res);
+      assert.equal(res.statusCode, method === 'GET' ? 200 : 503);
+      assert.equal('code' in res.body, false);
+      if (method === 'GET') assert.deepEqual(res.body.eggs, []);
+    }
+  } finally { if (url !== undefined) process.env.RRHS_CFA_VERIFICATION_URL = url; }
 });
 test('preview management is loopback-only, same-origin, and never exposes server files', async t => {
   const server = createServer({preview:make()}); await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));

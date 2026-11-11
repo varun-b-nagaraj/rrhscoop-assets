@@ -107,7 +107,7 @@
       ${preview ? '<p class="hunt-preview">Dev preview · no real reward or coupon is created.<br>Real preview email delivery is enabled only for the presenter mailbox.</p>' : ''}
       <form class="hunt-form"><label for="hunt-student">Your S-number, including the s</label>
       <input id="hunt-student" name="studentId" type="text" placeholder="s123456" pattern="[sS][0-9]{4,10}" maxlength="11" required autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="hunt-helper hunt-status">
-      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Presenter preview emails go to the school mailbox.' : 'Your reward goes only to your verified school email.'}</p>
+      <p id="hunt-helper" class="hunt-helper">${preview ? 'Enter your S-number including the s. Presenter preview emails go to the school mailbox.' : 'We’ll email your one-time code to your school inbox (S-number@student.roundrockisd.org).'}</p>
       <p id="hunt-status" class="hunt-status" role="status" aria-live="polite"></p>
       <button class="hunt-primary" type="submit">Unwrap my mystery reward ${arrowIcon}</button></form>
       <p class="hunt-terms">One reward per student. Ends Friday, November 13 at 11:59 PM Central.</p>`;
@@ -119,7 +119,7 @@
       event.preventDefault(); if (active?.submitting || version !== generation) return;
       if (!/^s\d{4,10}$/i.test(input.value.trim())) { status.textContent = 'Include the s followed by your student number.'; input.focus(); return; }
       active.submitting = true; submit.disabled = true; input.disabled = true;
-      status.textContent = preview ? 'Opening your preview package…' : 'Checking your school verification…';
+      status.textContent = preview ? 'Opening your preview package…' : 'Unwrapping your reward…';
       try {
         const result = await request({ action: 'claim', eggId: id, studentId: input.value.trim(), idempotencyKey: active.key });
         if (version !== generation) return;
@@ -144,10 +144,12 @@
     const content = dialog.querySelector('.hunt-content');
     content.innerHTML = `<div class="hunt-package hunt-unwrapped">${stickerImage}<div class="hunt-confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${Math.round(Math.cos(i * 2.4) * 140)}px;--y:${Math.round(Math.sin(i * 2.4) * 110)}px"></i>`).join('')}</div></div>
       <p class="hunt-eyebrow">A lovely little find</p><h2 id="hunt-title">You unlocked<br><span class="hunt-percentage" aria-hidden="true">0</span><span aria-hidden="true">% OFF!</span><span class="hunt-sr-only">${result.percentage}% OFF!</span></h2>
-      <p>Valid on the first $25 of your eligible cart subtotal.</p>
-      <p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>
+      <p>${preview ? 'Valid on the first $25 of your eligible cart subtotal.' : 'Off your next eligible CO-OP online order.'}</p>
+      ${preview ? `<p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>`
+        : `<p class="hunt-delivery">Your one-time code ${result.emailStatus === 'sent' ? 'is on its way to' : 'will be emailed to'} <strong>${escape(result.email)}</strong>.</p>`}
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
-      <p class="hunt-status" role="status">Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : escape(result.emailError || 'Open your dashboard to view the email or retry delivery.')}</p>
+      <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : escape(result.emailError || 'Open your dashboard to view the email or retry delivery.')}`
+        : result.emailStatus === 'sent' ? 'Reward saved. Check your school inbox for the code.' : 'Reward saved. Your email is being retried; check your school inbox in a few minutes.'}</p>
       <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
     content.querySelector('button').addEventListener('click', close);
     content.querySelector('button').focus({ preventScroll: true });

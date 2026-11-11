@@ -20,6 +20,18 @@ module.exports = async function handler(req, res) {
       if (body == null) { let raw = ''; for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > 2048) throw new Error(); } body = JSON.parse(raw || '{}'); }
       else if (typeof body === 'string') { if (Buffer.byteLength(body) > 2048) throw new Error(); body = JSON.parse(body); }
     } catch (_) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Invalid preview request.' })); }
+    if (body?.action === 'claim') {
+      if (!require('../../easter-hunt/config').HUNT_ENABLED) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'The hidden package hunt is not open yet.' })); }
+      if (typeof body.studentId !== 'string' || typeof body.eggId !== 'string' || typeof body.idempotencyKey !== 'string') { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Please reopen the package and try again.' })); }
+      try {
+        const result = await require('../../teacher-preorders/service').mailAction('hunt-claim', { studentId: body.studentId, eggId: body.eggId, idempotencyKey: body.idempotencyKey });
+        res.statusCode = 200;
+        return res.end(JSON.stringify({ mode: 'live', percentage: result.percentage, email: result.email, emailStatus: result.emailStatus, expiresAt: result.expiresAt }));
+      } catch (error) {
+        res.statusCode = [400, 409, 429].includes(error.status) && !/Unknown action/i.test(error.message || '') ? error.status : 503;
+        return res.end(JSON.stringify({ error: res.statusCode === 503 ? 'We couldn’t open this package just now. Please try again in a minute.' : error.message }));
+      }
+    }
     if (body?.action === 'send-preview') {
       if (body.studentId !== 's151579' || ![10,15,20,25,35].includes(body.percentage) || !/^PREVIEW-[A-F0-9]{12}$/.test(body.reference || '')) {
         res.statusCode = 400; return res.end(JSON.stringify({ error: 'Real preview delivery is currently limited to the presenter mailbox.' }));
@@ -39,6 +51,17 @@ module.exports = async function handler(req, res) {
     if (![10, 15, 20, 25, 35].includes(percentage)) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Choose a valid preview percentage.' })); }
     const email = require('../../easter-hunt/email-preview')(percentage);
     res.statusCode = 200; return res.end(JSON.stringify(email));
+  }
+  if (req.method === 'GET' && require('../../easter-hunt/config').HUNT_ENABLED) {
+    // Every open tab polls; let Vercel's edge answer most of them.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=30');
+    try {
+      const { mode, status, expiresAt, remaining, eggs } = await require('../../teacher-preorders/service').mailAction('hunt-availability', {});
+      res.statusCode = 200; return res.end(JSON.stringify({ mode, status, expiresAt, remaining, eggs }));
+    } catch (_) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.statusCode = 200; return res.end(JSON.stringify({ mode: 'live', status: 'unavailable', remaining: null, eggs: [] }));
+    }
   }
   res.statusCode = req.method === 'GET' ? 200 : 503;
   res.end(JSON.stringify(req.method === 'GET'

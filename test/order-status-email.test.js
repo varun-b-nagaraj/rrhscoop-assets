@@ -240,8 +240,8 @@ test('old saved states are pruned once a day', () => {
   assert.equal(env.properties.has('os_FRESH'), true);
 });
 
-test('the minute trigger runs dispatch, receipts, then status updates', () => {
-  assert.match(script, /for \(const job of \[sendCfaDispatch, sendPendingReceipts, sendOrderStatusUpdates\]\)/);
+test('the minute trigger runs dispatch, receipts, status updates, then hunt email retries', () => {
+  assert.match(script, /for \(const job of \[sendCfaDispatch, sendPendingReceipts, sendOrderStatusUpdates, retryHuntEmails\]\)/);
 });
 
 test('status emails escape customer text', () => {

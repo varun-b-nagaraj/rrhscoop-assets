@@ -89,7 +89,7 @@
       ${preview ? '<p class="hunt-preview">Development preview. Only the Inventory Intelligence test sticker is enabled. No real coupon is issued; preview emails can be sent to the presenter mailbox.</p>' : `<p class="hunt-intro-tally">${found}/12 found · ${remaining} rewards remaining</p>`}
       <button type="button" class="hunt-primary hunt-intro-start">Let’s find something ${arrowIcon}</button>
       ${preview ? '<button type="button" class="hunt-presenter-link">Open presenter dashboard</button>' : ''}
-      <p class="hunt-terms">Valid on the first $25 of eligible merchandise. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
+      <p class="hunt-terms">One reward per student. Ends Friday, November 13, 2026 at 11:59 PM Central.</p>`;
     document.body.append(intro); oldOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     intro.showModal(); intro.querySelector('.hunt-intro-start').focus({ preventScroll: true });
     intro.querySelector('.hunt-close').addEventListener('click', dismiss);
