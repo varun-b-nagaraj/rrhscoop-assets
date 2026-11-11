@@ -20,7 +20,10 @@ const failed = [];
 for (const spot of config.locations.filter(spot => !only.length || only.includes(spot.id))) {
   const page = await context.newPage();
   try {
-    await page.goto('https://rrhscoop.roundrockisd.org' + spot.url, { waitUntil: 'commit', timeout: 60000 });
+    for (let attempt = 0; ; attempt++) {
+      try { await page.goto('https://rrhscoop.roundrockisd.org' + spot.url, { waitUntil: 'commit', timeout: 60000 }); break; }
+      catch (error) { if (attempt === 2) throw error; }
+    }
     let egg;
     for (let tries = 0; tries < 60 && !egg; tries++) {
       for (const frame of page.frames()) egg ||= await frame.$(`.hunt-egg[data-egg-id="${spot.id}"]`).catch(() => null);
@@ -28,12 +31,14 @@ for (const spot of config.locations.filter(spot => !only.length || only.includes
     }
     if (!egg) throw new Error('sticker not found');
     await page.waitForTimeout(2500);
+    // Close the storefront's cookie notice in this throwaway browser so it doesn't cover the sticker.
+    await page.getByRole('button', { name: 'Decline' }).click({ timeout: 1500 }).catch(() => {});
     await egg.evaluate(el => {
       el.style.visibility = 'visible';
       el.style.outline = '5px solid #ffb800'; el.style.outlineOffset = '8px'; el.style.borderRadius = '50%';
       el.style.boxShadow = '0 0 0 16px rgba(255,184,0,.35)';
     });
-    await egg.scrollIntoViewIfNeeded();
+    await egg.evaluate(el => el.scrollIntoView({ block: 'center' }));
     await page.evaluate(() => window.scrollBy(0, -Math.round(innerHeight / 3)));
     for (const frame of page.frames()) await frame.evaluate(() => window.scrollBy(0, 0)).catch(() => {});
     await page.waitForTimeout(800);

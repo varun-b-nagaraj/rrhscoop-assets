@@ -90,7 +90,8 @@
   $('stickers').addEventListener('click', async event => {
     const button = event.target.closest('[data-spot]'); if (!button || !session) return;
     const spot = SPOTS.find(entry => entry.id === button.dataset.spot);
-    $('spot-title').textContent = spot.label; $('spot-image').hidden = true; $('spot-status').textContent = 'Loading screenshot…';
+    $('spot-title').textContent = spot.label;
+    $('spot-link').href = 'https://rrhscoop.roundrockisd.org' + spot.url; $('spot-link').textContent = 'rrhscoop.roundrockisd.org' + spot.url; $('spot-image').hidden = true; $('spot-status').textContent = 'Loading screenshot…';
     $('spot-dialog').showModal();
     try {
       const result = await call('admin-location', { token: session.token, id: spot.id });
