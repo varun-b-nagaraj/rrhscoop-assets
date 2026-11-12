@@ -74,6 +74,19 @@
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-parent-query' }, '*');
   const status = window.RRHS_HUNT_DEV ? Promise.resolve(true)
     : fetch(new URL('/api/v1/easter-hunt', base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
-  Promise.all([load('config.js?v=5'), status]).then(([, enabled]) => { config = window.RRHS_HUNT_CONFIG; start(enabled); })
+  // No hunt on the Digital Pass pages (/pass, /pass/teacher and anything under /pass/). The store
+  // can change pages without a reload, so the path is rechecked and the hunt hides or comes back.
+  const passPage = () => topLevel && /^\/pass(\/|$)/i.test(location.pathname);
+  let wanted = false;
+  function sync() {
+    const on = wanted && !passPage();
+    if (on === Boolean(window.RRHS_HUNT_ACTIVE)) return;
+    if (on && !loading) { start(true); return; }
+    window.RRHS_HUNT_ACTIVE = on;
+    if (on) broadcast();
+    Promise.resolve(loading).then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: window.RRHS_HUNT_ACTIVE === true } })));
+  }
+  if (topLevel) { addEventListener('popstate', sync); setInterval(sync, 500); }
+  Promise.all([load('config.js?v=5'), status]).then(([, enabled]) => { config = window.RRHS_HUNT_CONFIG; wanted = enabled; sync(); })
     .catch(() => { /* Discovery never blocks shopping. */ });
 })();

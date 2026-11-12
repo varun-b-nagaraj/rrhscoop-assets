@@ -116,7 +116,7 @@
   const inventoryGuardEnabled = false;
 
   const scripts = [
-    url('easter-hunt/boot.js?v=27'),
+    url('easter-hunt/boot.js?v=28'),
     url('custom-visuals/rrhs-embed-bridge.js?v=6'),
     url('rrhs-runtime.js'),
     url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
