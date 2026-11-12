@@ -129,7 +129,7 @@
     url('custom-visuals/rrhs-select.js?v=4'),
     url('custom-visuals/rrhs-category-images.js?v=2'),
     url('check-out-page/cfa-products.js?v=2'),
-    url('check-out-page/rrhscoop-checkout.js?v=16'),
+    url('check-out-page/rrhscoop-checkout.js?v=17'),
     url('check-out-page/rrhs-cfa-preorder-gate.js?v=2'),
     inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
     stoleDrawerEnabled && url('check-out-page/rrhs-stole-drawer.js'),

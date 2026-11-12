@@ -128,7 +128,7 @@
   const BASE_PERIOD_WINDOWS = Object.freeze({
     1: { start: "09:00", end: "10:32" },
     2: { start: "10:40", end: "12:12" },
-    3: { start: "12:20", end: "14:39" },
+    3: { start: "12:20", end: "13:45" }, // TEMPORARY early end (normally "14:39")
     4: { start: "14:47", end: "16:20" }
   });
 
