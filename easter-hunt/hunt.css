@@ -177,8 +177,7 @@
 .hunt-how-icon .hunt-sticker { width:66px; height:66px; }
 .hunt-spot-art .hunt-sticker { position:absolute; left:0; top:-4px; }
 .hunt-how-icon .hunt-mini-laptop { position:absolute; bottom:0; right:-2px; width:52px; height:34px; }
-.hunt-tap-art { overflow:hidden; }
-.hunt-tap-art .hunt-sticker { width:76px; height:76px; clip-path:inset(0 0 30% 0); transform:translateY(12px); }
+.hunt-tap-art .hunt-sticker { width:66px; height:66px; }
 .hunt-dialog .hunt-intro-hint { display:flex; align-items:center; gap:8px; margin-top:18px; padding:10px 12px; border-radius:16px; background:#f5e8df; color:var(--hunt-ink); font-size:12px; text-align:left; }
 .hunt-info-icon { display:grid; place-items:center; flex:none; width:22px; height:22px; border:2px solid var(--hunt-maroon); border-radius:50%; color:var(--hunt-maroon); font:bold 16px/1 Georgia,serif; }
 .hunt-step.is-active .hunt-how li { animation:hunt-step-rise .5s cubic-bezier(.22,1,.36,1) both; }

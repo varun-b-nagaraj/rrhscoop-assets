@@ -47,6 +47,11 @@ const { createServer } = require('./easter-hunt-preview.cjs');
               assert.ok(Math.abs(a.height-b.height)<1,'Claim cards should have equal heights');
               assert.ok(Math.abs(a.top-b.top)<1,'Claim cards should line up horizontally');
             }
+            const tapArt=await page.locator('.hunt-step.is-active .hunt-tap-art').evaluate(el=>{
+              const card=el.closest('li').getBoundingClientRect(),dragon=el.querySelector('.hunt-sticker'),dragonBox=dragon.getBoundingClientRect();
+              return {card:{left:card.left,right:card.right,top:card.top,bottom:card.bottom},dragon:{left:dragonBox.left,right:dragonBox.right,top:dragonBox.top,bottom:dragonBox.bottom},overflow:getComputedStyle(el).overflow,clipPath:getComputedStyle(dragon).clipPath};
+            });
+            assert.ok(tapArt.dragon.left>=tapArt.card.left && tapArt.dragon.right<=tapArt.card.right && tapArt.dragon.top>=tapArt.card.top && tapArt.dragon.bottom<=tapArt.card.bottom && tapArt.overflow==='visible' && tapArt.clipPath==='none',`Tap dragon must be fully visible (${viewport.width}x${viewport.height}: ${JSON.stringify(tapArt)})`);
           }
           assert.equal(layout.visible,1,'Only the active slide should be visible');
           if (!anchor) anchor=layout.next;
