@@ -31,6 +31,8 @@ const server = createServer();
         assert.ok(Math.abs(sample.x - sample.lightX) < 1 && Math.abs(sample.y - sample.lightY) < 1, 'Light must stay centered inside the moving glass');
       }
       await page.locator('.hunt-tour-package').waitFor({ state: 'visible' });
+      const foundAnimations = await page.locator('.hunt-tour-package').evaluate(el => el.getAnimations({ subtree: true }).map(animation => animation.animationName));
+      assert.ok(foundAnimations.includes('hunt-clue-pop') && foundAnimations.includes('hunt-found-ring'), 'Finding the dragon should trigger its spring pop and expanding ring');
       await page.waitForTimeout(500);
       const settled = await page.locator('.hunt-lens').evaluate(el => { const m = new DOMMatrix(getComputedStyle(el).transform); return Math.hypot(m.a, m.b); });
       assert.ok(Math.abs(settled - .95) < .01, 'Glass should settle into a compact frame around the dragon');
