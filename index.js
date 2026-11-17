@@ -6,7 +6,8 @@
   // ---- Staging hand-off ----
   // The store always embeds the production index.js. In a staging tab (opened
   // from the staging domain, see rrhs-env.js) hand off to the index.js on the
-  // staging deployment so every script comes from the `staging` branch instead.
+  // staging deployment, so every script comes from `main` (staging) instead of
+  // the `production` branch.
   // Keep in sync with the staging host redirects in vercel.json.
   const STAGING_ORIGIN = 'https://rrhscoop-staging.vercel.app';
   // Staging serves only the scripts; its API calls go to production, so the

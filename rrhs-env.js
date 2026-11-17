@@ -1,7 +1,7 @@
 /* rrhs-env.js - tells a staging tab from prod on the one storefront domain.
  *
  * Ecwid only allows one storefront URL, so staging is opened through a domain
- * we control: rrhscoop-staging.vercel.app (the `staging` branch of this project)
+ * we control: rrhscoop-staging.vercel.app (the Vercel project that deploys `main`)
  * redirects to rrhscoop.roundrockisd.org/?rrhs_env=staging (see vercel.json).
  *
  *   - ?rrhs_env=staging starts staging, ?rrhs_env=prod ends it.
