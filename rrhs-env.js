@@ -1,17 +1,15 @@
-/* rrhs-env.js - tells "staging" from "prod" on the one storefront domain.
+/* rrhs-env.js - tells a staging tab from prod on the one storefront domain.
  *
- * Ecwid only allows one storefront URL, so rrhscoop.company.site answers with a
- * 302 to rrhscoop.roundrockisd.org (keeping the path and query string). A page
- * that arrived through that cross-origin redirect is treated as staging:
+ * Ecwid only allows one storefront URL, so staging is opened through a domain
+ * we control: rrhscoop-staging.vercel.app (the `staging` branch of this project)
+ * redirects to rrhscoop.roundrockisd.org/?rrhs_env=staging (see vercel.json).
  *
- *   - Browsers hide cross-origin redirects (redirectCount stays 0, no referrer),
- *     but the navigation entry's fetchStart is measured after the redirect, so it
- *     sits hundreds of ms after time zero instead of ~0 on a direct visit.
- *   - ?rrhs_env=staging forces staging and ?rrhs_env=prod forces prod. Ecwid keeps
- *     the query string through the redirect, so both domains accept it.
+ *   - ?rrhs_env=staging starts staging, ?rrhs_env=prod ends it.
+ *   - The choice is kept in sessionStorage, so the rest of that tab stays on
+ *     staging and a new tab opened on rrhscoop.roundrockisd.org starts as prod.
+ *   - index.js reads the same flag and loads its scripts from the staging
+ *     deployment instead of production.
  *
- * The result is kept in sessionStorage, so later page loads in the same tab stay
- * staging, and a new tab opened on rrhscoop.roundrockisd.org starts as prod.
  * Exposed as window.RRHS_ENVIRONMENT and <html data-rrhs-env="...">.
  */
 (function (root, factory) {
@@ -19,39 +17,27 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') api.install(window);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  const PROD_HOST = 'rrhscoop.roundrockisd.org';
   const STORAGE_KEY = 'rrhs_env';
   const SHOWN_KEY = 'rrhs_env_notice_shown';
   const PARAM = 'rrhs_env';
-  // A direct visit starts fetching within a few ms; the company.site hop costs
-  // a DNS lookup, TLS handshake and a round trip to Ecwid before that.
-  const REDIRECT_MIN_MS = 25;
 
-  function cameThroughRedirect(nav) {
-    if (!nav || nav.type !== 'navigate') return false;
-    // Same-origin redirects are visible and are not the company.site hop.
-    if (nav.redirectCount > 0) return false;
-    return Number(nav.fetchStart) >= REDIRECT_MIN_MS;
-  }
-
-  function detect({ hostname, search, nav, stored }) {
+  function detect({ search, stored }) {
     const forced = new URLSearchParams(search || '').get(PARAM);
-    if (forced === 'staging' || forced === 'prod') return { env: forced, reason: 'param' };
-    if (stored === 'staging') return { env: 'staging', reason: 'session' };
-    if (hostname === PROD_HOST && cameThroughRedirect(nav)) return { env: 'staging', reason: 'redirect' };
-    return { env: 'prod', reason: 'direct' };
+    if (forced === 'staging' || forced === 'prod') return forced;
+    return stored === 'staging' ? 'staging' : 'prod';
   }
 
   function storage(win) {
     try { return win.sessionStorage; } catch (e) { return null; }
   }
 
-  function showNotice(win, reason) {
+  function showNotice(win, scriptHost) {
     const doc = win.document;
     if (doc.getElementById('rrhs-env-notice')) return;
-    const how = reason === 'redirect'
-      ? 'You came in through rrhscoop.company.site, so this tab is on staging.'
-      : 'This tab is on staging.';
+    // index.js falls back to production scripts if staging can't be reached.
+    const how = /staging/.test(scriptHost)
+      ? 'This tab is on staging, running the scripts from ' + scriptHost + '.'
+      : 'This tab is on staging, but the staging scripts did not load, so it is running the production ones from ' + scriptHost + '.';
 
     const style = doc.createElement('style');
     style.textContent =
@@ -90,19 +76,13 @@
 
   function install(win) {
     if (win.RRHS_ENVIRONMENT) return;
+    let scriptHost = '';
+    try { scriptHost = new URL(win.document.currentScript.src).host; } catch (e) {}
     const store = storage(win);
     let stored = null;
     try { stored = store && store.getItem(STORAGE_KEY); } catch (e) {}
-    let nav = null;
-    try { nav = win.performance.getEntriesByType('navigation')[0] || null; } catch (e) {}
 
-    const { env, reason } = detect({
-      hostname: win.location.hostname,
-      search: win.location.search,
-      nav,
-      stored
-    });
-
+    const env = detect({ search: win.location.search, stored });
     win.RRHS_ENVIRONMENT = env;
     win.document.documentElement.setAttribute('data-rrhs-env', env);
     try {
@@ -119,10 +99,10 @@
       if (store.getItem(SHOWN_KEY)) return;
       store.setItem(SHOWN_KEY, '1');
     } catch (e) {}
-    const show = () => showNotice(win, reason);
+    const show = () => showNotice(win, scriptHost);
     if (win.document.body) show();
     else win.document.addEventListener('DOMContentLoaded', show, { once: true });
   }
 
-  return { detect, cameThroughRedirect, install, PROD_HOST, REDIRECT_MIN_MS };
+  return { detect, install };
 });

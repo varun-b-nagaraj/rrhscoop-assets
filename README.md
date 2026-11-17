@@ -8,6 +8,16 @@ Turn it on for everyone with the Vercel environment variable `RRHS_HUNT_ENABLED=
 Claims, coupons and logs are on the [hunt dashboard](https://rrhscoop-assets.vercel.app/easter-hunt/dashboard).
 See [the hunt notes](easter-hunt/README.md).
 
+## Staging
+
+Ecwid allows only one storefront URL, so staging is a per-tab mode on the real store:
+
+- Open `https://rrhscoop-staging.vercel.app` (later `rrhscoop-staging.roundrockisd.org`). It redirects to `https://rrhscoop.roundrockisd.org/?rrhs_env=staging` (see `redirects` in `vercel.json`).
+- `rrhs-env.js` keeps that tab on staging (sessionStorage) and shows a one-time notice. A new tab on the store is prod. `?rrhs_env=prod` ends staging in the current tab.
+- The store always loads the production `index.js`. In a staging tab it hands off to `index.js` on the staging deployment (`STAGING_ORIGIN` in `index.js`), so every script comes from the `staging` branch.
+- Vercel setup: add the `rrhscoop-staging.vercel.app` domain to this project and connect it to the `staging` Git branch. Put staging-only env vars (test tokens, hunt database) on Preview scoped to the `staging` branch.
+- Iframe embeds in the Ecwid page content point at `rrhscoop-assets.vercel.app` directly, so they stay on production in a staging tab.
+
 ## Runtime (Performance)
 
 File: `rrhs-runtime.js` 

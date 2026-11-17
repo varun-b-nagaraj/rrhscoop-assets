@@ -8,6 +8,30 @@
       "maxDuration": 60
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "rrhscoop-staging.vercel.app"
+        }
+      ],
+      "destination": "https://rrhscoop.roundrockisd.org/?rrhs_env=staging",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "rrhscoop-staging.roundrockisd.org"
+        }
+      ],
+      "destination": "https://rrhscoop.roundrockisd.org/?rrhs_env=staging",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/easter-hunt/dashboard",

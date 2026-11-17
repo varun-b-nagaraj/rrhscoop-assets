@@ -1,35 +1,79 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { detect, PROD_HOST } = require('../rrhs-env');
+const { readFileSync } = require('node:fs');
+const { runInNewContext } = require('node:vm');
+const { detect } = require('../rrhs-env');
+const vercel = require('../vercel.json');
 
-const direct = { type: 'navigate', redirectCount: 0, fetchStart: 0 };
-const viaCompanySite = { type: 'navigate', redirectCount: 0, fetchStart: 449.8 };
+const STAGING = 'https://rrhscoop-staging.vercel.app';
+const PROD = 'https://rrhscoop-assets.vercel.app';
 
-test('a direct visit to the prod domain is prod', () => {
-  assert.equal(detect({ hostname: PROD_HOST, search: '', nav: direct }).env, 'prod');
-  assert.equal(detect({ hostname: PROD_HOST, search: '', nav: { ...direct, fetchStart: 4 } }).env, 'prod');
+test('a plain visit is prod, even right after a redirect from company.site', () => {
+  assert.equal(detect({ search: '' }), 'prod');
+  assert.equal(detect({ search: '?x=1' }), 'prod');
 });
 
-test('arriving through the company.site redirect is staging', () => {
-  assert.deepEqual(detect({ hostname: PROD_HOST, search: '', nav: viaCompanySite }), { env: 'staging', reason: 'redirect' });
+test('?rrhs_env= starts or ends staging', () => {
+  assert.equal(detect({ search: '?rrhs_env=staging' }), 'staging');
+  assert.equal(detect({ search: '?rrhs_env=prod', stored: 'staging' }), 'prod');
 });
 
-test('reloads, back/forward and same-origin redirects do not count as the redirect', () => {
-  for (const nav of [{ ...viaCompanySite, type: 'reload' }, { ...viaCompanySite, type: 'back_forward' }, { ...viaCompanySite, redirectCount: 1 }, null]) {
-    assert.equal(detect({ hostname: PROD_HOST, search: '', nav }).env, 'prod');
+test('staging sticks for the tab once started', () => {
+  assert.equal(detect({ search: '', stored: 'staging' }), 'staging');
+  assert.equal(detect({ search: '?rrhs_env=nonsense', stored: 'staging' }), 'staging');
+});
+
+test('the staging hosts redirect their root to the store with the staging marker', () => {
+  const hosts = vercel.redirects.filter(r => r.source === '/').map(r => r.has[0].value);
+  assert.deepEqual(hosts.sort(), ['rrhscoop-staging.roundrockisd.org', 'rrhscoop-staging.vercel.app']);
+  for (const r of vercel.redirects) {
+    assert.equal(r.destination, 'https://rrhscoop.roundrockisd.org/?rrhs_env=staging');
+    assert.equal(r.permanent, false);
   }
 });
 
-test('staging sticks for the tab once detected', () => {
-  assert.deepEqual(detect({ hostname: PROD_HOST, search: '', nav: direct, stored: 'staging' }), { env: 'staging', reason: 'session' });
+// Runs index.js against a fake page and reports which scripts it added.
+function runIndex({ scriptSrc, search = '', stored = null }) {
+  const added = [];
+  const el = () => ({ classList: { add() {}, remove() {} }, setAttribute() {}, appendChild(node) { added.push(node); } });
+  const head = el();
+  const doc = {
+    currentScript: { src: scriptSrc },
+    documentElement: el(),
+    head,
+    readyState: 'complete',
+    createElement: () => ({}),
+    getElementById: () => null,
+    querySelector: () => null,
+    addEventListener() {}
+  };
+  const window = {};
+  runInNewContext(readFileSync(require.resolve('../index.js'), 'utf8'), {
+    window, document: doc, URL, URLSearchParams, Promise, Date,
+    location: { search },
+    sessionStorage: { getItem: k => (k === 'rrhs_env' ? stored : null) },
+    setTimeout: () => 0, clearTimeout() {}
+  });
+  return added.filter(n => n.src).map(n => n.src);
+}
+
+test('production index.js hands a staging tab off to the staging deployment', () => {
+  assert.deepEqual(runIndex({ scriptSrc: `${PROD}/index.js`, search: '?rrhs_env=staging' }), [`${STAGING}/index.js`]);
+  assert.deepEqual(runIndex({ scriptSrc: `${PROD}/index.js`, stored: 'staging' }), [`${STAGING}/index.js`]);
 });
 
-test('?rrhs_env= forces either environment', () => {
-  assert.equal(detect({ hostname: PROD_HOST, search: '?rrhs_env=staging', nav: direct }).env, 'staging');
-  assert.equal(detect({ hostname: PROD_HOST, search: '?rrhs_env=prod', nav: viaCompanySite, stored: 'staging' }).env, 'prod');
+test('production index.js loads its own scripts for prod tabs', () => {
+  for (const opts of [{}, { search: '?rrhs_env=prod', stored: 'staging' }]) {
+    const srcs = runIndex({ scriptSrc: `${PROD}/index.js`, ...opts });
+    assert.ok(srcs.length > 5);
+    assert.ok(srcs.every(src => src.startsWith(`${PROD}/`)));
+  }
 });
 
-test('only the prod host is checked for the redirect', () => {
-  assert.equal(detect({ hostname: 'localhost', search: '', nav: viaCompanySite }).env, 'prod');
+test('the staging index.js loads everything from the staging deployment', () => {
+  const srcs = runIndex({ scriptSrc: `${STAGING}/index.js`, stored: 'staging' });
+  assert.ok(srcs.length > 5);
+  assert.ok(srcs.every(src => src.startsWith(`${STAGING}/`)));
+  assert.ok(srcs[0].startsWith(`${STAGING}/rrhs-env.js`));
 });
