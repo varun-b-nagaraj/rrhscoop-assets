@@ -664,7 +664,7 @@
         white-space: nowrap !important;
         box-sizing: border-box !important;
         flex: 0 0 auto !important;
-        transform: translateY(2px) !important;
+        align-self: center !important;
       }
 
       .rrhs-header-logo-mark {
@@ -793,7 +793,10 @@
     }
 
     const existingFlag = logoLink.querySelector(".rrhs-staging-flag");
-    if (window.RRHS_ENVIRONMENT !== "staging") {
+    const stagingAssetsLoaded = window.RRHS_DEPLOYMENT
+      ? window.RRHS_DEPLOYMENT.frontendEnvironment === "staging"
+      : window.RRHS_ENVIRONMENT === "staging";
+    if (!stagingAssetsLoaded) {
       if (existingFlag) existingFlag.remove();
       return;
     }

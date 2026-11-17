@@ -64,16 +64,17 @@ Sign in with the dashboard password; the session lasts 12 hours. The server stor
 3. Deploy → Manage deployments → edit → **New version**.
 4. Check it with `node tools/hunt-db.cjs relay-check`.
 
-## Staging preview (fake codes)
+## Staging integration test
 
-Open the storefront through `https://rrhscoop-staging.vercel.app`. The hunt starts automatically
-in that staging tab. It does not run in production, and there is no query parameter or supported
-DevTools console command that turns it on, turns it off or resets it.
+Set a separate Preview promo ID, enable the hunt in Preview, and use
+`RRHS_HUNT_CODE_PREFIX=RRHS-TEST-DRAGON-`. Open the storefront through
+`https://rrhscoop-staging.vercel.app` and sign in as an allowlisted tester. Production remains off
+when its own `RRHS_HUNT_ENABLED` is false.
 
-The preview shows all 20 stickers. Claims last for the staging tab and show a `FAKE-…` code on
-screen. Closing the tab starts a fresh preview. No coupon is created and nothing is claimed in the
-live hunt database. The rules still apply: one claim per person, and a found sticker goes under the
-magnifying glass.
+An intentional staging claim uses the real hunt database, creates a real single-use Ecwid coupon,
+and sends the real confirmation email. Test coupons are marked by their prefix and coupon name.
+Automated tests never claim, send mail, or create coupons. Do not reset or delete staging coupons
+without checking Ecwid behavior and getting approval.
 
 ## Local development
 

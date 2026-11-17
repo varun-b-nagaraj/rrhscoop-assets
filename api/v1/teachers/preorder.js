@@ -1,5 +1,6 @@
 'use strict';
 const service = require('../../../teacher-preorders/service');
+const stagingAccess = require('../../_lib/staging-auth.cjs');
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -22,6 +23,7 @@ module.exports = async function handler(req, res) {
       return send(200, { menu, sauces: service.SAUCES, sauceLimit: service.SAUCE_LIMIT, delivery, pickupTimes, storeId: String(process.env.RRHS_ECWID_STORE_ID || '').trim(), verificationReady: Boolean(process.env.RRHS_CFA_VERIFICATION_URL && (process.env.RRHS_CFA_VERIFICATION_SECRET || '').trim().length >= 32) });
     }
     if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
+    stagingAccess.requirePreviewAccess(req);
     const origin = req.headers?.origin;
     if (origin && !['https://rrhscoop-assets.vercel.app', 'https://rrhscoop.roundrockisd.org'].includes(origin) && !(process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))) service.fail(403, 'Open the teacher preorder page to continue.');
     const body = await readBody(req);

@@ -6,7 +6,7 @@
 ## Context
 
 ADR 0001 gives a staging tab a one-time notice, but that notice disappears after it is dismissed.
-Staging uses the real storefront, catalog, checkout and production APIs, so the page otherwise looks
+Staging uses the real storefront, catalog and checkout, so the page otherwise looks
 like production. A tester can return to the tab later and forget which scripts it is running.
 
 ## Decision

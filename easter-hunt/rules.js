@@ -16,7 +16,9 @@ function settings(env=process.env) {
   if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) throw new Error('RRHS_HUNT_PROMO_ID is required');
   const startsAt=env.RRHS_HUNT_STARTS_AT || config.startsAt, expiresAt=env.RRHS_HUNT_EXPIRES_AT || config.expiresAt;
   if(!Number.isFinite(Date.parse(startsAt)) || !Number.isFinite(Date.parse(expiresAt)) || Date.parse(startsAt)>=Date.parse(expiresAt)) throw new Error('Invalid hunt dates');
-  return {id,startsAt,expiresAt,enabled:String(env.RRHS_HUNT_ENABLED||'').trim().toLowerCase()==='true'};
+  const codePrefix=String(env.RRHS_HUNT_CODE_PREFIX||'RRHSHUNT-').trim().toUpperCase();
+  if(!/^[A-Z0-9-]{4,40}$/.test(codePrefix)) throw new Error('Invalid RRHS_HUNT_CODE_PREFIX');
+  return {id,startsAt,expiresAt,codePrefix,enabled:String(env.RRHS_HUNT_ENABLED||'').trim().toLowerCase()==='true'};
 }
 function admins(env=process.env) {
   const list=String(env.RRHS_HUNT_ADMINS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);

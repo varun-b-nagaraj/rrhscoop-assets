@@ -12,7 +12,7 @@ test('school-origin preflight succeeds without sending mail and errors retain re
   assert.equal(preflight.body, undefined);
   assert.equal(preflight.headers['Access-Control-Allow-Origin'], origin);
   assert.match(preflight.headers['Access-Control-Allow-Methods'], /POST/);
-  assert.equal(preflight.headers['Access-Control-Allow-Headers'], 'Content-Type');
+  assert.equal(preflight.headers['Access-Control-Allow-Headers'], 'Content-Type, Authorization');
   const invalid = response();
   await handler({ method: 'POST', headers: { origin }, body: { action: 'claim' } }, invalid);
   assert.ok([400, 503].includes(invalid.statusCode));

@@ -5,7 +5,7 @@
 
   const DEFAULT_CONFIG = {
     apiUrl: "/v1/chat",
-    apiKey: "5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a",
+    apiKey: "",
     apiKeyHeader: "Authorization",
     apiKeyPrefix: "Bearer "
   };

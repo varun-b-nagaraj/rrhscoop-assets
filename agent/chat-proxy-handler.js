@@ -1,7 +1,7 @@
 'use strict';
 
 const DEFAULT_UPSTREAM = 'https://v2-chatbot.vercel.app/chat';
-const DEFAULT_BEARER = '5e7571d3a600120047e5ce906c1bdf08f72a95b8c4d37f75cfdf847b10f79c5a';
+const stagingAccess = require('../api/_lib/staging-auth.cjs');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,10 +41,23 @@ module.exports = async function chatProxyHandler(req, res) {
     return;
   }
 
+  try { stagingAccess.requirePreviewAccess(req); }
+  catch (error) {
+    res.statusCode = error.status || 401;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: error.message }));
+    return;
+  }
+
   const upstreamUrl = (process.env.RRHS_CHAT_UPSTREAM_URL || DEFAULT_UPSTREAM).trim();
-  const explicitAuth = getHeader(req, 'authorization');
-  const bearer = (process.env.RRHS_CHAT_BEARER_TOKEN || DEFAULT_BEARER).trim();
-  const authHeader = explicitAuth && explicitAuth.trim() ? explicitAuth : `Bearer ${bearer}`;
+  const bearer = (process.env.RRHS_CHAT_BEARER_TOKEN || '').trim();
+  if (!bearer) {
+    res.statusCode = 503;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: 'Chat is not configured.' }));
+    return;
+  }
+  const authHeader = `Bearer ${bearer}`;
 
   let rawBody = '';
   try {

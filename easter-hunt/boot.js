@@ -6,9 +6,7 @@
   const STAGING_ORIGIN = 'https://rrhscoop-staging.vercel.app';
   const PROD_ORIGIN = 'https://rrhscoop-assets.vercel.app';
   const topLevel = window.parent === window;
-  // The hunt is a staging-only fake preview. Query parameters and public console helpers are not
-  // switches; index.js fixes the script origin that decides whether the preview can start.
-  const stagingPreview = topLevel && base.origin === STAGING_ORIGIN && window.RRHS_ENVIRONMENT === 'staging';
+  const stagingPreview = topLevel && base.origin === STAGING_ORIGIN && window.RRHS_DEPLOYMENT?.frontendEnvironment === 'staging';
   const localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   window.__RRHS_HUNT_STAGING_PREVIEW = stagingPreview;
   const load = name => new Promise((resolve, reject) => {
@@ -29,7 +27,7 @@
   // Tell hosted iframes that this page will show their claim dialogs full-screen.
   function announce(frame) {
     const origin = new URL(frame.src).origin;
-    frame.contentWindow.postMessage({ type: 'rrhs-hunt-parent', stagingPreview, found: window.RRHS_EASTER_HUNT?.foundIds?.() || [], done: window.RRHS_EASTER_HUNT?.doneId?.() || null }, origin);
+    frame.contentWindow.postMessage({ type: 'rrhs-hunt-parent', enabled: true, stagingPreview, found: window.RRHS_EASTER_HUNT?.foundIds?.() || [], done: window.RRHS_EASTER_HUNT?.doneId?.() || null }, origin);
   }
   function broadcast() {
     if (!topLevel || !window.RRHS_HUNT_ACTIVE) return;
@@ -42,9 +40,9 @@
     window.RRHS_HUNT_ACTIVE = enabled;
     if (!window.RRHS_HUNT_ACTIVE) return;
     const css = document.createElement('link'); css.rel = 'stylesheet';
-    css.href = new URL('hunt.css?v=32', base).href;
+    css.href = new URL('hunt.css?v=33', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=22')).then(() => topLevel ? load('experience.js?v=30') : undefined)
+    loading = styled.then(() => load('hunt.js?v=23')).then(() => topLevel ? load('experience.js?v=30') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }
@@ -54,8 +52,8 @@
       window.RRHS_HUNT_PARENT = event.origin;
       // Once this person has claimed, the parent page tells its sticker iframes to hide the rest.
       if (typeof event.data.done === 'string') { window.RRHS_HUNT_DONE_ID = event.data.done; if (window.RRHS_HUNT_ACTIVE) window.RRHS_EASTER_HUNT?.refresh(true); }
-      // A staging parent runs its production-hosted iframe scripts in the same fake preview.
-      if (event.data.stagingPreview === true && !window.__RRHS_HUNT_STAGING_PREVIEW) {
+      // The top-level API decides whether the hunt is enabled; iframe script origin does not.
+      if (event.data.enabled === true && !window.RRHS_HUNT_ACTIVE) {
         window.__RRHS_HUNT_STAGING_PREVIEW = true; window.RRHS_HUNT_STAGING_FOUND = Array.isArray(event.data.found) ? event.data.found : [];
         wanted = true;
         if (window.RRHS_HUNT_ACTIVE) window.RRHS_EASTER_HUNT?.refresh(true);
@@ -70,8 +68,13 @@
     }
   });
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-parent-query' }, '*');
-  // Production stays off. Staging uses the fake browser-only backend in hunt.js.
-  const status = Promise.resolve(stagingPreview || localPreview);
+  // Each deployment asks its own API. Production and staging can therefore use different flags.
+  const authorized = stagingPreview && !window.RRHS_DEPLOYMENT?.sessionToken()
+    ? new Promise(resolve => document.addEventListener('rrhs:staging-authorized', resolve, { once: true }))
+    : Promise.resolve();
+  const status = localPreview ? Promise.resolve(true) : authorized.then(() => (window.RRHS_DEPLOYMENT?.fetch('/api/v1/easter-hunt', { cache: 'no-store' }) || fetch(base.origin + '/api/v1/easter-hunt', { cache: 'no-store' })))
+    .then(response => response.ok ? response.json() : Promise.reject(new Error('Hunt status unavailable')))
+    .then(result => result.status !== 'disabled' && result.status !== 'unavailable');
   // No hunt on the Digital Pass pages (/pass, /pass/teacher and anything under /pass/). The store
   // can change pages without a reload, so the path is rechecked and the hunt hides or comes back.
   const passPage = () => topLevel && /^\/pass(\/|$)/i.test(location.pathname);

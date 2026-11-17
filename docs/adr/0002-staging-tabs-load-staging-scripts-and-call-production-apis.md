@@ -1,6 +1,6 @@
 # ADR 0002 — Staging tabs load staging scripts and call production APIs
 
-**Status:** Accepted · 2026-11-17
+**Status:** Superseded by 0008 · 2026-11-17
 **Related:** [0001](0001-staging-is-a-per-tab-mode-on-the-live-store.md), [0004](0004-one-vercel-project-with-public-previews.md)
 
 ## Context

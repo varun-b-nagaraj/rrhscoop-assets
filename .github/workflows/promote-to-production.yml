@@ -1,44 +1,109 @@
-# Promote to production: run from the Actions tab ("Run workflow").
-# `main` is staging (the rrhscoop-staging Vercel project deploys it).
-# This tests `main`, then moves the `production` branch up to it. The
-# rrhscoop-assets Vercel project, which the store loads, deploys `production`.
 name: Promote to production
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact commit SHA from main to promote
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
-concurrency: promote-to-production
+concurrency:
+  group: promote-to-production
+  cancel-in-progress: false
 
 jobs:
-  promote:
+  validate:
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
-
+      - name: Verify selected source
+        id: source
+        run: |
+          git fetch origin main production
+          sha="$(git rev-parse HEAD)"
+          test "$sha" = "$(git rev-parse '${{ inputs.commit_sha }}^{commit}')"
+          git merge-base --is-ancestor "$sha" origin/main
+          git merge-base --is-ancestor origin/production "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run lint
+      - run: npm run check:secrets
+      - run: npm run check:config
       - run: npm test
+      - run: npm run test:browser
+      - name: Verify staging deployment identity and routing assets
+        env:
+          EXPECTED_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          for attempt in $(seq 1 30); do
+            body="$(curl --fail --silent https://rrhscoop-staging.vercel.app/api/v1/environment || true)"
+            if node -e "const x=JSON.parse(process.argv[1]||'{}'); process.exit(x.environment==='staging'&&x.commitSha===process.env.EXPECTED_SHA?0:1)" "$body"; then break; fi
+            test "$attempt" -lt 30 || exit 1
+            sleep 10
+          done
+          curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-deployment.js | grep -q 'apiOrigin: assetOrigin'
+          curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-iframe-router.js | grep -q 'ALLOWED_PATH'
+      - name: Safe staging browser smoke test
+        env:
+          SMOKE_URL: https://rrhscoop-staging.vercel.app
+          SMOKE_ENVIRONMENT: staging
+          EXPECTED_SHA: ${{ steps.source.outputs.sha }}
+        run: npm run test:smoke
+      - name: Validation summary
+        run: echo "### Validated staging commit \`${{ steps.source.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Move production up to main
+  promote:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Fast-forward production
         run: |
           git fetch origin main production
-          if ! git merge-base --is-ancestor origin/production origin/main; then
-            echo "::error::production has commits that main doesn't. Bring them into main first: git checkout main && git merge origin/production && git push"
-            exit 1
-          fi
-          if [ "$(git rev-parse origin/production)" = "$(git rev-parse origin/main)" ]; then
-            echo "production is already the same as main. Nothing to promote."
-            exit 0
-          fi
-          git push origin origin/main:refs/heads/production
-          echo "Promoted $(git rev-parse --short origin/main) to production."
+          test "$(git rev-parse HEAD)" = "${{ needs.validate.outputs.sha }}"
+          git merge-base --is-ancestor origin/production HEAD
+          git merge-base --is-ancestor HEAD origin/main
+          git push origin HEAD:refs/heads/production
+      - name: Verify production deployment
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          for attempt in $(seq 1 30); do
+            body="$(curl --fail --silent https://rrhscoop-assets.vercel.app/api/v1/environment || true)"
+            if node -e "const x=JSON.parse(process.argv[1]||'{}'); process.exit(x.environment==='production'&&x.commitSha===process.env.EXPECTED_SHA?0:1)" "$body"; then break; fi
+            test "$attempt" -lt 30 || exit 1
+            sleep 10
+          done
+          echo "### Promoted and verified \`${{ needs.validate.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Safe production browser smoke test
+        env:
+          SMOKE_URL: https://rrhscoop-assets.vercel.app
+          SMOKE_ENVIRONMENT: production
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: npm run test:smoke

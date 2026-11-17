@@ -1,6 +1,6 @@
 # ADR 0003 — `main` is staging; a workflow promotes it to the `production` branch
 
-**Status:** Accepted · 2026-11-17
+**Status:** Superseded by 0009 · 2026-11-17
 **Related:** [0002](0002-staging-tabs-load-staging-scripts-and-call-production-apis.md), [0004](0004-one-vercel-project-with-public-previews.md)
 
 ## Context

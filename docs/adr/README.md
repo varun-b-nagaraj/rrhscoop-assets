@@ -29,9 +29,11 @@ None.
 |---|---|---|
 | 0000 | [Every decision gets an ADR](0000-every-decision-gets-an-adr.md) | Accepted |
 | 0001 | [Staging is a per-tab mode on the live store, started from a domain we control](0001-staging-is-a-per-tab-mode-on-the-live-store.md) | Accepted |
-| 0002 | [Staging tabs load staging scripts and call production APIs](0002-staging-tabs-load-staging-scripts-and-call-production-apis.md) | Accepted |
-| 0003 | [`main` is staging; a workflow promotes it to the `production` branch](0003-main-is-staging-and-a-workflow-promotes-to-production.md) | Accepted |
+| 0002 | [Staging tabs load staging scripts and call production APIs](0002-staging-tabs-load-staging-scripts-and-call-production-apis.md) | Superseded by 0008 |
+| 0003 | [`main` is staging; a workflow promotes it to the `production` branch](0003-main-is-staging-and-a-workflow-promotes-to-production.md) | Superseded by 0009 |
 | 0004 | [One Vercel project, with the staging domain on `main` and previews public](0004-one-vercel-project-with-public-previews.md) | Accepted |
 | 0005 | [Staging tabs keep a visible flag in the storefront header](0005-staging-tabs-keep-a-visible-header-flag.md) | Accepted |
 | 0006 | [The hunt discovery uses a dragon pop without an expanding ring](0006-hunt-discovery-uses-a-dragon-pop-without-a-ring.md) | Accepted |
-| 0007 | [The dragon hunt runs as an automatic staging-only preview](0007-dragon-hunt-runs-as-an-automatic-staging-only-preview.md) | Accepted |
+| 0007 | [The dragon hunt runs as an automatic staging-only preview](0007-dragon-hunt-runs-as-an-automatic-staging-only-preview.md) | Superseded by 0008 |
+| 0008 | [Staging runs its own assets and APIs with real integrations](0008-staging-runs-its-own-assets-apis-and-real-integrations.md) | Accepted |
+| 0009 | [Two-level branch and release governance](0009-two-level-branch-and-release-governance.md) | Accepted |

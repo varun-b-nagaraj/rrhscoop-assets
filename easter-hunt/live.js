@@ -86,7 +86,7 @@ async function reserve(input,db=database()) {
       return {error:409,message:state==='expired'?'The hunt has ended. Thanks for exploring!':state==='sold_out'?'All '+TOTAL+' rewards have been found. Thanks for exploring!':'The packages are resting right now. Please try again later.'};}
     const mine=rows.some(row=>row.student_key===studentKey);
     if(mine || rows.some(row=>row.egg_id===input.eggId)){await event(c,config.id,null,mine?'Refused: already has a reward':'Refused: sticker already claimed',person.studentId+' · '+input.eggId);return {error:409,message:taken};}
-    const id=crypto.randomUUID(),code='RRHSHUNT-'+crypto.randomBytes(8).toString('hex').toUpperCase();
+    const id=crypto.randomUUID(),code=config.codePrefix+crypto.randomBytes(8).toString('hex').toUpperCase();
     const row=(await c.query(`INSERT INTO hunt.claims(id,promo_id,epoch,student_key,egg_id,request_key,identity_cipher,percentage,code_cipher) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,[id,config.id,p.epoch,studentKey,input.eggId,input.idempotencyKey,secure.seal(person),rewards[input.eggId],secure.seal(code)])).rows[0];
     await event(c,config.id,id,'Claimed',rewards[input.eggId]+'%');return row;
   },db);
