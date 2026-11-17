@@ -44,7 +44,7 @@
     const css = document.createElement('link'); css.rel = 'stylesheet';
     css.href = new URL('hunt.css?v=32', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=21')).then(() => topLevel ? load('experience.js?v=30') : undefined)
+    loading = styled.then(() => load('hunt.js?v=22')).then(() => topLevel ? load('experience.js?v=30') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }

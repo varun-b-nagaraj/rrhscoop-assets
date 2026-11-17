@@ -12,6 +12,9 @@ test('the deployed browser hunt starts only from the marked staging deployment',
   assert.match(boot, /base\.origin === STAGING_ORIGIN && window\.RRHS_ENVIRONMENT === 'staging'/);
   assert.match(boot, /const status = Promise\.resolve\(stagingPreview \|\| localPreview\)/);
   assert.doesNotMatch(boot, /fetch\([^\n]*easter-hunt/);
+  assert.match(hunt, /assetOrigin === 'https:\/\/rrhscoop-staging\.vercel\.app' && window\.RRHS_ENVIRONMENT === 'staging'/);
+  assert.match(hunt, /const staging = \(\) => stagingPreview/);
+  assert.doesNotMatch(hunt, /const staging = \(\) => window\./);
 });
 
 test('URL and console dev-mode controls are gone', () => {

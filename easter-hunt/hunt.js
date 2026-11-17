@@ -4,7 +4,13 @@
   const config = window.RRHS_HUNT_CONFIG;
   const assetOrigin = new URL(document.currentScript.src).origin;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  const staging = () => window.__RRHS_HUNT_STAGING_PREVIEW === true;
+  const topLevel = window.parent === window;
+  // Capture the mode once from the script origin. Changing a global in DevTools after load cannot
+  // switch the top-level hunt between fake staging requests and production API requests.
+  const stagingPreview = topLevel
+    ? assetOrigin === 'https://rrhscoop-staging.vercel.app' && window.RRHS_ENVIRONMENT === 'staging'
+    : window.__RRHS_HUNT_STAGING_PREVIEW === true && window.RRHS_HUNT_PARENT === 'https://rrhscoop.roundrockisd.org';
+  const staging = () => stagingPreview;
   const preview = !staging() && config.DEV_PREVIEW_ENABLED && local;
   const endpoint = (window.RRHS_API_ORIGIN || assetOrigin) + '/api/v1/easter-hunt';
   const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
