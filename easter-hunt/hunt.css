@@ -207,12 +207,7 @@
 .hunt-step.is-active .hunt-where-tag svg { animation:hunt-arrow-bob 1.4s .4s ease-in-out infinite; }
 @keyframes hunt-arrow-bob { 0%,100% { transform:translateY(2.5px); } 50% { transform:translateY(-2.5px); } }
 @keyframes hunt-ring { 0% { box-shadow:0 0 0 0 #c6a169bb; } 70%,100% { box-shadow:0 0 0 12px #c6a16900; } }
-/* Dev mode badge */
-.hunt-dev-badge { position:fixed; left:12px; bottom:12px; z-index:2147483000; display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; max-width:calc(100vw - 24px); padding:8px 8px 8px 14px; border:2px dashed #b28a48; border-radius:10px; background:#fff8e8; color:#3c1720; box-shadow:0 6px 18px #24101733; font:400 13px/1.3 Arial,sans-serif; }
-.hunt-dev-badge strong { font-weight:700; color:#6e1f2a; } .hunt-dev-badge span { color:#655b55; }
-.hunt-dev-badge button { min-height:32px; padding:4px 10px; border:1px solid #6e1f2a55; border-radius:6px; background:#fff; color:#6e1f2a; font:600 12px/1 Arial,sans-serif; cursor:pointer; }
-.hunt-dev-badge button:hover { background:#f1e6d4; }
-.hunt-dialog .hunt-dev-code code { display:inline-block; margin:6px 0; padding:4px 10px; border:1px dashed #b28a48; border-radius:4px; background:#fff; color:#6e1f2a; font:700 15px/1.3 ui-monospace,Menlo,monospace; letter-spacing:.04em; }
+.hunt-dialog .hunt-staging-code code { display:inline-block; margin:6px 0; padding:4px 10px; border:1px dashed #b28a48; border-radius:4px; background:#fff; color:#6e1f2a; font:700 15px/1.3 ui-monospace,Menlo,monospace; letter-spacing:.04em; }
 /* Dots have their own row; reserve the final label width on every slide. */
 .hunt-step-nav { display:grid; grid-template-columns:repeat(2,minmax(0,176px)); justify-content:center; grid-template-areas:'dots dots' 'back next'; align-items:center; gap:12px; margin-top:12px; padding-top:0; border:0; position:relative; z-index:1; }
 .hunt-dots { grid-area:dots; justify-self:center; } .hunt-step-back { grid-area:back; display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:48px; padding:8px; border:1px solid var(--hunt-maroon); border-radius:6px; background:transparent; color:var(--hunt-maroon); font:600 15px/1.4 Georgia,serif; cursor:pointer; transition:background .2s; }

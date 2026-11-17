@@ -34,3 +34,4 @@ None.
 | 0004 | [One Vercel project, with the staging domain on `main` and previews public](0004-one-vercel-project-with-public-previews.md) | Accepted |
 | 0005 | [Staging tabs keep a visible flag in the storefront header](0005-staging-tabs-keep-a-visible-header-flag.md) | Accepted |
 | 0006 | [The hunt discovery uses a dragon pop without an expanding ring](0006-hunt-discovery-uses-a-dragon-pop-without-a-ring.md) | Accepted |
+| 0007 | [The dragon hunt runs as an automatic staging-only preview](0007-dragon-hunt-runs-as-an-automatic-staging-only-preview.md) | Accepted |

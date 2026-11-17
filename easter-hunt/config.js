@@ -1,4 +1,4 @@
-/* Hunt settings. Turn the hunt on or off with RRHS_HUNT_ENABLED in Vercel, not here. */
+/* Hunt content. boot.js limits the browser experience to the staging deployment. */
 (function (root) {
   'use strict';
   // One sticker per page (the long Teacher Hub has a top and a bottom one).

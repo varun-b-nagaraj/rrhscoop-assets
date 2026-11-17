@@ -157,7 +157,7 @@
     const scripts = [
       // First, so window.RRHS_ENVIRONMENT is set before the other scripts run.
       url('rrhs-env.js?v=2'),
-      url('easter-hunt/boot.js?v=30'),
+      url('easter-hunt/boot.js?v=31'),
       url('custom-visuals/rrhs-embed-bridge.js?v=6'),
       url('rrhs-runtime.js'),
       url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
