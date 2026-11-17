@@ -7,7 +7,7 @@
   const dev = () => window.RRHS_HUNT_DEV === true;
   const preview = !dev() && config.DEV_PREVIEW_ENABLED && local;
   // Live mode remains closed at the API, regardless of the client switch.
-  const endpoint = assetOrigin + '/api/v1/easter-hunt';
+  const endpoint = (window.RRHS_API_ORIGIN || assetOrigin) + '/api/v1/easter-hunt';
   const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
   const stickerImage = `<img class="hunt-sticker" src="${stickerSrc}" width="256" height="256" alt="" decoding="async" draggable="false">`;
   const arrowIcon = '<svg class="hunt-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';

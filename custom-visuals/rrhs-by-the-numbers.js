@@ -46,7 +46,7 @@
   function loadData() {
     if (!dataPromise) {
       dataPromise = Promise.all([
-        fetchJson(new URL("api/v1/ecwid/stats", assetRoot).href),
+        fetchJson(new URL("/api/v1/ecwid/stats", window.RRHS_API_ORIGIN || assetRoot).href),
         countProjects()
       ]).then(([stats, projects]) => ({
         students: STUDENTS_INVOLVED,

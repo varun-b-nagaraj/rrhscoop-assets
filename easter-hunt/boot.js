@@ -50,7 +50,7 @@
     const css = document.createElement('link'); css.rel = 'stylesheet';
     css.href = new URL('hunt.css?v=30', base).href;
     const styled = new Promise((resolve, reject) => { css.onload = resolve; css.onerror = reject; document.head.append(css); });
-    loading = styled.then(() => load('hunt.js?v=19')).then(() => topLevel ? load('experience.js?v=30') : undefined)
+    loading = styled.then(() => load('hunt.js?v=20')).then(() => topLevel ? load('experience.js?v=30') : undefined)
       .then(() => document.dispatchEvent(new CustomEvent('rrhs-hunt-toggle', { detail: { enabled: true } }))).catch(() => {});
     broadcast();
   }
@@ -73,7 +73,7 @@
   });
   if (!topLevel) parent.postMessage({ type: 'rrhs-hunt-parent-query' }, '*');
   const status = window.RRHS_HUNT_DEV ? Promise.resolve(true)
-    : fetch(new URL('/api/v1/easter-hunt', base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
+    : fetch(new URL('/api/v1/easter-hunt', window.RRHS_API_ORIGIN || base).href).then(response => response.json()).then(result => result.mode !== 'disabled');
   // No hunt on the Digital Pass pages (/pass, /pass/teacher and anything under /pass/). The store
   // can change pages without a reload, so the path is rechecked and the hunt hides or comes back.
   const passPage = () => topLevel && /^\/pass(\/|$)/i.test(location.pathname);

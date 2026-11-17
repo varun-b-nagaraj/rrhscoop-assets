@@ -34,7 +34,7 @@ test('the staging hosts redirect their root to the store with the staging marker
 });
 
 // Runs index.js against a fake page and reports which scripts it added.
-function runIndex({ scriptSrc, search = '', stored = null }) {
+function runIndex({ scriptSrc, search = '', stored = null, window = {} }) {
   const added = [];
   const el = () => ({ classList: { add() {}, remove() {} }, setAttribute() {}, appendChild(node) { added.push(node); } });
   const head = el();
@@ -48,7 +48,6 @@ function runIndex({ scriptSrc, search = '', stored = null }) {
     querySelector: () => null,
     addEventListener() {}
   };
-  const window = {};
   runInNewContext(readFileSync(require.resolve('../index.js'), 'utf8'), {
     window, document: doc, URL, URLSearchParams, Promise, Date,
     location: { search },
@@ -76,4 +75,13 @@ test('the staging index.js loads everything from the staging deployment', () => 
   assert.ok(srcs.length > 5);
   assert.ok(srcs.every(src => src.startsWith(`${STAGING}/`)));
   assert.ok(srcs[0].startsWith(`${STAGING}/rrhs-env.js`));
+});
+
+test('staging scripts call the production APIs; production leaves them alone', () => {
+  const staging = {};
+  runIndex({ scriptSrc: `${STAGING}/index.js`, stored: 'staging', window: staging });
+  assert.equal(staging.RRHS_API_ORIGIN, PROD);
+  const prod = {};
+  runIndex({ scriptSrc: `${PROD}/index.js`, window: prod });
+  assert.equal(prod.RRHS_API_ORIGIN, undefined);
 });

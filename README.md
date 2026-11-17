@@ -15,7 +15,9 @@ Ecwid allows only one storefront URL, so staging is a per-tab mode on the real s
 - Open `https://rrhscoop-staging.vercel.app` (later `rrhscoop-staging.roundrockisd.org`). It redirects to `https://rrhscoop.roundrockisd.org/?rrhs_env=staging` (see `redirects` in `vercel.json`).
 - `rrhs-env.js` keeps that tab on staging (sessionStorage) and shows a one-time notice. A new tab on the store is prod. `?rrhs_env=prod` ends staging in the current tab.
 - The store always loads the production `index.js`. In a staging tab it hands off to `index.js` on the staging deployment (`STAGING_ORIGIN` in `index.js`), so every script comes from the `staging` branch.
-- Vercel setup: add the `rrhscoop-staging.vercel.app` domain to this project and connect it to the `staging` Git branch. Put staging-only env vars (test tokens, hunt database) on Preview scoped to the `staging` branch.
+- Staging serves only the scripts. In a staging tab they call the production APIs (`window.RRHS_API_ORIGIN`, set by `index.js`), so the staging Vercel project needs no env vars.
+- Vercel setup: a second Vercel project named `rrhscoop-staging`, imported from this same GitHub repo, with its Production Branch set to `staging`.
+- Workflow: commit to `staging` and check it in a staging tab. When it's ready, run **Promote staging to prod** from the GitHub Actions tab. It runs the tests and fast-forwards `main` to `staging`, which deploys production.
 - Iframe embeds in the Ecwid page content point at `rrhscoop-assets.vercel.app` directly, so they stay on production in a staging tab.
 
 ## Runtime (Performance)

@@ -1,0 +1,43 @@
+# Promote staging to prod: run from the Actions tab ("Run workflow").
+# Tests the `staging` branch, then fast-forwards `main` to it. Vercel deploys
+# `main` to production (rrhscoop-assets) on the push.
+name: Promote staging to prod
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: promote-staging
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Fast-forward main to staging
+        run: |
+          git fetch origin main staging
+          if ! git merge-base --is-ancestor origin/main origin/staging; then
+            echo "::error::main has commits that staging doesn't. Bring them into staging first: git checkout staging && git merge main && git push"
+            exit 1
+          fi
+          if [ "$(git rev-parse origin/main)" = "$(git rev-parse origin/staging)" ]; then
+            echo "main is already the same as staging. Nothing to promote."
+            exit 0
+          fi
+          git push origin origin/staging:refs/heads/main
+          echo "Promoted $(git rev-parse --short origin/staging) to main."

@@ -787,6 +787,7 @@
   const RRHS_HAC_SAVED_LOGIN = "__rrhs_saved_hac_login__";
 
   function rrhsHacVaultUrl() {
+    if (window.RRHS_API_ORIGIN) return window.RRHS_API_ORIGIN + "/api/v1/hac/vault";
     try {
       if (RRHS_ASSET_BASE_URL) return new URL("/api/v1/hac/vault", RRHS_ASSET_BASE_URL).toString();
     } catch (_) {}
