@@ -116,6 +116,8 @@
   const inventoryGuardEnabled = false;
 
   const scripts = [
+    // First, so window.RRHS_ENVIRONMENT is set before the other scripts run.
+    url('rrhs-env.js?v=1'),
     url('easter-hunt/boot.js?v=28'),
     url('custom-visuals/rrhs-embed-bridge.js?v=6'),
     url('rrhs-runtime.js'),
