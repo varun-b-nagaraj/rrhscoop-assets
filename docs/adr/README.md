@@ -32,3 +32,4 @@ None.
 | 0002 | [Staging tabs load staging scripts and call production APIs](0002-staging-tabs-load-staging-scripts-and-call-production-apis.md) | Accepted |
 | 0003 | [`main` is staging; a workflow promotes it to the `production` branch](0003-main-is-staging-and-a-workflow-promotes-to-production.md) | Accepted |
 | 0004 | [One Vercel project, with the staging domain on `main` and previews public](0004-one-vercel-project-with-public-previews.md) | Accepted |
+| 0005 | [Staging tabs keep a visible flag in the storefront header](0005-staging-tabs-keep-a-visible-header-flag.md) | Accepted |

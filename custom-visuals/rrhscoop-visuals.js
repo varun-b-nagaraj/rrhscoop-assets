@@ -649,6 +649,23 @@
         gap: 6px !important;
       }
 
+      .rrhs-staging-flag {
+        display: inline-flex !important;
+        align-items: center !important;
+        min-height: 18px !important;
+        padding: 2px 6px !important;
+        border: 1px solid rgb(110 31 42 / 0.24) !important;
+        border-radius: 999px !important;
+        background: var(--rrhs-maroon, #6e1f2a) !important;
+        color: var(--rrhs-paper, #faf8f4) !important;
+        font: 700 10px/1 system-ui, sans-serif !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
+        flex: 0 0 auto !important;
+      }
+
       .rrhs-header-logo-mark {
         display: block !important;
         width: 57px !important;
@@ -664,6 +681,12 @@
           width: 34px !important;
           height: 34px !important;
           flex-basis: 34px !important;
+        }
+
+        .rrhs-staging-flag {
+          min-height: 16px !important;
+          padding: 2px 5px !important;
+          font-size: 9px !important;
         }
       }
 
@@ -750,21 +773,36 @@
 
   function initHeaderLogo() {
     const logoLink = document.querySelector(".ins-header__logo-inner");
-    if (!logoLink || logoLink.querySelector(".rrhs-header-logo-mark")) return;
+    if (!logoLink) return;
 
     logoLink.href = "/";
     logoLink.target = "_self";
     logoLink.classList.add("rrhs-header-logo-link");
     logoLink.setAttribute("aria-label", "RRHS Co-Op home");
 
-    const mark = document.createElement("img");
-    mark.className = "rrhs-header-logo-mark";
-    mark.src = HEADER_LOGO_URL;
-    mark.alt = "";
-    mark.decoding = "async";
-    mark.loading = "eager";
+    if (!logoLink.querySelector(".rrhs-header-logo-mark")) {
+      const mark = document.createElement("img");
+      mark.className = "rrhs-header-logo-mark";
+      mark.src = HEADER_LOGO_URL;
+      mark.alt = "";
+      mark.decoding = "async";
+      mark.loading = "eager";
 
-    logoLink.insertBefore(mark, logoLink.firstChild);
+      logoLink.insertBefore(mark, logoLink.firstChild);
+    }
+
+    const existingFlag = logoLink.querySelector(".rrhs-staging-flag");
+    if (window.RRHS_ENVIRONMENT !== "staging") {
+      if (existingFlag) existingFlag.remove();
+      return;
+    }
+    if (existingFlag) return;
+
+    const flag = document.createElement("span");
+    flag.className = "rrhs-staging-flag";
+    flag.textContent = "Staging";
+    flag.setAttribute("title", "This tab is using staging scripts");
+    logoLink.appendChild(flag);
   }
 
   function ensureMinimalMarqueeStyles() {
