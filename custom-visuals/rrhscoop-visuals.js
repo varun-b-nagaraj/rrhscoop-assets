@@ -664,6 +664,7 @@
         white-space: nowrap !important;
         box-sizing: border-box !important;
         flex: 0 0 auto !important;
+        transform: translateY(2px) !important;
       }
 
       .rrhs-header-logo-mark {

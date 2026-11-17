@@ -162,7 +162,7 @@
       url('rrhs-runtime.js'),
       url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
       url('custom-visuals/rrhs-project-deeplinks.js?v=7'),
-      url('custom-visuals/rrhscoop-visuals.js?v=56'),
+      url('custom-visuals/rrhscoop-visuals.js?v=57'),
       url('custom-visuals/rrhs-footer.js?v=5'),
       url('custom-visuals/rrhs-header-dropdowns.js?v=12'),
       url('custom-visuals/rrhs-by-the-numbers.js?v=2'),
