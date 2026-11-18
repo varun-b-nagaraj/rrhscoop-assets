@@ -1,10 +1,13 @@
 name: Promote to production
 
+# GitHub allows workflow_dispatch to target a selected branch once this file exists on the
+# default branch. The ref guard is defense in depth. The production ruleset and main-only
+# environment are the independent security boundaries for the write credential.
 on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: Exact commit SHA from main to promote
+        description: Full 40-character SHA at the current tip of main
         required: true
         type: string
 
@@ -21,20 +24,37 @@ jobs:
     outputs:
       sha: ${{ steps.source.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Require a trusted main dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+        run: |
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          case "$RELEASE_SHA" in
+            *[!0-9a-f]*|'') echo 'commit_sha must be a lowercase hexadecimal SHA' >&2; exit 1 ;;
+          esac
+          test "${#RELEASE_SHA}" -eq 40
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: refs/heads/main
           fetch-depth: 0
-      - name: Verify selected source
+          persist-credentials: false
+
+      - name: Verify the exact release commit
         id: source
+        env:
+          RELEASE_SHA: ${{ inputs.commit_sha }}
         run: |
           git fetch origin main production
-          sha="$(git rev-parse HEAD)"
-          test "$sha" = "$(git rev-parse '${{ inputs.commit_sha }}^{commit}')"
-          git merge-base --is-ancestor "$sha" origin/main
-          git merge-base --is-ancestor origin/production "$sha"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v4
+          main_sha="$(git rev-parse origin/main)"
+          test "$(git rev-parse HEAD)" = "$main_sha"
+          test "$RELEASE_SHA" = "$main_sha"
+          git merge-base --is-ancestor origin/production "$main_sha"
+          echo "sha=$main_sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -43,8 +63,11 @@ jobs:
       - run: npm run lint
       - run: npm run check:secrets
       - run: npm run check:config
-      - run: npm test
+      - run: npm run test:unit
+      - run: npm run test:integration
       - run: npm run test:browser
+      - run: npm test
+
       - name: Verify staging deployment identity and routing assets
         env:
           EXPECTED_SHA: ${{ steps.source.outputs.sha }}
@@ -57,40 +80,73 @@ jobs:
           done
           curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-deployment.js | grep -q 'apiOrigin: assetOrigin'
           curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-iframe-router.js | grep -q 'ALLOWED_PATH'
+          curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/iframes/faq/index.html >/dev/null
+
       - name: Safe staging browser smoke test
         env:
           SMOKE_URL: https://rrhscoop-staging.vercel.app
           SMOKE_ENVIRONMENT: staging
           EXPECTED_SHA: ${{ steps.source.outputs.sha }}
         run: npm run test:smoke
+
       - name: Validation summary
-        run: echo "### Validated staging commit \`${{ steps.source.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "### Validated current main commit \`${{ steps.source.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   promote:
     needs: validate
     runs-on: ubuntu-latest
     environment: Production
     permissions:
-      contents: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      # These two secrets exist only in the main-restricted, reviewer-protected environment.
+      - name: Create one-hour production branch token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.PRODUCTION_APP_ID }}
+          private-key: ${{ secrets.PRODUCTION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: rrhscoop-assets
+          permission-contents: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Revalidate main and fast-forward production
+        env:
+          VALIDATED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          git fetch origin main production
+          current_main="$(git rev-parse origin/main)"
+          test "$(git rev-parse HEAD)" = "$current_main"
+          test "$VALIDATED_SHA" = "$current_main"
+          git merge-base --is-ancestor origin/production "$current_main"
+          git push origin "$current_main:refs/heads/production"
+          test "$(git ls-remote origin refs/heads/production | cut -f1)" = "$current_main"
+          echo "### Promoted \`$current_main\` after Production approval" >> "$GITHUB_STEP_SUMMARY"
+
+  verify-production:
+    needs: [validate, promote]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.validate.outputs.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Fast-forward production
-        run: |
-          git fetch origin main production
-          test "$(git rev-parse HEAD)" = "${{ needs.validate.outputs.sha }}"
-          git merge-base --is-ancestor origin/production HEAD
-          git merge-base --is-ancestor HEAD origin/main
-          git push origin HEAD:refs/heads/production
-      - name: Verify production deployment
+
+      - name: Verify production deployment identity
         env:
           EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
         run: |
@@ -100,10 +156,13 @@ jobs:
             test "$attempt" -lt 30 || exit 1
             sleep 10
           done
-          echo "### Promoted and verified \`${{ needs.validate.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Safe production browser smoke test
         env:
           SMOKE_URL: https://rrhscoop-assets.vercel.app
           SMOKE_ENVIRONMENT: production
           EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
         run: npm run test:smoke
+
+      - name: Verification summary
+        run: echo "### Production verified at \`${{ needs.validate.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,6 @@
 # ADR 0009 — Two-level branch and release governance
 
-**Status:** Accepted · 2026-11-17
+**Status:** Superseded by 0010 · 2026-11-18
 **Related:** [0003](0003-main-is-staging-and-a-workflow-promotes-to-production.md), [0004](0004-one-vercel-project-with-public-previews.md)
 
 ## Context

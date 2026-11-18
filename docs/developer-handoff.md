@@ -51,7 +51,11 @@ No rules were enabled during this change. The repository owner should create rul
 
 For `main`: require pull requests, one owner approval through CODEOWNERS, the `CI / checks` status, resolved conversations, no force pushes and no deletion. Give student developers Write access, not Admin. If the plan supports a bypass actor, limit direct pushes to the repository owner/admin role. GitHub rulesets cannot reliably distinguish one owner from every future admin, so keep other developers non-admin rather than weakening the rule.
 
-For `production`: prohibit direct developer pushes, force pushes and deletion. Permit only the production promotion identity to update it. Create a protected `Production` environment with the owner as required reviewer. Confirm the GitHub Actions integration is an allowed ruleset bypass actor before relying on `GITHUB_TOKEN`; otherwise use a fine-grained token or GitHub App limited to updating this repository’s `production` branch, stored only in the protected environment. Do not relax the branch rule for all writers.
+For `production`, create an active branch ruleset matching only `refs/heads/production` with Restrict updates, Restrict deletions, Block force pushes and Require linear history. Do not require pull requests or status checks on this branch because the approved workflow performs the direct fast-forward. Add one bypass actor: the dedicated RRHS production GitHub App, with bypass mode **Always**. Do not add repository roles, administrators, teams, users, GitHub Actions, or `GITHUB_TOKEN` as bypass actors.
+
+Create the GitHub App under the owner account, install it only on `rrhscoop-assets`, and grant only repository **Contents: Read and write** (Metadata read is implicit). It does not need Administration, Actions, Workflows, Pull requests, Issues, Secrets, Environments or organization permissions. Store its ID as `PRODUCTION_APP_ID` and private key as `PRODUCTION_APP_PRIVATE_KEY`, both as secrets in the protected `Production` environment, not repository secrets. Keep that environment restricted to `main`, require `varun-b-nagaraj`, and keep administrator bypass disabled.
+
+The repository `GITHUB_TOKEN` remains read-only. It is intentionally unable to update `production`; the approved job mints a one-hour App installation token after approval. A fine-grained personal token with Contents read/write, access only to this repository, and the same ruleset bypass is an emergency fallback, but the GitHub App is preferred because it is not tied to a student or maintainer account.
 
 Grant a developer repository Write access, have them branch from `main`, and revoke access from Settings → Collaborators when they leave. Do not grant Admin just to allow a direct push.
 
@@ -91,7 +95,7 @@ Never move `production` backward or force-push it. Revert the faulty commit on a
 - Staging write returns 401: sign in again. A 503 means Preview access or feature credentials are missing.
 - Iframe stays on production: confirm its path is allowlisted and the router loaded. A production request before rewrite is the known Ecwid paste-in limitation.
 - Staging commit mismatch: wait for the `main` deployment; promotion intentionally refuses a different SHA.
-- Promotion cannot push: branch protection has not granted the Actions identity. Fix the ruleset/identity; do not force-push or disable protection.
+- Promotion cannot push: confirm the dedicated App is installed on this repository, has Contents read/write, and is the production ruleset’s only Always bypass actor. Do not force-push or disable protection.
 - Suspected exposed credential: rotate it at the provider, remove it from source, and review history. Removal alone does not revoke it.
 
 The legacy assistant credential that was previously embedded in browser/server defaults was removed. Rotate that upstream credential before re-enabling the currently disabled assistant; source removal does not revoke the old value.
