@@ -20,7 +20,11 @@
     } catch (_) {}
   }
   function request(frame, key) {
-    if (frame.isConnected) frame.contentWindow.postMessage({ type: 'rrhs-' + key + '-request-height' }, assetOrigin);
+    if (!frame.isConnected) return;
+    frame.contentWindow.postMessage({ type: 'rrhs-' + key + '-request-height' }, assetOrigin);
+    if (key === 'cfa-preorder' && window.RRHS_DEPLOYMENT?.frontendEnvironment === 'staging') {
+      frame.contentWindow.postMessage({ type: 'rrhs-staging-session', token: window.RRHS_DEPLOYMENT.sessionToken() }, assetOrigin);
+    }
   }
   const visibility = new IntersectionObserver(entries => {
     entries.forEach(entry => {
@@ -80,5 +84,6 @@
   window.addEventListener('pageshow', refreshAll);
   window.addEventListener('resize', refreshAll);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAll(); });
+  document.addEventListener('rrhs:staging-authorized', refreshAll);
   connect();
 }());

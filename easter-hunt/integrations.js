@@ -28,7 +28,8 @@ async function ensureCoupon(claim,code,expiresAt,who='') {
   // A retry after a timeout may find the coupon the first attempt already created.
   const existing=await findCoupon(code);
   if(existing)return String(existing.id);
-  const body={name:('Dragon hunt '+claim.percentage+'% · '+who+' · '+claim.egg_id).slice(0,100),code,discountType:'PERCENT',discount:claim.percentage,status:'ACTIVE',usesLimit:'SINGLE',
+  const testLabel=code.startsWith('RRHS-TEST-DRAGON-')?'[TEST] ':'';
+  const body={name:(testLabel+'Dragon hunt '+claim.percentage+'% · '+who+' · '+claim.egg_id).slice(0,100),code,discountType:'PERCENT',discount:claim.percentage,status:'ACTIVE',usesLimit:'SINGLE',
     launchDate:ecwidDate(Date.now()),expirationDate:ecwidDate(expiresAt)};
   try {const result=await ecwid('/discount_coupons',{method:'POST',body:JSON.stringify(body)});if(!result.id)throw new Error('No coupon ID');return String(result.id);}
   catch(error){const recovered=await findCoupon(code).catch(()=>null);if(recovered)return String(recovered.id);throw error;}

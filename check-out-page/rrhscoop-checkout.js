@@ -812,9 +812,12 @@
 
   async function rrhsSaveHacLogin(username, password) {
     try {
+      const headers = { "Content-Type": "application/json" };
+      const stagingToken = window.RRHS_DEPLOYMENT && window.RRHS_DEPLOYMENT.sessionToken();
+      if (stagingToken) headers.Authorization = "Bearer " + stagingToken;
       const res = await fetch(rrhsHacVaultUrl(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         cache: "no-store",
         body: JSON.stringify({ action: "seal", username, password })
       });

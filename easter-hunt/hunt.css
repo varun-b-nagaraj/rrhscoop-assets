@@ -257,10 +257,8 @@
 .hunt-complete .hunt-one-find-icon { width:32px; height:32px; }
 @keyframes hunt-complete-in { from { opacity:0; transform:translateY(8px); } }
 .hunt-egg.hunt-vanish { pointer-events:none; animation:hunt-vanish .7s cubic-bezier(.5,0,.75,0) forwards; }
-.hunt-egg.hunt-vanish::before { content:""; position:absolute; inset:2px; border-radius:50%; border:2px solid #e8b98f; opacity:0; animation:hunt-puff .7s .1s ease-out forwards; }
 @keyframes hunt-vanish { 0% { transform:none; opacity:1; } 30% { transform:translateY(-6px) rotate(-10deg) scale(1.12); opacity:1; } 100% { transform:translateY(-14px) rotate(12deg) scale(.2); opacity:0; } }
-@keyframes hunt-puff { 0% { opacity:.9; transform:scale(.6); } 100% { opacity:0; transform:scale(1.8); } }
-@media (prefers-reduced-motion:reduce) { .hunt-egg.hunt-vanish, .hunt-egg.hunt-vanish::before, .hunt-dialog .hunt-complete { animation:none; } }
+@media (prefers-reduced-motion:reduce) { .hunt-egg.hunt-vanish, .hunt-dialog .hunt-complete { animation:none; } }
 /* Header counter: a small check on the dragon once this person has found theirs. */
 .hunt-counter-trigger { position:relative; }
 .hunt-counter-done-badge { position:absolute; left:24px; top:24px; width:14px; height:14px; pointer-events:none; filter:drop-shadow(0 0 0 #f1eee8) drop-shadow(0 1px 1px #0003); }

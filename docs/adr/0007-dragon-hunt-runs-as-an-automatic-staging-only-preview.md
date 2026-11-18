@@ -1,6 +1,6 @@
 # ADR 0007 — The dragon hunt runs as an automatic staging-only preview
 
-**Status:** Accepted · 2026-11-17
+**Status:** Superseded by 0008 · 2026-11-17
 **Related:** [0001](0001-staging-is-a-per-tab-mode-on-the-live-store.md), [0002](0002-staging-tabs-load-staging-scripts-and-call-production-apis.md), [0003](0003-main-is-staging-and-a-workflow-promotes-to-production.md)
 
 ## Context

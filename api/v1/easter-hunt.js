@@ -1,17 +1,19 @@
 'use strict';
 const live=require('../../easter-hunt/live');
+const stagingAccess=require('../_lib/staging-auth.cjs');
 // RRHS_HUNT_ENABLED in Vercel is the only on/off switch. Neon holds the claims; Apps Script only sends email.
 const enabled=()=>String(process.env.RRHS_HUNT_ENABLED||'').trim().toLowerCase()==='true';
 module.exports=async function handler(req,res) {
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json; charset=utf-8');
  const origin=req.headers?.origin,local=process.env.NODE_ENV!=='production'&&/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin||'');
  res.setHeader('Vary','Origin');
- if(origin&&!local&&!['https://rrhscoop-assets.vercel.app','https://rrhscoop.roundrockisd.org'].includes(origin)){res.statusCode=403;return res.end(JSON.stringify({error:'Open the CO-OP website to continue.'}));}
+ if(origin&&!local&&!['https://rrhscoop-assets.vercel.app','https://rrhscoop-staging.vercel.app','https://rrhscoop.roundrockisd.org'].includes(origin)){res.statusCode=403;return res.end(JSON.stringify({error:'Open the CO-OP website to continue.'}));}
  if(origin)res.setHeader('Access-Control-Allow-Origin',origin);
- res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');
+ res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization');
  const send=(status,data)=>{res.statusCode=status;return res.end(JSON.stringify(data));};
  if(req.method==='OPTIONS'){res.statusCode=204;return res.end();}
  try {
+  stagingAccess.requirePreviewAccess(req);
   if(req.method==='GET'){
    const query=new URL(req.url||'/','https://rrhscoop-assets.vercel.app').searchParams;
    if(query.get('view')==='email-template'){const p=Number(query.get('percentage'));if(![10,15,20,25,35].includes(p))return send(400,{error:'Choose a valid preview percentage.'});return send(200,require('../../easter-hunt/email-preview')(p));}

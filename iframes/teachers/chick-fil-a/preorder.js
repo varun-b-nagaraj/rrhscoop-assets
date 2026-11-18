@@ -18,15 +18,21 @@
   const drawerScroll = $('drawer-scroll');
   const checkoutHost = $('ecwid-checkout');
   let parentOrigin = 'https://rrhscoop.roundrockisd.org';
+  let stagingSession = '';
   try { if (document.referrer) parentOrigin = new URL(document.referrer).origin; } catch (_) {}
   try { token = localStorage.getItem(STORE_KEY) || ''; } catch (_) {}
 
   async function request(body) {
-    const r = await fetch(API, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: AbortSignal.timeout(25000) });
+    const headers = body ? { 'Content-Type': 'application/json' } : {};
+    if (body && stagingSession) headers.Authorization = `Bearer ${stagingSession}`;
+    const r = await fetch(API, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: AbortSignal.timeout(25000) });
     const data = await r.json();
     if (!r.ok) { const err = new Error(data.error || 'Please try again.'); err.status = r.status; throw err; }
     return data;
   }
+  addEventListener('message', event => {
+    if (event.source === parent && event.origin === parentOrigin && event.data?.type === 'rrhs-staging-session' && typeof event.data.token === 'string') stagingSession = event.data.token;
+  });
   function message(id, text) { $(id).textContent = text || ''; $(id).hidden = !text; }
   async function busy(button, label, work, errorId) {
     const original = button.innerHTML; button.disabled = true; button.textContent = label;

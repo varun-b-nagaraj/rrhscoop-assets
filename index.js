@@ -10,9 +10,6 @@
   // the `production` branch.
   // Keep in sync with the staging host redirects in vercel.json.
   const STAGING_ORIGIN = 'https://rrhscoop-staging.vercel.app';
-  // Staging serves only the scripts; its API calls go to production, so the
-  // staging Vercel project needs no env vars or secrets of its own.
-  const PROD_ORIGIN = 'https://rrhscoop-assets.vercel.app';
 
   function wantsStaging() {
     try {
@@ -40,7 +37,8 @@
   boot();
 
   function boot() {
-    if (scriptOrigin() === STAGING_ORIGIN) window.RRHS_API_ORIGIN = PROD_ORIGIN;
+    if (window.__RRHS_ASSET_LOADER_BOOTED) return;
+    window.__RRHS_ASSET_LOADER_BOOTED = scriptOrigin() || 'unknown';
     const root = doc.documentElement;
     const head = doc.head || root;
 
@@ -157,12 +155,15 @@
     const scripts = [
       // First, so window.RRHS_ENVIRONMENT is set before the other scripts run.
       url('rrhs-env.js?v=2'),
-      url('easter-hunt/boot.js?v=32'),
-      url('custom-visuals/rrhs-embed-bridge.js?v=6'),
+      url('rrhs-deployment.js?v=1'),
+      url('rrhs-staging-access.js?v=1'),
+      url('rrhs-iframe-router.js?v=1'),
+      url('easter-hunt/boot.js?v=33'),
+      url('custom-visuals/rrhs-embed-bridge.js?v=7'),
       url('rrhs-runtime.js'),
       url('custom-visuals/rrhs-faq-sticky-nav.js?v=5'),
       url('custom-visuals/rrhs-project-deeplinks.js?v=7'),
-      url('custom-visuals/rrhscoop-visuals.js?v=57'),
+      url('custom-visuals/rrhscoop-visuals.js?v=58'),
       url('custom-visuals/rrhs-footer.js?v=5'),
       url('custom-visuals/rrhs-header-dropdowns.js?v=12'),
       url('custom-visuals/rrhs-by-the-numbers.js?v=2'),
@@ -170,7 +171,7 @@
       url('custom-visuals/rrhs-select.js?v=4'),
       url('custom-visuals/rrhs-category-images.js?v=2'),
       url('check-out-page/cfa-products.js?v=2'),
-      url('check-out-page/rrhscoop-checkout.js?v=18'),
+      url('check-out-page/rrhscoop-checkout.js?v=19'),
       url('check-out-page/rrhs-cfa-preorder-gate.js?v=2'),
       inventoryGuardEnabled && url('check-out-page/rrhs-inventory-guard.js'),
       stoleDrawerEnabled && url('check-out-page/rrhs-stole-drawer.js'),

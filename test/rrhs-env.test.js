@@ -24,6 +24,11 @@ test('staging sticks for the tab once started', () => {
   assert.equal(detect({ search: '?rrhs_env=nonsense', stored: 'staging' }), 'staging');
 });
 
+test('duplicated and restored tabs follow the browser sessionStorage copy', () => {
+  assert.equal(detect({ search: '', stored: 'staging' }), 'staging');
+  assert.equal(detect({ search: '', stored: null }), 'prod');
+});
+
 test('the staging hosts redirect their root to the store with the staging marker', () => {
   const hosts = vercel.redirects.filter(r => r.source === '/').map(r => r.has[0].value);
   assert.deepEqual(hosts.sort(), ['rrhscoop-staging.roundrockisd.org', 'rrhscoop-staging.vercel.app']);
@@ -77,11 +82,9 @@ test('the staging index.js loads everything from the staging deployment', () => 
   assert.ok(srcs[0].startsWith(`${STAGING}/rrhs-env.js`));
 });
 
-test('staging scripts call the production APIs; production leaves them alone', () => {
-  const staging = {};
-  runIndex({ scriptSrc: `${STAGING}/index.js`, stored: 'staging', window: staging });
-  assert.equal(staging.RRHS_API_ORIGIN, PROD);
-  const prod = {};
-  runIndex({ scriptSrc: `${PROD}/index.js`, window: prod });
-  assert.equal(prod.RRHS_API_ORIGIN, undefined);
+test('both loaders include centralized deployment routing from their own origin', () => {
+  const staging = runIndex({ scriptSrc: `${STAGING}/index.js`, stored: 'staging' });
+  const prod = runIndex({ scriptSrc: `${PROD}/index.js` });
+  assert.ok(staging.includes(`${STAGING}/rrhs-deployment.js?v=1`));
+  assert.ok(prod.includes(`${PROD}/rrhs-deployment.js?v=1`));
 });

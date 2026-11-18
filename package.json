@@ -2,7 +2,14 @@
   "name": "rrhscoop-assets",
   "private": true,
   "scripts": {
-    "test": "node --test",
+    "lint": "bash ops/scripts/js-static-check.sh",
+    "test": "node --test test/*.test.js",
+    "test:unit": "node --test test/deployment-routing.test.js test/rrhs-env.test.js test/staging-auth.test.js",
+    "test:integration": "node --test test/hunt-api.test.js test/hunt-live.test.js test/teacher-preorder.test.js test/hac-vault.test.js",
+    "test:browser": "playwright test test/browser/environment-routing.spec.js",
+    "test:smoke": "playwright test test/browser/deployed-smoke.spec.js",
+    "check:config": "bash ops/scripts/config-check.sh",
+    "check:secrets": "bash ops/scripts/secret-check.sh",
     "hunt:migrate": "node tools/hunt-db.cjs migrate",
     "hunt:status": "node tools/hunt-db.cjs status",
     "hunt:reset": "node tools/hunt-db.cjs reset"
@@ -11,6 +18,7 @@
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.16"
+    "@electric-sql/pglite": "^0.5.16",
+    "@playwright/test": "^1.65.1"
   }
 }

@@ -5,13 +5,7 @@
   const assetOrigin = new URL(document.currentScript.src).origin;
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const topLevel = window.parent === window;
-  // Capture the mode once from the script origin. Changing a global in DevTools after load cannot
-  // switch the top-level hunt between fake staging requests and production API requests.
-  const stagingPreview = topLevel
-    ? assetOrigin === 'https://rrhscoop-staging.vercel.app' && window.RRHS_ENVIRONMENT === 'staging'
-    : window.__RRHS_HUNT_STAGING_PREVIEW === true && window.RRHS_HUNT_PARENT === 'https://rrhscoop.roundrockisd.org';
-  const staging = () => stagingPreview;
-  const preview = !staging() && config.DEV_PREVIEW_ENABLED && local;
+  const preview = config.DEV_PREVIEW_ENABLED && local;
   const endpoint = (window.RRHS_API_ORIGIN || assetOrigin) + '/api/v1/easter-hunt';
   const stickerSrc = new URL(config.stickerPath, document.currentScript.src).href;
   const stickerImage = `<img class="hunt-sticker" src="${stickerSrc}" width="256" height="256" alt="" decoding="async" draggable="false">`;
@@ -19,35 +13,12 @@
   let availability, dialog, active, trigger, returnOverflow, generation = 0, refreshPending = false;
   const mounted = new Map();
   // `fresh` skips Vercel's short cache so a click always sees the latest claims.
-  // Staging preview: a pretend backend kept for this tab. Codes are fake and never reach Ecwid.
-  const STAGING_STATE = 'rrhs-hunt-staging-preview-state', DEV_REWARDS = [10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 20, 20, 20, 20, 25, 25, 35];
-  function devState() { try { return JSON.parse(sessionStorage.getItem(STAGING_STATE)) || { claims: [] }; } catch (_) { return { claims: [] }; } }
-  async function devRequest(data) {
-    await new Promise(resolve => setTimeout(resolve, data ? 700 : 120));
-    const state = devState(), taken = new Set([...state.claims.map(claim => claim.eggId), ...(window.RRHS_HUNT_STAGING_FOUND || []), ...foundHere]);
-    if (!data) return { mode: 'staging', status: 'active', expiresAt: config.expiresAt, remaining: config.locations.filter(spot => !taken.has(spot.id)).length,
-      eggs: config.locations.map(spot => ({ id: spot.id, available: !taken.has(spot.id), found: taken.has(spot.id) })) };
-    const who = String(data.studentId || '').trim().toLowerCase();
-    if (taken.has(data.eggId) || state.claims.some(claim => claim.who === who)) throw new Error('This package could not be claimed. You may already have a reward, or another Dragon got here first. Open a new staging tab for a fresh preview.');
-    const percentage = DEV_REWARDS[Math.floor(Math.random() * DEV_REWARDS.length)];
-    const code = 'FAKE-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), byte => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[byte % 32]).join('');
-    state.claims.push({ eggId: data.eggId, who, percentage, code, at: new Date().toISOString() });
-    try { sessionStorage.setItem(STAGING_STATE, JSON.stringify(state)); } catch (_) {}
-    const result = { mode: 'staging', percentage, code, emailStatus: 'fake', email: /^s\d/.test(who) ? who + '@student.roundrockisd.org' : who };
-    // A real, clearly marked test email (dashboard admins only). The fake claim stands even if it fails.
-    try {
-      const response = await fetch(endpoint, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'dev-email', studentId: who, eggId: data.eggId, code }), signal: AbortSignal.timeout(30000) });
-      const sent = await response.json();
-      if (response.ok) result.emailStatus = 'sent'; else result.emailNote = sent.error;
-    } catch (_) { result.emailNote = 'The test email could not be sent.'; }
-    return result;
-  }
   async function request(data, fresh) {
-    if (staging()) return devRequest(data);
-    const response = await fetch(fresh ? `${endpoint}?fresh=${Date.now()}` : endpoint, { method: data ? 'POST' : 'GET', cache: 'no-store',
+    const path = fresh ? `/api/v1/easter-hunt?fresh=${Date.now()}` : '/api/v1/easter-hunt';
+    const options = { method: data ? 'POST' : 'GET', cache: 'no-store',
       headers: data ? { 'Content-Type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined,
-      signal: AbortSignal.timeout(data ? 55000 : 10000) });
+      signal: AbortSignal.timeout(data ? 55000 : 10000) };
+    const response = window.RRHS_DEPLOYMENT ? await window.RRHS_DEPLOYMENT.fetch(path, options) : await fetch(fresh ? `${endpoint}?fresh=${Date.now()}` : endpoint, options);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'We couldn’t open this package. Please try again.');
     return result;
@@ -70,7 +41,6 @@
   let holdVanish = false, doneAnnounce = null;
   function doneId() {
     if (window.parent !== window && window.RRHS_HUNT_PARENT) return window.RRHS_HUNT_DONE_ID || null;
-    if (staging()) return devState().claims[0]?.eggId || null;
     try { const saved = JSON.parse(localStorage.getItem(DONE_KEY)); return saved && availability?.scope && saved.scope === availability.scope ? saved.id : null; }
     catch (_) { return null; }
   }
@@ -232,7 +202,7 @@
         const result = await request({ action: 'claim', eggId: id, studentId: input.value.trim(), idempotencyKey: active.key });
         if (version !== generation) return;
         active.submitting = false; active.claimed = true; holdVanish = true;
-        if (!dev()) try { localStorage.setItem(DONE_KEY, JSON.stringify({ scope: availability?.scope, id })); } catch (_) {}
+        if (!preview) try { localStorage.setItem(DONE_KEY, JSON.stringify({ scope: availability?.scope, id })); } catch (_) {}
         doneAnnounce = id; markFound(id);
         reveal(result, version); refresh();
       } catch (error) {
@@ -256,13 +226,9 @@
     content.innerHTML = `<div class="hunt-package hunt-unwrapped">${stickerImage}<div class="hunt-confetti" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${Math.round(Math.cos(i * 2.4) * 140)}px;--y:${Math.round(Math.sin(i * 2.4) * 110)}px"></i>`).join('')}</div></div>
       <p class="hunt-eyebrow">A lovely little find</p><h2 id="hunt-title">You unlocked<br><span class="hunt-percentage" aria-hidden="true">0</span><span aria-hidden="true">% OFF!</span><span class="hunt-sr-only">${result.percentage}% OFF!</span></h2>
       <p>${preview ? 'Valid on the first $25 of your eligible cart subtotal.' : 'Off your next eligible CO-OP online order.'}</p>
-      ${preview ? `<p class="hunt-preview">Dev preview · no discount code was created.<br>${result.emailStatus === 'sent' ? `A real preview email was sent to <strong>${escape(result.email)}</strong>.` : 'Your preview reward is saved. Email delivery has not been confirmed.'}</p>`
-        : result.mode === 'staging' ? `<p class="hunt-preview hunt-staging-code">Staging preview · fake code <code>${escape(result.code)}</code><br>It won’t work at checkout. ${result.emailStatus === 'sent' ? `A test email was sent to <strong>${escape(result.email)}</strong>.` : escape(result.emailNote || 'No email was sent.')}</p>`
-      : `<p class="hunt-delivery">Your one-time code ${result.emailStatus === 'sent' ? 'is on its way to' : 'will be emailed to'} <strong>${escape(result.email)}</strong>.</p>`}
+      ${preview ? `<p class="hunt-preview">Dev preview · no discount code was created.</p>` : `<p class="hunt-delivery">Your one-time code ${result.emailStatus === 'sent' ? 'is on its way to' : 'will be emailed to'} <strong>${escape(result.email)}</strong>.</p>`}
       <p class="hunt-terms">Expires Friday, November 13, 2026 at 11:59 PM Central.<br>One use. Excludes taxes, fees, and delivery. No coupon stacking.</p>
-      <p class="hunt-status" role="status">${preview ? `Preview reward reserved. ${result.emailStatus === 'sent' ? 'Check your school inbox.' : 'No email is sent from a local preview.'}`
-        : result.mode === 'staging' ? 'Staging preview: this fake claim lasts only for this tab.'
-        : result.emailStatus === 'sent' ? 'Reward saved. Check your school inbox for the code.' : 'Reward saved. Your email is being retried; check your school inbox in a few minutes.'}</p>
+      <p class="hunt-status" role="status">${preview ? 'Local preview only.' : result.emailStatus === 'sent' ? 'Reward saved. Check your school inbox for the code.' : 'Reward saved. Your email is being retried; check your school inbox in a few minutes.'}</p>
       <div class="hunt-complete">${oneFindIcon}<div><strong>Your hunt is complete</strong><span>When you close this, the other dragons leave your screen so other Dragons can find them.</span></div></div>
       <button type="button" class="hunt-primary">Continue shopping ${arrowIcon}</button>`;
     content.querySelector('button.hunt-primary').addEventListener('click', close);
@@ -287,9 +253,7 @@
       availability = next; if (!window.RRHS_HUNT_ACTIVE) return; mount(); if (active && !available(active.id)) unavailable();
       // Iframes can load after this page; keep telling them this person has already found theirs.
       if (window.parent === window && !holdVanish && doneId()) announceDone(doneId());
-      // Staging fake claims live in this tab, so keep the sticker iframes in step.
-      if (staging() && window.parent === window) { const ids = availability.eggs.filter(egg => egg.found).map(egg => egg.id);
-        if (ids.length) for (const frame of document.querySelectorAll('iframe')) { try { if (new URL(frame.src).origin === assetOrigin) frame.contentWindow.postMessage({ type: 'rrhs-hunt-found', ids }, assetOrigin); } catch (_) {} } } }
+    }
     catch (_) { availability = null; if (window.RRHS_HUNT_ACTIVE) mount(); }
     finally { refreshPending = false; }
     document.dispatchEvent(new CustomEvent('rrhs-hunt-availability', { detail: availability }));
@@ -302,7 +266,7 @@
       mounted.clear();
     }
   });
-  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, lensIcon, foundIds: () => [...new Set([...foundHere, ...devState().claims.map(claim => claim.eggId)])], doneId, getAvailability: () => availability };
+  window.RRHS_EASTER_HUNT = { EasterEgg, refresh, open, stickerImage, arrowIcon, lensIcon, foundIds: () => [...foundHere], doneId, getAvailability: () => availability };
   refresh();
   if (window.RRHS_RUNTIME) window.RRHS_RUNTIME.onDomChanged(mount);
   else {

@@ -16,6 +16,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const stagingAccess = require('../../_lib/staging-auth.cjs');
 
 const HAC_API_BASE = 'https://hacapi-hh.vercel.app';
 const HAC_BASE_URL = 'https://accesscenter.roundrockisd.org/';
@@ -82,6 +83,8 @@ module.exports = async function handler(req, res) {
     return res.end();
   }
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+  try { stagingAccess.requirePreviewAccess(req); }
+  catch (error) { return sendJson(res, error.status || 401, { error: error.message }); }
 
   const key = vaultKey();
   if (!key) return sendJson(res, 503, { error: 'Saved logins are not configured' });
