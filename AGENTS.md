@@ -13,3 +13,8 @@
 # Branches (ADR 0003)
 
 - Commit and push to `main`, which is staging. Never commit or push to `production`; only the "Promote to production" GitHub Action changes it, and the owner runs it.
+
+# Vercel variables (ADR 0012)
+
+- Every Vercel variable is one entry targeting both Production and Preview with the same value. When you add or change one, set it for both at once, then run `npm run check:vercel-env`.
+- Behaviour that should differ between releases (feature switches, dates) goes in code, not in a variable. Never add a Preview-only or Production-only variable.

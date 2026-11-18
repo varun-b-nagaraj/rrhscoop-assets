@@ -1,6 +1,6 @@
 # ADR 0011 — Staging mirrors production behind one shared password
 
-**Status:** Accepted · 2026-11-18
+**Status:** Superseded by 0012 · 2026-11-18
 **Related:** [0008](0008-staging-runs-its-own-assets-apis-and-real-integrations.md), [0010](0010-production-updates-use-an-approved-github-app-token.md)
 
 ## Context

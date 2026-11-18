@@ -11,9 +11,12 @@
     DEV_PREVIEW_ENABLED: true,
     DEV_ALL_EGGS_ENABLED: false,
     stickerPath: 'dragon-package-sticker.png?v=1',
+    // The hunt's switch and dates live here, not in Vercel, so staging and production run exactly
+    // what the code says and a promote carries them live (ADR 0012).
+    enabled: true,
     startsAt: '2026-11-09T00:00:00-06:00',
     // Exclusive cutoff: includes the entire 11:59 PM minute on Friday, Central.
-    expiresAt: '2026-11-14T00:00:00-06:00',
+    expiresAt: '2026-11-21T00:00:00-06:00',
     locations: Object.freeze([
       // Product pages
       { id: 'shop-snacks', url: '/products/Snacks-c169641499', label: 'Snacks', page: '-c169641499$', selector: 'h1.page-title__name' },

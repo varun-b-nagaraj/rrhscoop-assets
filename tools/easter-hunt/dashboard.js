@@ -45,7 +45,7 @@
     $('sign-in').hidden = true; $('board').hidden = false;
     $('signed-in').textContent = `Signed in as ${result.email}`;
     $('status').textContent = STATUS[result.status] || result.status;
-    $('promo').textContent = result.status === 'disabled' ? 'Turn on with RRHS_HUNT_ENABLED in Vercel' : 'Promo ' + (result.promo || '');
+    $('promo').textContent = result.status === 'disabled' ? 'Turn on with enabled in easter-hunt/config.js' : 'Promo ' + (result.promo || '');
     // The website config and the server's reward list must name the same stickers.
     const known = new Set((result.eggs || []).map(egg => egg.id)), missing = SPOTS.filter(spot => !known.has(spot.id)).length;
     $('outdated').hidden = !missing;

@@ -1,8 +1,8 @@
 'use strict';
 const live=require('../../easter-hunt/live');
 const stagingAccess=require('../_lib/staging-auth.cjs');
-// RRHS_HUNT_ENABLED in Vercel is the only on/off switch. Neon holds the claims; Apps Script only sends email.
-const enabled=()=>String(process.env.RRHS_HUNT_ENABLED||'').trim().toLowerCase()==='true';
+// easter-hunt/config.js `enabled` is the only on/off switch (ADR 0012). Neon holds the claims; Apps Script only sends email.
+const enabled=()=>require('../../easter-hunt/config').enabled===true;
 module.exports=async function handler(req,res) {
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json; charset=utf-8');
  const origin=req.headers?.origin,local=process.env.NODE_ENV!=='production'&&/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin||'');

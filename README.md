@@ -4,7 +4,7 @@ Static assets + client-side scripts used by the RRHS COOP Ecwid storefront embed
 
 ## Hidden package hunt
 
-Turn it on for everyone with the Vercel environment variable `RRHS_HUNT_ENABLED=true`, then redeploy. Any other value turns it off.
+Turn it on or off, and set its dates, in [`easter-hunt/config.js`](easter-hunt/config.js) (`enabled`, `startsAt`, `expiresAt`). Merging to `main` changes staging; promoting changes production.
 Claims, coupons and logs are on the [hunt dashboard](https://rrhscoop-assets.vercel.app/easter-hunt/dashboard).
 See [the hunt notes](easter-hunt/README.md).
 

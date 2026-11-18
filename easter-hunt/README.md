@@ -16,18 +16,18 @@ Placements are in `easter-hunt/config.js`; rewards are in `easter-hunt/rules.js`
 
 | Piece | Job |
 | --- | --- |
-| **Vercel env** | Every decision. `RRHS_HUNT_ENABLED` turns it on/off, `RRHS_HUNT_PROMO_ID` names the promo. |
+| **`easter-hunt/config.js`** | On/off (`enabled`) and dates (`startsAt`, `expiresAt`). Merging to `main` changes staging; promoting changes production (ADR 0012). |
+| **Vercel env** | Secrets and the promo name, identical in Production and Preview. `RRHS_HUNT_PROMO_ID` names the promo. |
 | **Neon** (project "Digital Pass CO-Op", schema `hunt`) | Every claim, coupon code, email status, dashboard session and the event log. |
 | **Apps Script** | Only sends email (reward codes) through a signed relay, and pings Vercel each minute to retry anything pending. It stores nothing about the hunt and cannot reset or pause it. |
 
-Vercel env variables (production):
+Vercel env variables (the same values in Production and Preview):
 
-- `RRHS_HUNT_ENABLED`: `true` turns the hunt on for everyone; anything else turns it off.
 - `RRHS_HUNT_PROMO_ID`: the promo's name. A new ID starts a completely empty hunt.
 - `RRHS_HUNT_DATABASE_URL`: Neon pooled connection string.
 - `RRHS_HUNT_SECRET`: encrypts S-numbers and codes at rest.
 - `RRHS_HUNT_RELAY_SECRET`: signs mail requests; the same value goes in the Apps Script's Script properties.
-- Optional: `RRHS_HUNT_STARTS_AT`, `RRHS_HUNT_EXPIRES_AT`, `RRHS_HUNT_ADMINS` (comma-separated).
+- Optional: `RRHS_HUNT_ADMINS` (comma-separated).
 
 Vercel applies an env change only to new deployments: redeploy after changing one.
 
@@ -66,10 +66,9 @@ Sign in with the dashboard password; the session lasts 12 hours. The server stor
 
 ## Staging integration test
 
-Staging mirrors production (ADR 0011): Preview uses the same hunt database, secret, relay secret
-and promo ID, with its own `RRHS_HUNT_ENABLED=true`. Open the storefront through
-`https://rrhscoop-staging.vercel.app` and enter the staging password. Production remains off
-when its own `RRHS_HUNT_ENABLED` is false.
+Staging and production share every Vercel variable (ADR 0012), so the only difference is the
+code each one runs. Open the storefront through `https://rrhscoop-staging.vercel.app` and enter
+the staging password. A change to `enabled` or the dates reaches production only when promoted.
 
 An intentional staging claim uses the real hunt database, creates a real single-use Ecwid coupon,
 and sends the real confirmation email. Staging claims are indistinguishable from production claims and count against the same hunt.
