@@ -24,6 +24,8 @@ test('main is revalidated after approval and production only fast-forwards', () 
 test('only the approved production job can mint the narrow App token', () => {
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
   assert.match(workflow, /permission-contents: write/);
+  assert.match(workflow, /permission-workflows: write/);
+  assert.doesNotMatch(workflow, /permission-(administration|actions|secrets|environments):/);
   assert.match(workflow, /PRODUCTION_APP_ID/);
   assert.match(workflow, /PRODUCTION_APP_PRIVATE_KEY/);
   assert.match(workflow, /permissions:\n\s+contents: read/);
@@ -37,5 +39,7 @@ test('level 2 repeats CI and uses read-only deployed smoke checks', () => {
   assert.match(workflow, /npm test/);
   assert.match(workflow, /SMOKE_URL: https:\/\/rrhscoop-staging\.vercel\.app/);
   assert.match(workflow, /SMOKE_URL: https:\/\/rrhscoop-assets\.vercel\.app/);
+  assert.match(workflow, /name: Production readiness/);
+  assert.match(workflow, /c\.ecwid===true&&c\.email===true/);
   assert.doesNotMatch(workflow, /hunt:migrate|hunt:reset|discount_coupons|send-code|place-order/);
 });

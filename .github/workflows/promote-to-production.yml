@@ -74,13 +74,28 @@ jobs:
         run: |
           for attempt in $(seq 1 30); do
             body="$(curl --fail --silent https://rrhscoop-staging.vercel.app/api/v1/environment || true)"
-            if node -e "const x=JSON.parse(process.argv[1]||'{}'); process.exit(x.environment==='staging'&&x.commitSha===process.env.EXPECTED_SHA?0:1)" "$body"; then break; fi
+            if node -e "const x=JSON.parse(process.argv[1]||'{}'); const c=x.configuration||{}; process.exit(x.environment==='staging'&&x.commitSha===process.env.EXPECTED_SHA&&c.ecwid===true&&c.email===true?0:1)" "$body"; then break; fi
             test "$attempt" -lt 30 || exit 1
             sleep 10
           done
           curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-deployment.js | grep -q 'apiOrigin: assetOrigin'
           curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/rrhs-iframe-router.js | grep -q 'ALLOWED_PATH'
           curl --fail --silent --show-error https://rrhscoop-staging.vercel.app/iframes/faq/index.html >/dev/null
+
+      # Read-only. Production must be serving, and once it runs a release that has the
+      # environment endpoint, it must report production with its required integrations set.
+      # A 404 is allowed only because the first release that adds the endpoint cannot be
+      # checked in advance; verify-production stays strict afterwards.
+      - name: Production readiness
+        run: |
+          curl --fail --silent --show-error --output /dev/null https://rrhscoop-assets.vercel.app/index.js
+          code="$(curl --silent --output production-env.json --write-out '%{http_code}' https://rrhscoop-assets.vercel.app/api/v1/environment)"
+          if [ "$code" = 404 ]; then
+            echo "::notice::Production predates /api/v1/environment; its configuration is checked after promotion."
+          else
+            test "$code" = 200
+            node -e "const x=JSON.parse(require('fs').readFileSync('production-env.json','utf8')); const c=x.configuration||{}; process.exit(x.environment==='production'&&c.ecwid===true&&c.email===true?0:1)"
+          fi
 
       - name: Safe staging browser smoke test
         env:
@@ -109,6 +124,9 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: rrhscoop-assets
           permission-contents: write
+          # Fast-forwarding production over commits that change .github/workflows is
+          # refused for an App token without Workflows write.
+          permission-workflows: write
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -152,7 +170,7 @@ jobs:
         run: |
           for attempt in $(seq 1 30); do
             body="$(curl --fail --silent https://rrhscoop-assets.vercel.app/api/v1/environment || true)"
-            if node -e "const x=JSON.parse(process.argv[1]||'{}'); process.exit(x.environment==='production'&&x.commitSha===process.env.EXPECTED_SHA?0:1)" "$body"; then break; fi
+            if node -e "const x=JSON.parse(process.argv[1]||'{}'); const c=x.configuration||{}; process.exit(x.environment==='production'&&x.commitSha===process.env.EXPECTED_SHA&&c.ecwid===true&&c.email===true?0:1)" "$body"; then break; fi
             test "$attempt" -lt 30 || exit 1
             sleep 10
           done

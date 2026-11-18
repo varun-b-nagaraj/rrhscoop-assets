@@ -20,13 +20,19 @@ to bypass its rules.
    read-only staging checks.
 3. The `promote` job uses the reviewer-protected `Production` environment. Only that job can read
    `PRODUCTION_APP_ID` and `PRODUCTION_APP_PRIVATE_KEY` and mint a one-hour installation token.
-4. The GitHub App is installed only on this repository with Repository Contents read/write and no
-   Administration or Actions permission. The `production` ruleset names that App as its only
-   always-allowed bypass actor.
+4. The GitHub App is installed only on this repository with Repository Contents and Workflows
+   read/write and no Administration or Actions permission. Workflows is needed because GitHub
+   refuses an App push that moves a branch over commits changing `.github/workflows`. Two
+   rulesets target `production`: one blocks deletion, force pushes and non-linear history with
+   no bypass actors; the other restricts updates and names the App as its only Always bypass
+   actor. Splitting them keeps the App unable to rewrite `production`, because a bypass actor
+   skips every rule in its own ruleset.
 5. Immediately before the push, the approved job fetches both branches again, requires the
    validated SHA to still equal the current `main` tip, and requires `production` to be its
    ancestor. The push contains no force option.
-6. Production deployment verification runs afterward in a separate read-only job without the App
+6. Before approval is requested, a read-only readiness step requires production to be serving
+   and, once it has `/api/v1/environment`, to report production with Ecwid and email configured.
+7. Production deployment verification runs afterward in a separate read-only job without the App
    credential.
 
 ## Consequences
@@ -38,8 +44,9 @@ to bypass its rules.
   feature branch production access.
 - Production promotion remains blocked until the App, environment secrets and ruleset bypass are
   configured manually.
-- Because a ruleset bypass actor can bypass every rule in that ruleset, the App must remain narrowly
-  scoped and the workflow must keep its explicit fast-forward check.
+- Workflows write lets the App token change workflow files on unprotected branches during its
+  one-hour life. It is minted only inside the approved job, and `main` and `production` stay
+  protected from it.
 
 ## Alternatives considered
 
