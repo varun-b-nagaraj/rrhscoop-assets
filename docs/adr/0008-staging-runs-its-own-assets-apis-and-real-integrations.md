@@ -1,6 +1,6 @@
 # ADR 0008 — Staging runs its own assets and APIs with real integrations
 
-**Status:** Accepted · 2026-11-17
+**Status:** Superseded by 0011 · 2026-11-17
 **Related:** [0001](0001-staging-is-a-per-tab-mode-on-the-live-store.md), [0004](0004-one-vercel-project-with-public-previews.md), [0005](0005-staging-tabs-keep-a-visible-header-flag.md), [0007](0007-dragon-hunt-runs-as-an-automatic-staging-only-preview.md)
 
 ## Context

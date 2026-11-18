@@ -156,7 +156,7 @@
       // First, so window.RRHS_ENVIRONMENT is set before the other scripts run.
       url('rrhs-env.js?v=2'),
       url('rrhs-deployment.js?v=1'),
-      url('rrhs-staging-access.js?v=1'),
+      url('rrhs-staging-access.js?v=2'),
       url('rrhs-iframe-router.js?v=1'),
       url('easter-hunt/boot.js?v=33'),
       url('custom-visuals/rrhs-embed-bridge.js?v=7'),

@@ -35,6 +35,7 @@ None.
 | 0005 | [Staging tabs keep a visible flag in the storefront header](0005-staging-tabs-keep-a-visible-header-flag.md) | Accepted |
 | 0006 | [The hunt discovery uses a dragon pop without an expanding ring](0006-hunt-discovery-uses-a-dragon-pop-without-a-ring.md) | Accepted |
 | 0007 | [The dragon hunt runs as an automatic staging-only preview](0007-dragon-hunt-runs-as-an-automatic-staging-only-preview.md) | Superseded by 0008 |
-| 0008 | [Staging runs its own assets and APIs with real integrations](0008-staging-runs-its-own-assets-apis-and-real-integrations.md) | Accepted |
+| 0008 | [Staging runs its own assets and APIs with real integrations](0008-staging-runs-its-own-assets-apis-and-real-integrations.md) | Superseded by 0011 |
 | 0009 | [Two-level branch and release governance](0009-two-level-branch-and-release-governance.md) | Superseded by 0010 |
 | 0010 | [Production updates use an approved GitHub App token](0010-production-updates-use-an-approved-github-app-token.md) | Accepted |
+| 0011 | [Staging mirrors production behind one shared password](0011-staging-mirrors-production-behind-one-shared-password.md) | Accepted |

@@ -25,19 +25,19 @@ Whenever possible, generate new iframe URLs from `RRHS_DEPLOYMENT.assetUrl()` in
 
 ## APIs and environment variables
 
-Browser calls use the active deployment’s `/api/v1/` origin. Never fall back from staging to production. GET routes may be public where the existing feature requires it; Preview POST routes with sensitive effects require the tester Bearer session.
+Browser calls use the active deployment’s `/api/v1/` origin. Never fall back from staging to production. GET routes may be public where the existing feature requires it; Preview POST routes with sensitive effects require the staging Bearer session from the password gate.
 
 Vercel Preview must have the same real integration credentials needed by the feature:
 
 - Ecwid: `RRHS_ECWID_STORE_ID`, `RRHS_ECWID_API_TOKEN` and optional `RRHS_ECWID_API_BASE`.
 - Email: `RRHS_CFA_VERIFICATION_URL`, `RRHS_CFA_VERIFICATION_SECRET`, `RRHS_HUNT_RELAY_SECRET`.
-- Hunt: `RRHS_HUNT_DATABASE_URL` (the existing database), `RRHS_HUNT_SECRET`, a staging-only `RRHS_HUNT_PROMO_ID`, `RRHS_HUNT_ENABLED=true`, and `RRHS_HUNT_CODE_PREFIX=RRHS-TEST-DRAGON-`.
-- Tester access: comma-separated `RRHS_STAGING_TESTERS` and a random 32+ character `RRHS_STAGING_SESSION_SECRET`.
+- Hunt: `RRHS_HUNT_DATABASE_URL`, `RRHS_HUNT_SECRET` and `RRHS_HUNT_PROMO_ID` are the Production variables with Preview added as a target, so staging mirrors production (ADR 0011). Preview has its own `RRHS_HUNT_ENABLED=true`; Production's stays `false` until launch.
+- Staging access: the shared `RRHS_STAGING_PASSWORD` (8+ characters) and a random 32+ character `RRHS_STAGING_SESSION_SECRET`.
 - Feature-specific routes may also need `RRHS_HAC_VAULT_KEY`, `DISCOUNT_URL_SHARED_SECRET`, or `RRHS_CHAT_BEARER_TOKEN`.
 
-Set Preview and Production variables separately in Vercel. Do not copy values into source or logs. `/api/v1/environment` reports only readiness booleans. Missing Preview credentials fail clearly and never redirect to production.
+Set Preview-only variables separately in Vercel; shared ones get Preview added as a target. Do not copy values into source or logs. `/api/v1/environment` reports only readiness booleans. Missing Preview credentials fail clearly and never redirect to production.
 
-Add a tester by adding their verified email to `RRHS_STAGING_TESTERS`; remove it to prevent new sessions. Existing signed sessions last at most eight hours. Rotate `RRHS_STAGING_SESSION_SECRET` to invalidate every current session immediately.
+Share the staging password only with developers. Sessions last at most eight hours. Changing `RRHS_STAGING_PASSWORD` or `RRHS_STAGING_SESSION_SECRET` (then redeploying staging) ends every current session immediately.
 
 ## Adding a custom page or API
 
@@ -64,8 +64,8 @@ Grant a developer repository Write access, have them branch from `main`, and rev
 1. `git switch main && git pull --ff-only`, then create `feature/<name>` or `fix/<name>`.
 2. Run `npm ci`, `npm run lint`, `npm run check:secrets`, `npm run check:config`, `npm test`, and `npm run test:browser`.
 3. Push the feature branch and open a pull request to `main`. The owner reviews and CI must pass.
-4. After merge, wait for Vercel’s staging deployment. Open the staging URL, sign in with an allowlisted tester email, and inspect `RRHS_DEPLOYMENT.snapshot()`.
-5. For a deliberate Dragon Hunt integration test, confirm the staging promo ID and test prefix, find a dragon, claim with a designated test student account, verify the email, and test the code in checkout without completing an order. This creates a real single-use Ecwid coupon. Do not delete it automatically.
+4. After merge, wait for Vercel’s staging deployment. Open the staging URL, enter the staging password, and inspect `RRHS_DEPLOYMENT.snapshot()`.
+5. For a deliberate Dragon Hunt integration test, find a dragon, claim with a designated test student account, verify the email, and test the code in checkout without completing an order. This creates a real single-use Ecwid coupon from the production promotion and counts against the real hunt. Do not delete it automatically.
 6. To release, copy the exact tested SHA from `main`, run “Promote to production,” enter that full SHA, and approve the protected `Production` job. A green PR alone is not release approval.
 
 Automated smoke tests only read public deployment state and assets. They never claim a dragon, send mail, create a coupon, change inventory or place an order.
@@ -75,7 +75,7 @@ Automated smoke tests only read public deployment state and assets. They never c
 Staging:
 
 1. Open `https://rrhscoop-staging.vercel.app` in a new tab and verify the compact STAGING flag.
-2. Sign in with an allowlisted tester. In DevTools verify `RRHS_DEPLOYMENT.snapshot().frontendEnvironment === 'staging'`, both origins are the staging host, `stagingAssetsLoaded` is true, and `fellBackToProduction` is false.
+2. Enter the staging password. In DevTools verify `RRHS_DEPLOYMENT.snapshot().frontendEnvironment === 'staging'`, both origins are the staging host, `stagingAssetsLoaded` is true, and `fellBackToProduction` is false.
 3. Inspect custom iframe `src` values. Allowlisted RRHS frames must use staging; checkout/auth/third-party frames must be unchanged.
 4. Compare the snapshot commit SHA with `git rev-parse main`. Confirm required configuration booleans are true.
 5. Only with approval for a real write, run the Dragon Hunt flow described above.

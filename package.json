@@ -6,7 +6,7 @@
     "test": "node --test test/*.test.js",
     "test:unit": "node --test test/deployment-routing.test.js test/rrhs-env.test.js test/staging-auth.test.js",
     "test:integration": "node --test test/hunt-api.test.js test/hunt-live.test.js test/teacher-preorder.test.js test/hac-vault.test.js",
-    "test:browser": "playwright test test/browser/environment-routing.spec.js",
+    "test:browser": "playwright test test/browser/environment-routing.spec.js test/browser/staging-gate.spec.js",
     "test:smoke": "playwright test test/browser/deployed-smoke.spec.js",
     "check:config": "bash ops/scripts/config-check.sh",
     "check:secrets": "bash ops/scripts/secret-check.sh",

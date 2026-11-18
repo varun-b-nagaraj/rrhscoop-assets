@@ -66,13 +66,13 @@ Sign in with the dashboard password; the session lasts 12 hours. The server stor
 
 ## Staging integration test
 
-Set a separate Preview promo ID, enable the hunt in Preview, and use
-`RRHS_HUNT_CODE_PREFIX=RRHS-TEST-DRAGON-`. Open the storefront through
-`https://rrhscoop-staging.vercel.app` and sign in as an allowlisted tester. Production remains off
+Staging mirrors production (ADR 0011): Preview uses the same hunt database, secret, relay secret
+and promo ID, with its own `RRHS_HUNT_ENABLED=true`. Open the storefront through
+`https://rrhscoop-staging.vercel.app` and enter the staging password. Production remains off
 when its own `RRHS_HUNT_ENABLED` is false.
 
 An intentional staging claim uses the real hunt database, creates a real single-use Ecwid coupon,
-and sends the real confirmation email. Test coupons are marked by their prefix and coupon name.
+and sends the real confirmation email. Staging claims are indistinguishable from production claims and count against the same hunt.
 Automated tests never claim, send mail, or create coupons. Do not reset or delete staging coupons
 without checking Ecwid behavior and getting approval.
 

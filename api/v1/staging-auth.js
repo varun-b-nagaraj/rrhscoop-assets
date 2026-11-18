@@ -1,16 +1,18 @@
 'use strict';
 
+// Exchanges the shared staging password for an eight-hour staging session (ADR 0011).
 const access = require('../_lib/staging-auth.cjs');
-const preorder = require('../../teacher-preorders/service');
+
+const FAILURE_DELAY_MS = 600;
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let raw = typeof req.body === 'string' ? req.body : '';
-  if (!raw) for await (const chunk of req) { raw += chunk; if (raw.length > 16000) throw new Error('too large'); }
-  return JSON.parse(raw || '{}');
+  if (!raw) for await (const chunk of req) { raw += chunk; if (raw.length > 4000) throw Object.assign(new Error('Invalid request.'), { status: 400 }); }
+  try { return JSON.parse(raw || '{}'); } catch (_) { throw Object.assign(new Error('Invalid request.'), { status: 400 }); }
 }
 
-module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res, { delay = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
   res.setHeader('Access-Control-Allow-Origin', 'https://rrhscoop.roundrockisd.org');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -22,19 +24,10 @@ module.exports = async function handler(req, res) {
   if (!access.previewRequiresAccess()) return send(404, { error: 'Staging access is not available here.' });
   try {
     const body = await readBody(req);
-    const email = access.assertTester(body.email);
-    if (body.action === 'send-code') {
-      const result = await preorder.mailAction('send-code', { email });
-      return send(200, { challenge: result.challenge, retryAfter: 60 });
-    }
-    if (body.action === 'verify-code') {
-      if (!/^\d{6}$/.test(body.code || '') || !/^[a-f0-9-]{36}$/i.test(body.challenge || '')) {
-        return send(400, { error: 'Enter the six-digit code from your email.' });
-      }
-      await preorder.mailAction('verify-code', { email, code: body.code, challenge: body.challenge });
-      return send(200, { token: access.sign(email), expiresIn: access.MAX_SECONDS, email });
-    }
-    return send(400, { error: 'Unknown action' });
+    if (body.action !== 'sign-in') return send(400, { error: 'Unknown action' });
+    try { access.checkPassword(body.password); }
+    catch (error) { if (error.status === 401) await delay(FAILURE_DELAY_MS); throw error; }
+    return send(200, { token: access.sign(), expiresIn: access.MAX_SECONDS });
   } catch (error) {
     return send(error.status || 503, { error: error.status ? error.message : 'Staging sign-in is unavailable. Check the Preview environment configuration.' });
   }
