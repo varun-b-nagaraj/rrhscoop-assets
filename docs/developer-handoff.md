@@ -31,11 +31,11 @@ Vercel Preview must have the same real integration credentials needed by the fea
 
 - Ecwid: `RRHS_ECWID_STORE_ID`, `RRHS_ECWID_API_TOKEN` and optional `RRHS_ECWID_API_BASE`.
 - Email: `RRHS_CFA_VERIFICATION_URL`, `RRHS_CFA_VERIFICATION_SECRET`, `RRHS_HUNT_RELAY_SECRET`.
-- Hunt: `RRHS_HUNT_DATABASE_URL`, `RRHS_HUNT_SECRET` and `RRHS_HUNT_PROMO_ID` are the Production variables with Preview added as a target, so staging mirrors production (ADR 0011). Preview has its own `RRHS_HUNT_ENABLED=true`; Production's stays `false` until launch.
+- Hunt: `RRHS_HUNT_DATABASE_URL`, `RRHS_HUNT_SECRET` and `RRHS_HUNT_PROMO_ID`. The hunt's on/off switch and dates are in `easter-hunt/config.js`, not Vercel (ADR 0012).
 - Staging access: the shared `RRHS_STAGING_PASSWORD` (8+ characters) and a random 32+ character `RRHS_STAGING_SESSION_SECRET`.
 - Feature-specific routes may also need `RRHS_HAC_VAULT_KEY`, `DISCOUNT_URL_SHARED_SECRET`, or `RRHS_CHAT_BEARER_TOKEN`.
 
-Set Preview-only variables separately in Vercel; shared ones get Preview added as a target. Do not copy values into source or logs. `/api/v1/environment` reports only readiness booleans. Missing Preview credentials fail clearly and never redirect to production.
+Every Vercel variable is one entry targeting both Production and Preview, with one value (ADR 0012). Add new variables to both at once, and run `npm run check:vercel-env` afterwards. Behaviour that should differ between staging and production belongs in code, not in a variable. Do not copy values into source or logs. `/api/v1/environment` reports only readiness booleans. Missing Preview credentials fail clearly and never redirect to production.
 
 Share the staging password only with developers. Sessions last at most eight hours. Changing `RRHS_STAGING_PASSWORD` or `RRHS_STAGING_SESSION_SECRET` (then redeploying staging) ends every current session immediately.
 
@@ -84,7 +84,7 @@ Production after an approved promotion:
 
 1. Open a new unmarked storefront tab. There must be no STAGING flag or tester dialog.
 2. Verify the snapshot says production and uses `https://rrhscoop-assets.vercel.app` for assets and APIs, with no fallback.
-3. Confirm Dragon Hunt remains hidden when Production `RRHS_HUNT_ENABLED` is false.
+3. Confirm Dragon Hunt matches `enabled` and the dates in the promoted `easter-hunt/config.js`.
 4. Check the environment endpoint commit matches the promoted SHA and browse normal custom pages and checkout without placing an order.
 
 ## Rollback and troubleshooting

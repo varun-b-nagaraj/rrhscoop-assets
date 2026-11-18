@@ -12,7 +12,8 @@
     "check:secrets": "bash ops/scripts/secret-check.sh",
     "hunt:migrate": "node tools/hunt-db.cjs migrate",
     "hunt:status": "node tools/hunt-db.cjs status",
-    "hunt:reset": "node tools/hunt-db.cjs reset"
+    "hunt:reset": "node tools/hunt-db.cjs reset",
+    "check:vercel-env": "node ops/scripts/vercel-env-parity.mjs"
   },
   "dependencies": {
     "pg": "^8.16.3"

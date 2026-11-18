@@ -10,8 +10,8 @@ const { rewards } = require('../easter-hunt/rules');
 
 process.env.RRHS_HUNT_SECRET = 'test-secret-'.repeat(4);
 process.env.RRHS_HUNT_PROMO_ID = 'test-promo';
-process.env.RRHS_HUNT_STARTS_AT = '2020-01-01T00:00:00Z';
-process.env.RRHS_HUNT_EXPIRES_AT = '2099-01-01T00:00:00Z';
+const { setHuntConfig, withHuntConfig } = require('../tools/hunt-config-override.cjs');
+setHuntConfig({ enabled: false, startsAt: '2020-01-01T00:00:00Z', expiresAt: '2099-01-01T00:00:00Z' });
 const live = require('../easter-hunt/live');
 const integrations = require('../easter-hunt/integrations');
 const { migrate, reset } = require('../tools/hunt-db.cjs');
@@ -63,7 +63,7 @@ test('server rewards match the website stickers: 7×10%, 6×15%, 4×20%, 2×25%,
 });
 
 test('a claim saves to Neon, creates one single-use coupon and emails the code only to the school inbox', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     const result = await env.claim(' S151579 ', 'privacy-policy');
     assert.equal(result.mode, 'live'); assert.equal(result.percentage, 35);
@@ -83,7 +83,7 @@ test('a claim saves to Neon, creates one single-use coupon and emails the code o
 });
 
 test('one reward per person and per dragon, with the same message for both', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     await env.claim('s100001', 'shop-snacks');
     await refused(env.claim('s100001', 'shop-drinks'), 409, /could not be claimed/);
@@ -95,7 +95,7 @@ test('one reward per person and per dragon, with the same message for both', asy
 });
 
 test('repeating the same request returns the original reward without a second coupon', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup(), key = env.key();
     const first = await env.claim('s100003', 'faq', key), again = await env.claim('s100003', 'faq', key);
     assert.deepEqual(again, first);
@@ -105,7 +105,7 @@ test('repeating the same request returns the original reward without a second co
 });
 
 test('each dragon pays its own reward and the hunt sells out after all twenty', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     let i = 0;
     for (const [id, percentage] of Object.entries(rewards)) assert.equal((await env.claim('s2000' + String(++i).padStart(2, '0'), id)).percentage, percentage);
@@ -115,7 +115,7 @@ test('each dragon pays its own reward and the hunt sells out after all twenty', 
 });
 
 test('a failed coupon or email keeps the reward saved, and the retry job finishes it with the same code', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     env.state.couponFails = true;
     const pending = await env.claim('s100005', 'terms');
@@ -135,23 +135,23 @@ test('a failed coupon or email keeps the reward saved, and the retry job finishe
   });
 });
 
-test('claims are refused when Vercel turns the hunt off, before the start and after the deadline', async () => {
+test('claims are refused when the config turns the hunt off, before the start and after the deadline', async () => {
   const env = await setup();
-  for (const value of [undefined, '', 'false', '1', 'yes']) await withEnv({ RRHS_HUNT_ENABLED: value }, async () => {
+  await withHuntConfig({ enabled: false }, async () => {
     assert.equal((await live.availability(env.db)).status, 'disabled');
     await refused(env.claim('s100006', 'faq'), 409);
   });
-  await withEnv({ RRHS_HUNT_ENABLED: ' TRUE ', RRHS_HUNT_STARTS_AT: '2098-01-01T00:00:00Z' }, async () => {
+  await withHuntConfig({ enabled: true, startsAt: '2098-01-01T00:00:00Z' }, async () => {
     assert.equal((await live.availability(env.db)).status, 'scheduled'); await refused(env.claim('s100006', 'faq'), 409);
   });
-  await withEnv({ RRHS_HUNT_ENABLED: 'true', RRHS_HUNT_EXPIRES_AT: '2021-01-01T00:00:00Z' }, async () => {
+  await withHuntConfig({ enabled: true, startsAt: '2020-01-01T00:00:00Z', expiresAt: '2021-01-01T00:00:00Z' }, async () => {
     assert.equal((await live.availability(env.db)).status, 'expired'); await refused(env.claim('s100006', 'faq'), 409, /ended/);
   });
   assert.equal(env.coupons.size, 0);
 });
 
 test('bad input and bursts are rejected; staff claim with their district email', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     for (const bad of ['123456', 's12', 'jane@gmail.com', 'jane@student.roundrockisd.org', 'jane@roundrockisd.org.evil.com', '@roundrockisd.org']) await refused(env.claim(bad, 'faq'), 400);
     await refused(env.claim('s100007', 'not-a-dragon'), 400);
@@ -164,7 +164,7 @@ test('bad input and bursts are rejected; staff claim with their district email',
 });
 
 test('reset deletes this promo’s coupons and the old Apps Script ones, clears claims and the log, and frees every dragon', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     await env.claim('s100010', 'shop-snacks'); await env.claim('s100011', 'privacy-policy');
     env.state.legacy = { promo: 'old', claims: [{ studentId: 's151579', eggId: 'leadership', couponId: 77 }] };
@@ -182,7 +182,7 @@ test('reset deletes this promo’s coupons and the old Apps Script ones, clears 
 });
 
 test('a new RRHS_HUNT_PROMO_ID in Vercel starts an empty hunt', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     await env.claim('s100012', 'faq');
     await withEnv({ RRHS_HUNT_PROMO_ID: 'spring-2027' }, async () => {
@@ -194,7 +194,7 @@ test('a new RRHS_HUNT_PROMO_ID in Vercel starts an empty hunt', async () => {
 });
 
 test('dashboard: server-side password, rate limits, a 12-hour session, and the private log', async () => {
-  await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+  await withHuntConfig({ enabled: true }, async () => {
     const env = await setup();
     const verify = value => value === 'test-only-password';
     await refused(live.adminLogin('wrong', 'bad-client', env.db, verify), 401);
@@ -226,13 +226,13 @@ test('the API: CORS, the env switch, edge caching, and claims that never leak th
   const res = () => ({ headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(value) { this.body = value === undefined ? undefined : JSON.parse(value); } });
   const origin = 'https://rrhscoop.roundrockisd.org';
   try {
-    await withEnv({ RRHS_HUNT_ENABLED: 'false' }, async () => {
+    await withHuntConfig({ enabled: false }, async () => {
       const off = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, off);
       assert.equal(off.body.mode, 'disabled');
       const post = res(); await handler({ method: 'POST', headers: { origin }, body: { action: 'claim', studentId: 's1', eggId: 'faq', idempotencyKey: 'x' } }, post);
       assert.equal(post.statusCode, 503); assert.equal(post.headers['Access-Control-Allow-Origin'], origin);
     });
-    await withEnv({ RRHS_HUNT_ENABLED: 'true' }, async () => {
+    await withHuntConfig({ enabled: true }, async () => {
       const open = res(); await handler({ method: 'GET', headers: {}, url: '/api/v1/easter-hunt' }, open);
       assert.equal(open.body.status, 'active'); assert.equal(open.body.remaining, 20); assert.match(open.headers['Cache-Control'], /s-maxage=2/);
       const claimed = res();

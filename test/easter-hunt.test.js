@@ -27,7 +27,8 @@ test('requires the s, normalizes once, and does not accept an email recipient', 
 test('20 distinct location identifiers and no client prize mapping', () => {
   assert.equal(config.locations.length, 20);
   assert.equal(new Set(config.locations.map(e => e.id)).size, 20);
-  assert.equal('HUNT_ENABLED' in config, false, 'the switch lives in Vercel (RRHS_HUNT_ENABLED), not the public config');
+  assert.equal(typeof config.enabled, 'boolean', 'the switch lives in the config (ADR 0012), not in Vercel');
+  assert.ok(Date.parse(config.startsAt) < Date.parse(config.expiresAt));
   assert.equal(config.DEV_ALL_EGGS_ENABLED, false);
   assert.equal(JSON.stringify(config).includes('percentage'), false);
 });
@@ -86,7 +87,7 @@ test('scheduled, paused, disabled and expired claims consume no inventory', () =
   service.admin({action:'disable', eggId:config.locations[0].id});
   assert.throws(() => service.claim(claim()), { status: 409 });
   service.admin({action:'enable', eggId:config.locations[0].id});
-  now = Date.parse('2026-11-13T23:59:59.999-06:00');
+  now = Date.parse(config.expiresAt) - 1;
   assert.equal(service.availability().status, 'active');
   now++;
   assert.equal(service.availability().status, 'expired');

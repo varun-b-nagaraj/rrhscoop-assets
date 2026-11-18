@@ -6,19 +6,18 @@ const rewards = Object.freeze({
   'inventory-intelligence':20,'team-25-26':20,'teachers-bottom':20,'payment-methods':20,'shipping-returns':25,'terms':25,'privacy-policy':35,
 });
 const DEFAULT_ADMINS = ['varunnagaraj2009@gmail.com', 'rrhs_coop_store@roundrockisd.org', 's151579@student.roundrockisd.org'];
-// Everything that controls the promo comes from Vercel environment variables:
-//   RRHS_HUNT_ENABLED   'true' turns the hunt on for everyone; anything else turns it off.
+// The switch and dates come from easter-hunt/config.js (ADR 0012). Vercel supplies only secrets
+// and identifiers, identical in Production and Preview:
 //   RRHS_HUNT_PROMO_ID  names the promo. A new ID starts an empty hunt.
-//   RRHS_HUNT_STARTS_AT / RRHS_HUNT_EXPIRES_AT  optional; default to easter-hunt/config.js.
 function settings(env=process.env) {
   const config=require('./config');
   const id=String(env.RRHS_HUNT_PROMO_ID||'').trim();
   if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) throw new Error('RRHS_HUNT_PROMO_ID is required');
-  const startsAt=env.RRHS_HUNT_STARTS_AT || config.startsAt, expiresAt=env.RRHS_HUNT_EXPIRES_AT || config.expiresAt;
+  const {startsAt,expiresAt}=config;
   if(!Number.isFinite(Date.parse(startsAt)) || !Number.isFinite(Date.parse(expiresAt)) || Date.parse(startsAt)>=Date.parse(expiresAt)) throw new Error('Invalid hunt dates');
   const codePrefix=String(env.RRHS_HUNT_CODE_PREFIX||'RRHSHUNT-').trim().toUpperCase();
   if(!/^[A-Z0-9-]{4,40}$/.test(codePrefix)) throw new Error('Invalid RRHS_HUNT_CODE_PREFIX');
-  return {id,startsAt,expiresAt,codePrefix,enabled:String(env.RRHS_HUNT_ENABLED||'').trim().toLowerCase()==='true'};
+  return {id,startsAt,expiresAt,codePrefix,enabled:config.enabled===true};
 }
 function admins(env=process.env) {
   const list=String(env.RRHS_HUNT_ADMINS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
